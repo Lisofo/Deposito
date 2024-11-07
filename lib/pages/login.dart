@@ -59,7 +59,7 @@ class _LoginState extends State<Login> {
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 Image.asset(
-                                  'images/trackit.jpg',
+                                  'images/nyp-logo.jpg',
                                   fit: BoxFit.fill,
                                 ),
                                 const SizedBox(height: 8),
