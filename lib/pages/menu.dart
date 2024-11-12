@@ -1,6 +1,8 @@
+import 'package:deposito/provider/product_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:deposito/config/router/routes.dart';
 import 'package:deposito/widgets/drawer.dart';
+import 'package:provider/provider.dart';
 
 class MenuPage extends StatefulWidget {
   const MenuPage({super.key});
@@ -13,20 +15,17 @@ class _MenuPageState extends State<MenuPage> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    String almacen = context.watch<ProductProvider>().almacenNombre;
     return SafeArea(
       child: Scaffold(
         appBar: AppBar(
           backgroundColor: colors.primary,
-          title: const Text(
-            'Menú',
-            style: TextStyle(color: Colors.white),
+          title: Text(
+            almacen,
+            style: const TextStyle(color: Colors.white),
           ),
           iconTheme: IconThemeData(color: colors.onPrimary),
           actions: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(8, 8, 15, 8),
-              child: Text('Almacén 1',style: TextStyle(color: Colors.white, fontSize: 24)),
-            ),
             IconButton.filledTonal(
               style: ButtonStyle(
                 backgroundColor: WidgetStatePropertyAll(colors.primary)
@@ -55,26 +54,26 @@ class _MenuPageState extends State<MenuPage> {
           backgroundColor: Colors.white,
           child: BotonesDrawer(),
         ),
-        body: Padding(
-          padding: const EdgeInsets.only(bottom: 8.0),
+        body: const Padding(
+          padding: EdgeInsets.only(bottom: 8.0),
           child: Column(
             children: [
-              if (MediaQuery.of(context).size.height > MediaQuery.of(context).size.width) ... [
-                Center(
-                  child: Image.asset(
-                    'images/nyp-logo.png',
-                    fit: BoxFit.fill,
-                  ),
-                )
-              ] else ... [
-                Center(
-                  child: Image.asset(
-                    'images/nyp-logo.png',
-                    fit: BoxFit.fill,
-                  ),
-                )
-              ],
-              const Spacer(),
+              // if (MediaQuery.of(context).size.height > MediaQuery.of(context).size.width) ... [
+              //   Center(
+              //     child: Image.asset(
+              //       'images/nyp-logo.png',
+              //       fit: BoxFit.fill,
+              //     ),
+              //   )
+              // ] else ... [
+              //   Center(
+              //     child: Image.asset(
+              //       'images/nyp-logo.png',
+              //       fit: BoxFit.fill,
+              //     ),
+              //   )
+              // ],
+              Spacer(),
             ],
           ),
         ),

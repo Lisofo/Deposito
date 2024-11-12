@@ -352,23 +352,6 @@ class _ProductPageState extends State<ProductPage> {
             buttonIndex = value;
             switch (buttonIndex) {
               case 0:
-                int? statusCode;
-                List<Linea> lineasAEnviar = [];
-                lineasAEnviar = nuevasLineas.where((linea) => linea.raiz == productoNuevo.raiz).toList();
-                await _pedidosServices.putPedido(context, pedido, lineasAEnviar, token);
-                statusCode =  await _pedidosServices.getStatusCode();
-                await _pedidosServices.resetStatusCode();
-                if(statusCode == 1) {
-                  Carteles.showDialogs(context, 'Productos actualizados', true, false, false);
-                  for(var linea in nuevasLineas) {
-                    bool existe = lineasGenericas.contains(linea);
-                    if(!existe && linea.metodo != 'DELETE'){
-                      lineasGenericas.add(linea);
-                    } else {
-                      lineasGenericas.remove(linea);
-                    }
-                  }
-                }
               break;
               case 1:
                 var cantidad = 0;
@@ -443,26 +426,6 @@ class _ProductPageState extends State<ProductPage> {
                         ),
                       ),
                     ),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Center(
-                          child: FittedBox(
-                            fit: BoxFit.contain,
-                            child: Text(
-                              '${productoNuevo.signo} $precioNuevo',
-                              style: const TextStyle(fontSize: 24),
-                            ),
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: () async {
-                            await cambioDePrecios(context);
-                          },
-                          child: const Text('Cambiar precio')
-                        )
-                      ],
-                    ),
                     showColorButtons(),
                     const SizedBox(height: 10),
                     Text(
@@ -471,31 +434,6 @@ class _ProductPageState extends State<ProductPage> {
                         fontSize: 22,
                       ),
                     ),
-                    const SizedBox(height: 10),
-                    if (productosFiltrados.isNotEmpty) ...[
-                      Wrap(
-                        alignment: WrapAlignment.center,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        spacing: 5,
-                        runSpacing: 5,
-                        children: [
-                          for (var producto in productosFiltrados) ...[
-                            VarianteItem(
-                              producto: producto,
-                              colores: colores,
-                              onAgregar: () => _agregarOActualizarVariante(producto),
-                            ),
-                          ],
-                        ],
-                      ),
-                      SizedBox(
-                        width: double.infinity,  // Para que el botón ocupe todo el ancho
-                        child: TextButton(
-                          onPressed: agregarTodasLasVariantes,
-                          child: const Text("Agregar todos"),
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),

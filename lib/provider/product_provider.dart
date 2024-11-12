@@ -48,6 +48,9 @@ class ProductProvider with ChangeNotifier {
   String _raiz = '';
   String get raiz => _raiz;
   
+  String _almacenNombre = '';
+  String get almacenNombre => _almacenNombre;
+  
   int _rptGenId = 0;
   int get rptGenId => _rptGenId;
 
@@ -115,6 +118,11 @@ class ProductProvider with ChangeNotifier {
 
   void setAlmacen(String codAlmacen) {
     _almacen = codAlmacen;
+    notifyListeners();
+  }
+
+  void setAlmacenNombre(String almacen) {
+    _almacenNombre = almacen;
     notifyListeners();
   }
 

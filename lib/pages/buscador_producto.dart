@@ -222,7 +222,7 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
                                     if (listaProductosTemporal.isNotEmpty) {
                                       productoRetorno = listaProductosTemporal[0];
                                       Provider.of<ProductProvider>(context, listen: false).setProduct(productoRetorno);
-                                      router.go('/product_page');
+                                      router.go('/buscadorProducto/paginaProducto');
                                       setState(() {});
                                     } else {
                                       Carteles.showDialogs(context, 'No se pudo conseguir ningun producto con el código $barcodeFinal', false, false, false);
@@ -294,7 +294,7 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
                                     if (listaProductosTemporal.isNotEmpty) {
                                       productoRetorno = listaProductosTemporal[0];
                                       Provider.of<ProductProvider>(context, listen: false).setProduct(productoRetorno);
-                                      router.go('/product_page');
+                                      router.go('/buscadorProducto/paginaProducto');
                                       setState(() {});
                                     } else {
                                       Carteles.showDialogs(context, 'No se pudo conseguir ningun producto con el código $code', false, false, false);
@@ -331,6 +331,7 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
                             onChanged: (value) async {
                               Product productoRetorno;
                               List<Product> listaProductosTemporal;
+                              print('objeto escaneado $value');
                               barcodeFinal = value;
                               listaProductosTemporal = await ProductServices().getProductByName(
                                 context,
@@ -386,8 +387,8 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
                                   children: [
                                     GestureDetector(
                                       onTap: () {
-                                        Provider.of<ProductProvider>(context, listen: false).setRaiz(item.raiz);
-                                        router.go('/productoSimple');
+                                        // Provider.of<ProductProvider>(context, listen: false).setRaiz(item.raiz);
+                                        // router.go('/productoSimple');
                                       },
                                       child: SizedBox(
                                         height: MediaQuery.of(context).size.height * 0.15,
@@ -443,7 +444,7 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
                         child: Padding(
                           padding: const EdgeInsets.all(16.0),
                           child: FloatingActionButton(
-                            child: const Icon(Icons.qr_code_scanner_outlined),
+                            child: const Icon(Icons.delete),
                             onPressed: () {
                               Provider.of<ProductProvider>(context, listen: false).setProduct(Product.empty());
                               query.clear();
@@ -481,7 +482,7 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
   void irAProductPage(BuildContext context, Product productoRetorno) {
     Provider.of<ProductProvider>(context, listen: false).setProduct(productoRetorno);
     Provider.of<ProductProvider>(context, listen: false).setRaiz(productoRetorno.raiz);
-    router.go('/product_page');
+    router.go('/buscadorProducto/paginaProducto');
   }
 
   readQRCode() async {
@@ -505,7 +506,7 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
       if (listaProductosTemporal.isNotEmpty) {
         productoRetorno = listaProductosTemporal[0];
         Provider.of<ProductProvider>(context, listen: false).setProduct(productoRetorno);
-        router.go('/product_page');
+        router.go('/buscadorProducto/paginaProducto');
       } else {
         Carteles.showDialogs(context, 'No se pudo conseguir ningun producto con el código $code', false, false, false);
       }

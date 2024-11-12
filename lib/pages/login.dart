@@ -82,75 +82,82 @@ class _LoginState extends State<Login> {
                                 const SizedBox(height: 35),
                                 Form(
                                   key: _formKey,
-                                  child: TextFormField(
-                                    controller: usernameController,
-                                    decoration: InputDecoration(
-                                      border: OutlineInputBorder(
-                                        borderSide: const BorderSide(),
-                                        borderRadius: BorderRadius.circular(20)
-                                      ),
-                                    fillColor: Colors.white,
-                                    filled: true,
-                                    prefixIcon: const Icon(Icons.person),
-                                    prefixIconColor:  colors.primary,
-                                    hintText: 'Ingrese su usuario'),
-                                    validator: (value) {
-                                      if (value!.isEmpty || value.trim().isEmpty){
-                                        return 'Ingrese un usuario valido';
-                                      }
-                                      return null;
-                                    },
-                                    onSaved:(newValue) => user = newValue!,
-                                  )
-                                ),
-                                const SizedBox(height: 20),
-                                Form(
-                                  child: TextFormField(
-                                    controller: passwordController,
-                                    obscureText: isObscured,
-                                    focusNode: passwordFocusNode,
-                                    decoration: InputDecoration(
-                                      border: OutlineInputBorder(
-                                        borderSide: const BorderSide(),
-                                        borderRadius: BorderRadius.circular(20)
-                                      ),
-                                      fillColor: Colors.white,
-                                      filled: true,
-                                      prefixIcon: const Icon(Icons.lock),
-                                      prefixIconColor: colors.primary,
-                                      suffixIcon: IconButton(
-                                        padding: const EdgeInsetsDirectional.only(end: 12.0),
-                                        icon: isObscured
-                                          ? const Icon(
-                                              Icons.visibility_off,
-                                              color: Colors.black,
-                                            )
-                                          : const Icon(Icons.visibility, color: Colors.black),
-                                          onPressed: () {
-                                            setState(() {
-                                              isObscured = !isObscured;
-                                            });
-                                          },
+                                  child: Column(
+                                    children: [
+                                      TextFormField(
+                                        textInputAction: TextInputAction.next,
+                                        controller: usernameController,
+                                        decoration: InputDecoration(
+                                          border: OutlineInputBorder(
+                                            borderSide: const BorderSide(),
+                                            borderRadius: BorderRadius.circular(20)
+                                          ),
+                                          fillColor: Colors.white,
+                                          filled: true,
+                                          prefixIcon: const Icon(Icons.person),
+                                          prefixIconColor:  colors.primary,
+                                          hintText: 'Ingrese su usuario'
                                         ),
-                                      hintText: 'Ingrese su contraseña'
-                                    ),
-                                    validator: (value) {
-                                      if (value!.isEmpty ||
-                                          value.trim().isEmpty) {
-                                        return 'Ingrese su contraseña';
-                                      }
-                                      if (value.length < 6) {
-                                        return 'Contraseña invalida';
-                                      }
-                                      return null;
-                                    },
-                                    onFieldSubmitted: (value) async {
-                                      await login(context);
-                                    },
-                                    onSaved: (newValue) => pass = newValue!,
+                                        validator: (value) {
+                                          if (value!.isEmpty || value.trim().isEmpty){
+                                            return 'Ingrese un usuario valido';
+                                          }
+                                          return null;
+                                        },
+                                        onSaved:(newValue) => user = newValue!,
+                                      ),
+                                      const SizedBox(
+                                        height: 20,
+                                      ),
+                                      TextFormField(
+                                        controller: passwordController,
+                                        obscureText: isObscured,
+                                        keyboardType: TextInputType.number, 
+                                        focusNode: passwordFocusNode,
+                                        decoration: InputDecoration(
+                                          border: OutlineInputBorder(
+                                            borderSide: const BorderSide(),
+                                            borderRadius: BorderRadius.circular(20)
+                                          ),
+                                          fillColor: Colors.white,
+                                          filled: true,
+                                          prefixIcon: const Icon(Icons.lock),
+                                          prefixIconColor: colors.primary,
+                                          suffixIcon: IconButton(
+                                            padding: const EdgeInsetsDirectional.only(end: 12.0),
+                                            icon: isObscured
+                                              ? const Icon(
+                                                  Icons.visibility_off,
+                                                  color: Colors.black,
+                                                )
+                                              : const Icon(Icons.visibility, color: Colors.black),
+                                              onPressed: () {
+                                                setState(() {
+                                                  isObscured = !isObscured;
+                                                });
+                                              },
+                                            ),
+                                          hintText: 'Ingrese su contraseña'
+                                        ),
+                                        validator: (value) {
+                                          if (value!.isEmpty ||
+                                              value.trim().isEmpty) {
+                                            return 'Ingrese su contraseña';
+                                          }
+                                          if (value.length < 6) {
+                                            return 'Contraseña invalida';
+                                          }
+                                          return null;
+                                        },
+                                        onFieldSubmitted: (value) async {
+                                          await login(context);
+                                        },
+                                        onSaved: (newValue) => pass = newValue!,
+                                      ),
+                                    ],
                                   )
                                 ),
-                                const SizedBox(height: 40,),
+                                const SizedBox(height: 20,),
                                 ElevatedButton(
                                   style: const ButtonStyle(
                                     backgroundColor: WidgetStatePropertyAll(Colors.white),

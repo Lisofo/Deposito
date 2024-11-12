@@ -1,4 +1,6 @@
+import 'package:deposito/models/almacen.dart';
 import 'package:deposito/provider/product_provider.dart';
+import 'package:deposito/services/almacen_services.dart';
 import 'package:flutter/material.dart';
 import 'package:deposito/config/router/routes.dart';
 import 'package:provider/provider.dart';
@@ -11,12 +13,25 @@ class SeleccionAlmacen extends StatefulWidget {
 }
 
 class _SeleccionAlmacenState extends State<SeleccionAlmacen> {
+  List<Almacen> almacenes = [];
+  String token = '';
 
-  List<String> almacenes = ['Almacén 1', 'Almacén 2', 'Almacén 3'];
+  @override
+  void initState() {
+    super.initState();
+    cargarDatos();
+  }
+
+  cargarDatos() async {
+    token = context.read<ProductProvider>().token;
+    almacenes = await AlmacenServices().getAlmacenes(context, token);
+    setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    almacenes.sort((a, b) =>  a.descripcion.compareTo(b.descripcion),);
     return SafeArea(
       child: Scaffold(
         appBar: AppBar(
@@ -27,10 +42,15 @@ class _SeleccionAlmacenState extends State<SeleccionAlmacen> {
         body: Center(
           child: ListView.separated(
             itemCount: almacenes.length,
-            itemBuilder: (context, i) { 
+            itemBuilder: (context, i) {
+              var almacen = almacenes[i];
               return ListTile(
-                title: Text(almacenes[i], style: const TextStyle(fontSize: 18),),
+                title: Text(almacen.descripcion, style: const TextStyle(fontSize: 18),),
+                leading: CircleAvatar(child: Text(almacen.codAlmacen, style: const TextStyle(fontSize: 14),)),
+                trailing: const Icon(Icons.chevron_right),
                 onTap: () {
+                  Provider.of<ProductProvider>(context, listen: false).setAlmacen(almacen.almacenId.toString());
+                  Provider.of<ProductProvider>(context, listen: false).setAlmacenNombre(almacen.descripcion);
                   router.go('/almacen/menu');
                 },
               );
