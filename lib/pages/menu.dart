@@ -62,14 +62,14 @@ class _MenuPageState extends State<MenuPage> {
               if (MediaQuery.of(context).size.height > MediaQuery.of(context).size.width) ... [
                 Center(
                   child: Image.asset(
-                    'images/trackit.jpg',
+                    'images/nyp-logo.png',
                     fit: BoxFit.fill,
                   ),
                 )
               ] else ... [
                 Center(
                   child: Image.asset(
-                    'images/trackit.jpg',
+                    'images/nyp-logo.png',
                     fit: BoxFit.fill,
                   ),
                 )

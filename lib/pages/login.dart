@@ -59,7 +59,7 @@ class _LoginState extends State<Login> {
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 Image.asset(
-                                  'images/nyp-logo.jpg',
+                                  'images/nyp-logo.png',
                                   fit: BoxFit.fill,
                                 ),
                                 const SizedBox(height: 8),
@@ -192,7 +192,7 @@ class _LoginState extends State<Login> {
                              height: MediaQuery.of(context).size.height * 0.962,
                              width: MediaQuery.of(context).size.width / 2,
                               child:Image.asset(
-                                'images/trackit.jpg',
+                                'images/nyp-logo.png',
                                 fit: BoxFit.fill,
                               ),
                             ),
@@ -353,7 +353,7 @@ class _LoginState extends State<Login> {
     if (_formKey.currentState?.validate() == true) {
       var statusCode = await _loginServices.getStatusCode();
 
-      if (statusCode == 200) {
+      if (statusCode == 1) {
         router.go('/almacen');
       } else if (statusCode == null) {
         

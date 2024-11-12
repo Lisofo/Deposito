@@ -1,5 +1,7 @@
+import 'package:deposito/provider/product_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:deposito/config/router/routes.dart';
+import 'package:provider/provider.dart';
 
 class SeleccionAlmacen extends StatefulWidget {
   const SeleccionAlmacen({super.key});
@@ -43,6 +45,7 @@ class _SeleccionAlmacenState extends State<SeleccionAlmacen> {
   Widget buildInkWell(BuildContext context, String route, String imagePath) {
     return InkWell(
       onTap: () {
+        Provider.of<ProductProvider>(context, listen: false).setAlmacen('18');
         router.go(route);
       },
       child: Container(

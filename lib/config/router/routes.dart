@@ -106,7 +106,7 @@ final router = GoRouter(
           routes: [
             GoRoute(
               path: '/buscadorProducto',
-              builder: (context, state) => BuscadorProducto(),
+              builder: (context, state) => const BuscadorProducto(),
               routes: [
                 GoRoute(
                   path: 'paginaProducto',

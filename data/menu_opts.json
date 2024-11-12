@@ -1,0 +1,30 @@
+{
+    "nombreApp": "showroom",
+    "rutas": [
+        {
+            "camino": "Planificador",
+            "opciones": [
+                {
+                    "ruta": "/buscadorProducto",
+                    "icon": "calendar_month",
+                    "texto": "Productos"
+                },
+                {
+                    "ruta": "/pickingOrders",
+                    "icon": "calendar_month",
+                    "texto": "Picking"
+                },
+                {
+                    "ruta": "/inventario",
+                    "icon": "calendar_month",
+                    "texto": "Inventario"
+                },
+                {
+                    "ruta": "/transferencia",
+                    "icon": "calendar_month",
+                    "texto": "Transferir"
+                }
+            ]
+        }
+    ]
+}
