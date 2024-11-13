@@ -105,14 +105,13 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
     final colores = Theme.of(context).colorScheme;
     var shortestSide = MediaQuery.of(context).size.shortestSide;
     isMobile = shortestSide < 600;
-    print('REconstruido');
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
         appBar: AppBar(
           elevation: 0,
           backgroundColor: colores.primary,
-          iconTheme: const IconThemeData(color: Colors.white),
+          iconTheme: IconThemeData(color: colores.surface),
           leading: IconButton.filledTonal(
             style: ButtonStyle(
               backgroundColor: WidgetStatePropertyAll(colores.primary)
@@ -318,12 +317,12 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
                           child: TextFormField(
                             focusNode: focoDeScanner,
                             cursorColor: Colors.white,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               focusedBorder: UnderlineInputBorder(
-                                borderSide: BorderSide(color: Colors.white), // Cambia el color a rojo
-                                borderRadius: BorderRadius.all(Radius.zero)
+                                borderSide: BorderSide(color: colores.surface), // Cambia el color a rojo
+                                borderRadius: const BorderRadius.all(Radius.zero)
                               ),
-                              contentPadding: EdgeInsets.all(0)
+                              contentPadding: const EdgeInsets.all(0)
                             ),
                             autofocus: noBusqueManual,
                             canRequestFocus: true,
@@ -387,8 +386,8 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
                                   children: [
                                     GestureDetector(
                                       onTap: () {
-                                        // Provider.of<ProductProvider>(context, listen: false).setRaiz(item.raiz);
-                                        // router.go('/productoSimple');
+                                        Provider.of<ProductProvider>(context, listen: false).setRaiz(item.raiz);
+                                        router.go('/buscadorProducto/paginaProducto/simpleProductPage');
                                       },
                                       child: SizedBox(
                                         height: MediaQuery.of(context).size.height * 0.15,

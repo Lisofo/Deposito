@@ -1,16 +1,22 @@
 import 'package:deposito/config/router/routes.dart';
-import 'package:deposito/config/theme/app_theme.dart';
 import 'package:deposito/provider/product_provider.dart';
+import 'package:deposito/provider/theme_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
-Future<void> main() async {
-  runApp(ChangeNotifierProvider(
-    create: (_) => ProductProvider(),
-    child: const MyApp(),
-  ));
-}
+void main() {
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_)=> ProductProvider(),),
+        ChangeNotifierProvider(create: (_) => ThemeProvider(),),
+      ],
+      child: const MyApp(),
+    )
+  );
+
+} 
 
 
 class MyApp extends StatelessWidget {
@@ -18,9 +24,9 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final appTheme = AppTheme(selectedColor: 0);
+    final themeProvider = Provider.of<ThemeProvider>(context);
     return MaterialApp.router(
-      theme: appTheme.getTheme(),
+      theme: themeProvider.themeData,
       routerConfig: router,
       debugShowCheckedModeBanner: false,
       localizationsDelegates: const [
@@ -32,11 +38,6 @@ class MyApp extends StatelessWidget {
         Locale('en', 'US'), // English
         Locale('es', 'UY'), // Spanish
       ],
-      // initialRoute: '/',
-      // routes: getApplicationRoutes(),
-      // onGenerateRoute: (RouteSettings settings) {
-      //   return MaterialPageRoute(builder: (context) => Login());
-      // },
     );
   }
 }

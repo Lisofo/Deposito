@@ -22,7 +22,7 @@ class _MenuPageState extends State<MenuPage> {
           backgroundColor: colors.primary,
           title: Text(
             almacen,
-            style: const TextStyle(color: Colors.white),
+            style: TextStyle(color: colors.surface),
           ),
           iconTheme: IconThemeData(color: colors.onPrimary),
           actions: [
@@ -50,9 +50,9 @@ class _MenuPageState extends State<MenuPage> {
             
           ],
         ),
-        drawer: const Drawer(
-          backgroundColor: Colors.white,
-          child: BotonesDrawer(),
+        drawer: Drawer(
+          backgroundColor: colors.surface,
+          child: const BotonesDrawer(),
         ),
         body: const Padding(
           padding: EdgeInsets.only(bottom: 8.0),
@@ -82,6 +82,7 @@ class _MenuPageState extends State<MenuPage> {
   }
 
   logout() {
+    final colors = Theme.of(context).colorScheme;
     showDialog(
       context: context,
       builder: (context) {
@@ -101,9 +102,9 @@ class _MenuPageState extends State<MenuPage> {
                 router.go('/');
                 Navigator.of(context).pop();
               },
-              child: const Text(
+              child: Text(
                 'Cerrar Sesion',
-                style: TextStyle(color: Colors.red),
+                style: TextStyle(color: colors.onError),
               )
             ),
           ],

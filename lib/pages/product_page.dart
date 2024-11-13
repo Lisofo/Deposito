@@ -1,11 +1,10 @@
 // ignore_for_file: must_be_immutable, unused_local_variable, unnecessary_new, unrelated_type_equality_checks
+import 'package:deposito/models/almacen.dart';
 import 'package:deposito/models/client.dart';
 import 'package:deposito/models/linea.dart';
 import 'package:deposito/models/pedido.dart';
-import 'package:deposito/services/pedidos_services.dart';
+import 'package:deposito/services/almacen_services.dart';
 import 'package:deposito/services/product_services.dart';
-import 'package:deposito/widgets/carteles.dart';
-import 'package:deposito/widgets/variante_items.dart';
 import 'package:flutter/material.dart';
 import 'package:deposito/config/router/routes.dart';
 import 'package:deposito/models/color.dart';
@@ -30,6 +29,7 @@ class _ProductPageState extends State<ProductPage> {
   late Client cliente = Client.empty();
   var talles = <String>{};
   late List<ProductColor> colors;
+  late List<Almacen> colorsAlmacen;
   late Product _productoOriginal;
   late num cantidadTotal = 0;
   late double montoTotal = 0.0;
@@ -49,11 +49,11 @@ class _ProductPageState extends State<ProductPage> {
   late Pedido pedido = Pedido.empty();
   late List<Linea> lineasGenericas = [];
   late List<Linea> nuevasLineas= [];
-  final _pedidosServices = PedidosServices();
   late ScaffoldMessengerState scaffoldMessenger;
   late String colorYTalleSeleccionado = '';
   late String precioSeleccionado = '';
   late String precioNuevo = '';
+  late List<Almacen> almacenes = [];
 
 
   @override
@@ -95,6 +95,7 @@ class _ProductPageState extends State<ProductPage> {
     pedido = context.read<ProductProvider>().pedido;
     lineasGenericas = context.read<ProductProvider>().lineasGenericas;
     raiz = context.read<ProductProvider>().raiz;
+    almacenes = await AlmacenServices().getAlmacenes(context, token);
       //productoSeleccionado = context.read<ProductProvider>().product;
     
     if(raiz == '') {
@@ -128,6 +129,23 @@ class _ProductPageState extends State<ProductPage> {
       );
     }
 
+    var modelsAlmacen = <Almacen>{};
+    for (var i = 0; i < almacenes.length; i++) {
+      modelsAlmacen.add(
+        Almacen(
+          almacenId: almacenes[i].almacenId,
+          codAlmacen: almacenes[i].codAlmacen,
+          descripcion: almacenes[i].descripcion,
+          direccion: almacenes[i].direccion,
+          telefono: almacenes[i].telefono,
+          r: almacenes[i].r,
+          g: almacenes[i].g,
+          b: almacenes[i].b,
+          isSelected: almacenes[i].isSelected
+        )
+      );
+    }
+
     for(var linea in lineasGenericas) {
       if(linea.raiz == productoNuevo.raiz) {
         nuevasLineas.add(Linea.copy(linea));
@@ -135,6 +153,7 @@ class _ProductPageState extends State<ProductPage> {
     }
 
     colors = models.toSet().toList();
+    colorsAlmacen = modelsAlmacen.toSet().toList();
     
     if(_products!.isNotEmpty && nuevasLineas.isNotEmpty) {
       for (var linea in nuevasLineas) {
@@ -203,8 +222,8 @@ class _ProductPageState extends State<ProductPage> {
             ),
           ),
           backgroundColor: colores.primary,
-          iconTheme: const IconThemeData(
-            color: Colors.white
+          iconTheme: IconThemeData(
+            color: colores.surface
           ),
         ),
         body: SingleChildScrollView(
@@ -340,8 +359,8 @@ class _ProductPageState extends State<ProductPage> {
           currentIndex: buttonIndex,
           items: const [
             BottomNavigationBarItem(
-              icon: Icon(Icons.save),
-              label: 'Guardar'
+              icon: Icon(Icons.photo),
+              label: 'Ver foto'
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.format_align_left),
@@ -352,6 +371,7 @@ class _ProductPageState extends State<ProductPage> {
             buttonIndex = value;
             switch (buttonIndex) {
               case 0:
+                router.go('/buscadorProducto/paginaProducto/simpleProductPage');
               break;
               case 1:
                 var cantidad = 0;
@@ -403,41 +423,41 @@ class _ProductPageState extends State<ProductPage> {
     return buscando
       ? const Center(child: CircularProgressIndicator())
       : _products!.isEmpty || _products == null
-          ? const Center(
-              child: Text('El Producto no existe', style: TextStyle(fontSize: 24)),
-            )
-          : Padding(
-              padding: const EdgeInsets.only(left: 10, right: 10, top: 10),
-              child: Container(
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(5),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Center(
-                      child: FittedBox(
-                        fit: BoxFit.contain,
-                        child: Text(
-                          productoNuevo.descripcion,
-                          style: const TextStyle(fontSize: 24),
-                        ),
-                      ),
+        ? const Center(
+            child: Text('El Producto no existe', style: TextStyle(fontSize: 24)),
+          )
+        : Padding(
+          padding: const EdgeInsets.only(left: 10, right: 10, top: 10),
+          child: Container(
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(5),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Center(
+                  child: FittedBox(
+                    fit: BoxFit.contain,
+                    child: Text(
+                      productoNuevo.descripcion,
+                      style: const TextStyle(fontSize: 24),
                     ),
-                    showColorButtons(),
-                    const SizedBox(height: 10),
-                    Text(
-                      colorYTalleSeleccionado,
-                      style: const TextStyle(
-                        fontSize: 22,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-            );
+                showColorButtons(),
+                const SizedBox(height: 10),
+                Text(
+                  colorYTalleSeleccionado,
+                  style: const TextStyle(
+                    fontSize: 22,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
   }
 
   Color getTextColor(Color backgroundColor) {
@@ -460,18 +480,23 @@ class _ProductPageState extends State<ProductPage> {
       alignment: WrapAlignment.center,
       spacing: 10,
       children: [
-        for (var color in colors)
+        for (var color in colorsAlmacen)
         GestureDetector(
           onTap: () {
             setState(() {
-              for (var c in colors) {
+              for (var c in colorsAlmacen) {
                 if(c != color) {
                   c.isSelected = false;
                 }
               }
               color.isSelected = !color.isSelected;
-              mostrarTalles2(color);
-              colorYTalleSeleccionado = '${color.nombreColor} ${color.codColor}';
+              // mostrarTalles2(color);
+              // colorYTalleSeleccionado = '${color.nombreColor} ${color.codColor}';
+              if(color.isSelected == false) {
+                colorYTalleSeleccionado = '';
+              } else {
+                colorYTalleSeleccionado = color.descripcion;
+              }
             });
           },
           child: Container(

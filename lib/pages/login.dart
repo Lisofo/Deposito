@@ -67,7 +67,7 @@ class _LoginState extends State<Login> {
                                   'Bienvenido',
                                   style: GoogleFonts.inter(
                                     fontSize: 28,
-                                    color: Colors.black,
+                                    color: colors.onSurface,
                                     fontWeight: FontWeight.bold
                                   ),
                                 ),
@@ -92,10 +92,10 @@ class _LoginState extends State<Login> {
                                             borderSide: const BorderSide(),
                                             borderRadius: BorderRadius.circular(20)
                                           ),
-                                          fillColor: Colors.white,
+                                          fillColor: colors.surface,
                                           filled: true,
                                           prefixIcon: const Icon(Icons.person),
-                                          prefixIconColor:  colors.primary,
+                                          prefixIconColor: colors.primary,
                                           hintText: 'Ingrese su usuario'
                                         ),
                                         validator: (value) {
@@ -119,18 +119,18 @@ class _LoginState extends State<Login> {
                                             borderSide: const BorderSide(),
                                             borderRadius: BorderRadius.circular(20)
                                           ),
-                                          fillColor: Colors.white,
+                                          fillColor: colors.surface,
                                           filled: true,
                                           prefixIcon: const Icon(Icons.lock),
                                           prefixIconColor: colors.primary,
                                           suffixIcon: IconButton(
                                             padding: const EdgeInsetsDirectional.only(end: 12.0),
                                             icon: isObscured
-                                              ? const Icon(
+                                              ? Icon(
                                                   Icons.visibility_off,
-                                                  color: Colors.black,
+                                                  color: colors.onSurface,
                                                 )
-                                              : const Icon(Icons.visibility, color: Colors.black),
+                                              : Icon(Icons.visibility, color: colors.onSurface),
                                               onPressed: () {
                                                 setState(() {
                                                   isObscured = !isObscured;
@@ -159,10 +159,10 @@ class _LoginState extends State<Login> {
                                 ),
                                 const SizedBox(height: 20,),
                                 ElevatedButton(
-                                  style: const ButtonStyle(
-                                    backgroundColor: WidgetStatePropertyAll(Colors.white),
-                                    elevation: WidgetStatePropertyAll(10),
-                                    shape: WidgetStatePropertyAll(
+                                  style: ButtonStyle(
+                                    backgroundColor: WidgetStatePropertyAll(colors.surface),
+                                    elevation: const WidgetStatePropertyAll(10),
+                                    shape: const WidgetStatePropertyAll(
                                       RoundedRectangleBorder(
                                         borderRadius: BorderRadius.horizontal(
                                           left: Radius.circular(50),
@@ -240,7 +240,7 @@ class _LoginState extends State<Login> {
                                                 borderSide: const BorderSide(),
                                                 borderRadius: BorderRadius.circular(20)
                                               ),
-                                            fillColor: Colors.white,
+                                            fillColor: colors.surface,
                                             filled: true,
                                             prefixIcon: const Icon(Icons.person),
                                             prefixIconColor: colors.primary,
@@ -265,19 +265,19 @@ class _LoginState extends State<Login> {
                                                 borderSide: const BorderSide(),
                                                 borderRadius:BorderRadius.circular(20)
                                               ),
-                                              fillColor: Colors.white,
+                                              fillColor: colors.surface,
                                               filled: true,
                                               prefixIcon: const Icon(Icons.lock),
                                               prefixIconColor: colors.primary, //const Color.fromARGB(255, 41, 146, 41)  
                                               suffixIcon: IconButton(
                                                 padding: const EdgeInsetsDirectional.only(end: 12.0),
                                               icon: isObscured? 
-                                                const Icon(
+                                                Icon(
                                                   Icons.visibility_off,
-                                                  color: Colors.black,
-                                                ) : const Icon(
+                                                  color: colors.onSurface,
+                                                ) : Icon(
                                                   Icons.visibility,
-                                                  color: Colors.black
+                                                  color: colors.onSurface
                                                 ),
                                                 onPressed: () {
                                                   setState(() {
@@ -303,10 +303,10 @@ class _LoginState extends State<Login> {
                                           ),
                                           const SizedBox(height: 40,),
                                           ElevatedButton(
-                                            style: const ButtonStyle(
-                                              backgroundColor: WidgetStatePropertyAll(Colors.white),
-                                              elevation: WidgetStatePropertyAll(10),
-                                              shape: WidgetStatePropertyAll(
+                                            style: ButtonStyle(
+                                              backgroundColor: WidgetStatePropertyAll(colors.surface),
+                                              elevation: const WidgetStatePropertyAll(10),
+                                              shape: const WidgetStatePropertyAll(
                                                 RoundedRectangleBorder(
                                                   borderRadius: BorderRadius.horizontal(
                                                     left: Radius.circular(50),
@@ -351,6 +351,7 @@ class _LoginState extends State<Login> {
   }
 
   Future<void> login(BuildContext context) async {
+    final colors = Theme.of(context).colorScheme;
     await _loginServices.login(
       usernameController.text,
       passwordController.text,
@@ -367,9 +368,9 @@ class _LoginState extends State<Login> {
       }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Credenciales inválidas. Intente nuevamente.'),
-          backgroundColor: Colors.red,
+        SnackBar(
+          content: const Text('Credenciales inválidas. Intente nuevamente.'),
+          backgroundColor: colors.onError,
         ),
       );
       print('Credenciales inválidas. Intente nuevamente.');

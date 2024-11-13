@@ -54,7 +54,7 @@ List<Widget> _filaBotones2(data, context, opciones,) {
               
             },
             child: Text(opt['texto'],
-             style: const TextStyle(color: Colors.black),
+              style: const TextStyle(color: Colors.black),
             )
           ),
         ],

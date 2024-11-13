@@ -6,6 +6,7 @@ import 'package:deposito/pages/pedidos.dart';
 import 'package:deposito/pages/picking.dart';
 import 'package:deposito/pages/product_page.dart';
 import 'package:deposito/pages/seleccion_almacen.dart';
+import 'package:deposito/pages/simple_product_page.dart';
 import 'package:deposito/pages/transferencia.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -111,6 +112,12 @@ final router = GoRouter(
                 GoRoute(
                   path: 'paginaProducto',
                   builder: (context, state) => const ProductPage(),
+                  routes: [
+                    GoRoute(
+                      path: 'simpleProductPage',
+                      builder: (context, state) => const SimpleProductPage(),
+                    )
+                  ]
                 ),
               ]
             ),
