@@ -85,7 +85,7 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
     List<Product> nuevosItems = await ProductServices().getProductByName(
       context,
       raiz,
-      cliente.codTipoLista,
+      '2',
       almacen,
       descripcion, // Descripción vacía al cargar más
       offset.toString(),
@@ -154,7 +154,7 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
                     listItems = await ProductServices().getProductByName(
                       context,
                       raiz,
-                      cliente.codTipoLista,
+                      '2',
                       almacen,
                       '',
                       offset.toString(),
@@ -212,7 +212,7 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
                                     listaProductosTemporal = await ProductServices().getProductByName(
                                       context,
                                       '',
-                                      cliente.codTipoLista,
+                                      '2',
                                       almacen,
                                       barcodeFinal,
                                       "0",
@@ -283,7 +283,7 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
                                     listaProductosTemporal = await ProductServices().getProductByName(
                                       context,
                                       '',
-                                      cliente.codTipoLista,
+                                      '2',
                                       almacen,
                                       code,
                                       "0",
@@ -335,7 +335,7 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
                               listaProductosTemporal = await ProductServices().getProductByName(
                                 context,
                                 '',
-                                cliente.codTipoLista,
+                                '2',
                                 almacen,
                                 barcodeFinal,
                                 "0",
@@ -496,7 +496,7 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
       listaProductosTemporal = await ProductServices().getProductByName(
         context,
         '',
-        cliente.codTipoLista,
+        '2',
         almacen,
         code,
         "0",
