@@ -1,7 +1,9 @@
 import 'package:deposito/services/login_services.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:deposito/config/router/routes.dart';
+import 'package:deposito/config/router/router.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 
 class Login extends StatefulWidget {
@@ -21,11 +23,24 @@ class _LoginState extends State<Login> {
   TextEditingController usernameController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
   final _loginServices = LoginServices();
+  bool rememberUser = false;
    
   @override
   void initState() {
     super.initState();
     isObscured = true;
+    loadSavedUsername();
+  }
+
+  Future<void> loadSavedUsername() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? savedUsername = prefs.getString('username');
+    if (savedUsername != null) {
+      setState(() {
+        usernameController.text = savedUsername;
+        rememberUser = true;
+      });
+    }
   }
 
   @override
@@ -59,7 +74,7 @@ class _LoginState extends State<Login> {
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 Image.asset(
-                                  'images/nyp-logo.png',
+                                  'images/familcarLogo.png',
                                   fit: BoxFit.fill,
                                 ),
                                 const SizedBox(height: 8),
@@ -154,6 +169,42 @@ class _LoginState extends State<Login> {
                                         },
                                         onSaved: (newValue) => pass = newValue!,
                                       ),
+                                      const SizedBox(
+                                        height: 20,
+                                      ),
+                                      InkWell(
+                                        onTap: () {
+                                          setState(() {
+                                            rememberUser = !rememberUser; // Invertir el valor del checkbox
+                                          });
+                                        },
+                                        child: Row(
+                                          children: [
+                                            CheckboxTheme(
+                                              data: CheckboxThemeData(
+                                                fillColor: WidgetStatePropertyAll(colors.onPrimary),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius: BorderRadius.circular(4), // Bordes redondeados
+                                                ),
+                                                side: BorderSide(
+                                                  color: colors.onSurface, // Color del contorno
+                                                  width: 2, // Grosor del contorno
+                                                ),
+                                              ),
+                                              child: Checkbox(
+                                                value: rememberUser,
+                                                activeColor: colors.secondary,
+                                                onChanged: (value) {
+                                                  setState(() {
+                                                    rememberUser = value!;
+                                                  });
+                                                },
+                                              ),
+                                            ),
+                                            Text('Recordar usuario', style: TextStyle(color: colors.onSurface),),
+                                          ],
+                                        ),
+                                      ),
                                     ],
                                   )
                                 ),
@@ -199,7 +250,7 @@ class _LoginState extends State<Login> {
                              height: MediaQuery.of(context).size.height * 0.962,
                              width: MediaQuery.of(context).size.width / 2,
                               child:Image.asset(
-                                'images/nyp-logo.png',
+                                'images/familcarLogo.png',
                                 fit: BoxFit.fill,
                               ),
                             ),
@@ -301,6 +352,42 @@ class _LoginState extends State<Login> {
                                             },
                                             onSaved: (newValue) => pass = newValue!
                                           ),
+                                          const SizedBox(
+                                            height: 20,
+                                          ),
+                                          InkWell(
+                                            onTap: () {
+                                              setState(() {
+                                                rememberUser = !rememberUser; // Invertir el valor del checkbox
+                                              });
+                                            },
+                                            child: Row(
+                                              children: [
+                                                CheckboxTheme(
+                                                  data: CheckboxThemeData(
+                                                    fillColor: WidgetStatePropertyAll(colors.onPrimary),
+                                                    shape: RoundedRectangleBorder(
+                                                      borderRadius: BorderRadius.circular(4), // Bordes redondeados
+                                                    ),
+                                                    side: BorderSide(
+                                                      color: colors.onPrimary, // Color del contorno
+                                                      width: 2, // Grosor del contorno
+                                                    ),
+                                                  ),
+                                                  child: Checkbox(
+                                                    value: rememberUser,
+                                                    activeColor: colors.secondary,
+                                                    onChanged: (value) {
+                                                      setState(() {
+                                                        rememberUser = value!;
+                                                      });
+                                                    },
+                                                  ),
+                                                ),
+                                                Text('Recordar usuario', style: TextStyle(color: colors.onPrimary),),
+                                              ],
+                                            ),
+                                          ),
                                           const SizedBox(height: 40,),
                                           ElevatedButton(
                                             style: ButtonStyle(
@@ -338,9 +425,31 @@ class _LoginState extends State<Login> {
                             ),
                           ],
                         ),
+                        
                       ],
-                    )
+                    ),
                   ],
+                  FutureBuilder(
+                    future: PackageInfo.fromPlatform(),
+                    builder: (BuildContext context, AsyncSnapshot<PackageInfo> snapshot) {
+                      if (snapshot.hasData) {
+                        return Column(
+                          children: [
+                            Text(
+                              'Versión ${snapshot.data!.version} (Build ${snapshot.data!.buildNumber})',
+                              style: const TextStyle(color: Colors.black),
+                            ),
+                            const Text(
+                              '2025.01.14+1',
+                              style: TextStyle(color: Colors.black),
+                            ),
+                          ],
+                        );
+                      } else {
+                        return const Text('Cargando la app...');
+                      }
+                    }
+                  ),
                 ],
               ),
             ),
@@ -362,7 +471,16 @@ class _LoginState extends State<Login> {
       var statusCode = await _loginServices.getStatusCode();
 
       if (statusCode == 1) {
-        router.go('/almacen');
+        if (rememberUser) {
+          // Guardar el nombre de usuario en SharedPreferences
+          SharedPreferences prefs = await SharedPreferences.getInstance();
+          await prefs.setString('username', usernameController.text);
+        } else {
+          // Si el checkbox no está seleccionado, borrar el nombre de usuario guardado
+          SharedPreferences prefs = await SharedPreferences.getInstance();
+          await prefs.remove('username');
+        }
+        appRouter.go('/almacen');
       } else if (statusCode == null) {
         
       }

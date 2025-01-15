@@ -1,7 +1,7 @@
 // ignore_for_file: unused_field
 
 import 'package:flutter/material.dart';
-import 'package:deposito/config/router/routes.dart';
+import 'package:deposito/config/router/router.dart';
 import 'package:deposito/widgets/custom_button.dart';
 import 'package:intl/intl.dart';
 
@@ -49,7 +49,7 @@ class _PedidoInternoState extends State<PedidoInterno> {
                   if (accion == 'iniciar') {
                     //cambiarEstado('EN PROCESO');
                     Navigator.of(context).pop();
-                    router.go('/pickingOrders/pickingInterno/picking');
+                    appRouter.go('/pickingOrders/pickingInterno/picking');
                   } else {
                     //cambiarEstado('FINALIZADA');
                     Navigator.of(context).pop();

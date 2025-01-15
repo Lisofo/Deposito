@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:deposito/config/router/routes.dart';
+import 'package:deposito/config/router/router.dart';
 
 class ListaPedidos extends StatefulWidget {
   const ListaPedidos({super.key});
@@ -75,7 +75,7 @@ class _ListaPedidosState extends State<ListaPedidos> {
               backgroundColor: WidgetStatePropertyAll(colors.primary)
             ),
             onPressed: () async {
-              router.go('/almacen/menu');
+              appRouter.go('/almacen/menu');
             },
             icon: const Icon(Icons.arrow_back,),
           ),
@@ -130,7 +130,7 @@ class _ListaPedidosState extends State<ListaPedidos> {
                           // final orden = ordenesFiltradas[i];
                           // context.read<OrdenProvider>().setOrden(orden);
 
-                          router.go('/pickingOrders/pickingInterno');
+                          appRouter.go('/pickingOrders/pickingInterno');
                         },
                         child: Padding(
                           padding: const EdgeInsets.all(8.0),

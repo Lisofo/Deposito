@@ -9,7 +9,7 @@ import 'package:deposito/config/config.dart';
 class LoginServices {
   int? statusCode;
   late String apiUrl = Config.APIURL;
-  late String apiLink = '$apiUrl/api/auth/loginPin2';
+  late String apiLink = '$apiUrl/api/auth/login-pin';
 
   Future<void> login(String login, password, BuildContext context) async {
     var headers = {'Content-Type': 'application/json'};
@@ -19,7 +19,7 @@ class LoginServices {
     try {
       var response = await dio.request(
         link,
-        options: Options(
+        options:  Options(
           method: 'POST',
           headers: headers,
         ),
@@ -32,7 +32,7 @@ class LoginServices {
         print(response.data['token']);
         print(response.data['vendedorId']);
         Provider.of<ProductProvider>(context, listen: false).setToken(response.data['token']);
-        Provider.of<ProductProvider>(context, listen: false).setVendedorId(response.data['vendedorId'] ?? 0);
+        // Provider.of<ProductProvider>(context, listen: false).setVendedorId(response.data['vendedorId'] ?? 0);
       } else { 
         print(response.statusMessage);
       }

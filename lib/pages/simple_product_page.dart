@@ -1,4 +1,5 @@
-import 'package:deposito/models/product.dart';
+import 'package:deposito/models/almacen.dart';
+import 'package:deposito/models/producto_deposito.dart';
 import 'package:deposito/provider/product_provider.dart';
 import 'package:deposito/services/product_services.dart';
 import 'package:flutter/material.dart';
@@ -15,8 +16,9 @@ class SimpleProductPage extends StatefulWidget {
 
 class _SimpleProductPageState extends State<SimpleProductPage> {
   late String raiz = '';
-  Product productoNuevo = Product.empty();
-  late String almacen = '';
+  late List fotos = [];
+  ProductoDeposito productoNuevo = ProductoDeposito.empty();
+  late Almacen almacen = Almacen.empty();
   late String token = '';
   late int currentIndex = 0;
   late PageController _pageController;
@@ -38,7 +40,8 @@ class _SimpleProductPageState extends State<SimpleProductPage> {
     almacen = context.read<ProductProvider>().almacen;
     token = context.read<ProductProvider>().token;
     raiz = context.read<ProductProvider>().raiz;
-    productoNuevo = await ProductServices().getSingleProductByRaiz(context, raiz, almacen, token);
+    fotos = context.read<ProductProvider>().fotos;
+    productoNuevo = await ProductServices().getProductoDeposito(context, raiz, token);
     setState(() {});
   }
 
@@ -71,7 +74,7 @@ class _SimpleProductPageState extends State<SimpleProductPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            if (productoNuevo.imagenes.isNotEmpty) ...[
+            if (fotos.isNotEmpty) ...[
               const SizedBox(height: 20),
               Text(
                 productoNuevo.descripcion,
@@ -83,10 +86,10 @@ class _SimpleProductPageState extends State<SimpleProductPage> {
                   width: MediaQuery.of(context).size.width * 0.98,
                   height: MediaQuery.of(context).size.height * 0.7,
                   child: PhotoViewGallery.builder(
-                    itemCount: productoNuevo.imagenes.length,
+                    itemCount: fotos.length,
                     builder: (context, index) {
                       return PhotoViewGalleryPageOptions(
-                        imageProvider: NetworkImage(productoNuevo.imagenes[index]),
+                        imageProvider: NetworkImage(fotos[index]),
                       );
                     },
                     onPageChanged: (index) {
@@ -105,7 +108,7 @@ class _SimpleProductPageState extends State<SimpleProductPage> {
               const SizedBox(height: 10),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(productoNuevo.imagenes.length, (index) {
+                children: List.generate(fotos.length, (index) {
                   return GestureDetector(
                     onTap: () {
                       _scrollToIndex(index);

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:deposito/models/product.dart';
 import 'package:deposito/models/product2.dart';
 import 'package:deposito/widgets/custom_button.dart';
+import 'package:simple_barcode_scanner/enum.dart';
 import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 
 class PickingPage extends StatefulWidget {
@@ -329,12 +330,7 @@ class _PickingPageState extends State<PickingPage> {
           IconButton(
             iconSize: 40,
               onPressed: () async {
-                var res = await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const SimpleBarcodeScannerPage(),
-                  ),
-                );
+                var res = await SimpleBarcodeScanner.scanBarcode(context, lineColor: '#FFFFFF', cancelButtonText: 'Cancelar', scanType: ScanType.qr, isShowFlashIcon: false);
                 arrancarContador = false;
                 if (res is String) {
                   result = res;

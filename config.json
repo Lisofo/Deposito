@@ -1,5 +1,5 @@
 {
-    "APIURL": "http://vps.nypsrl.com:30002",
+    "APIURL": "https://apipda.familcar.sap.com.uy",
     "MODO": "C",
     "APIRURL2": "https://vps.nypsrl.com"
 }

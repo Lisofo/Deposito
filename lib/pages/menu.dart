@@ -1,7 +1,8 @@
 import 'package:deposito/provider/product_provider.dart';
 import 'package:flutter/material.dart';
-import 'package:deposito/config/router/routes.dart';
+import 'package:deposito/config/router/router.dart';
 import 'package:deposito/widgets/drawer.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 
 class MenuPage extends StatefulWidget {
@@ -41,12 +42,12 @@ class _MenuPageState extends State<MenuPage> {
                 backgroundColor: WidgetStatePropertyAll(colors.primary)
               ),
               onPressed: () async {
-                router.go('/almacen');
+                appRouter.pop();
               },
               icon: const Icon(Icons.arrow_back_ios_new,),
               tooltip: 'Cambiar almacén',
             )
-
+    
             
           ],
         ),
@@ -57,26 +58,56 @@ class _MenuPageState extends State<MenuPage> {
         body: const Padding(
           padding: EdgeInsets.only(bottom: 8.0),
           child: Column(
+            mainAxisAlignment: MainAxisAlignment.end,
             children: [
               // if (MediaQuery.of(context).size.height > MediaQuery.of(context).size.width) ... [
               //   Center(
               //     child: Image.asset(
-              //       'images/nyp-logo.png',
+              //       'images/familcarLogo.png',
               //       fit: BoxFit.fill,
               //     ),
               //   )
               // ] else ... [
               //   Center(
               //     child: Image.asset(
-              //       'images/nyp-logo.png',
+              //       'images/familcarLogo.png',
               //       fit: BoxFit.fill,
               //     ),
               //   )
               // ],
-              Spacer(),
             ],
           ),
         ),
+        bottomNavigationBar: Container(
+          width: double.infinity, // Ocupa todo el ancho de la pantalla
+          color: colors.primary, // Color de fondo del contenedor
+          padding: const EdgeInsets.all(8.0), // Espaciado interno
+          child: FutureBuilder(
+            future: PackageInfo.fromPlatform(),
+            builder: (BuildContext context, AsyncSnapshot<PackageInfo> snapshot) {
+              if (snapshot.hasData) {
+                return Column(
+                  mainAxisSize: MainAxisSize.min, // Ajusta el tamaño al contenido
+                  children: [
+                    Text(
+                      'Versión ${snapshot.data!.version} (Build ${snapshot.data!.buildNumber})',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    const Text(
+                      '2025.01.14+1',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ],
+                );
+              } else {
+                return const Text(
+                  'Cargando la app...',
+                  style: TextStyle(color: Colors.white),
+                );
+              }
+            },
+          ),
+        )
       )
     );
   }
@@ -99,7 +130,7 @@ class _MenuPageState extends State<MenuPage> {
             TextButton(
               onPressed: () {
                 //Provider.of<OrdenProvider>(context, listen: false).setToken('');
-                router.go('/');
+                appRouter.go('/login');
                 Navigator.of(context).pop();
               },
               child: Text(

@@ -1,4 +1,5 @@
 import 'package:deposito/config/config.dart';
+import 'package:deposito/models/producto_deposito.dart';
 import 'package:deposito/models/producto_variante.dart';
 import 'package:deposito/widgets/carteles.dart';
 import 'package:dio/dio.dart';
@@ -262,7 +263,49 @@ List<dynamic> busquedaProductosRecursiva (List<dynamic> lista, String dato){
 //   }
 // }
 
-
+Future<ProductoDeposito> getProductoDeposito(BuildContext context, String raiz, String token) async {
+    String link = apirUrl += '/api/v1/deposito/?limit=20';
+    if (raiz != '') {
+      link += '&raiz=$raiz';
+    }
+    try {
+      var headers = {'Authorization': token};
+      var resp = await _dio.request(
+        link,
+        options: Options(
+          method: 'GET',
+          headers: headers,
+        )
+      );
+      
+      final ProductoDeposito productoDeposito = ProductoDeposito.fromJson(resp.data);
+      return productoDeposito;
+    } catch (e) {
+      if (e is DioException) {
+        if (e.response != null) {
+          final responseData = e.response!.data;
+          if (responseData != null) {
+            if(e.response!.statusCode == 403){
+             Carteles.showErrorDialog(context, 'Error: ${e.response!.data['message']}');
+            }else if(e.response!.statusCode! >= 500) {
+              Carteles.showErrorDialog(context, 'Error: No se pudo completar la solicitud');
+            } else{
+              final errors = responseData['errors'] as List<dynamic>;
+              final errorMessages = errors.map((error) {
+                return "Error: ${error['message']}";
+              }).toList();
+              Carteles.showErrorDialog(context, errorMessages.join('\n'));
+            }
+          } else {
+            Carteles.showErrorDialog(context, 'Error: ${e.response!.data}');
+          }
+        } else {
+          Carteles.showErrorDialog(context, 'Error: No se pudo completar la solicitud');
+        } 
+      }
+      return ProductoDeposito.empty();
+    }
+  }
 
 
 

@@ -1,7 +1,9 @@
+import 'package:deposito/models/almacen.dart';
 import 'package:deposito/models/client.dart';
 import 'package:deposito/models/linea.dart';
 import 'package:deposito/models/pedido.dart';
 import 'package:deposito/models/product.dart';
+import 'package:deposito/models/producto_deposito.dart';
 import 'package:flutter/material.dart';
 
 class ProductProvider with ChangeNotifier {
@@ -21,11 +23,14 @@ class ProductProvider with ChangeNotifier {
   Product _product = Product.empty();
   Product get product => _product;
 
+  ProductoDeposito _productoDeposito = ProductoDeposito.empty();
+  ProductoDeposito get productoDeposito => _productoDeposito;
+
   Client _client = Client.empty();
   Client get client => _client;
 
-  String _almacen = '';
-  String get almacen => _almacen;
+  Almacen _almacen = Almacen.empty();
+  Almacen get almacen => _almacen;
 
   String _mismoColor = '';
   String get mismoColor => _mismoColor;
@@ -54,10 +59,18 @@ class ProductProvider with ChangeNotifier {
   int _rptGenId = 0;
   int get rptGenId => _rptGenId;
 
+  List _fotos = [];
+  List get fotos => _fotos;
+
   // Métodos para actualizar las variables y notificar cambios
 
   void setRptId(int rptGenId){
     _rptGenId = rptGenId;
+    notifyListeners();
+  }
+
+  void setFotos(List urls){
+    _fotos = urls;
     notifyListeners();
   }
 
@@ -111,12 +124,17 @@ class ProductProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  void setProductoDeposito(ProductoDeposito prod) {
+    _productoDeposito = prod;
+    notifyListeners();
+  }
+
   void setClient(Client cliente) {
     _client = cliente;
     notifyListeners();
   }
 
-  void setAlmacen(String codAlmacen) {
+  void setAlmacen(Almacen codAlmacen) {
     _almacen = codAlmacen;
     notifyListeners();
   }

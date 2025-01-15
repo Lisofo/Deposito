@@ -1,4 +1,4 @@
-import 'package:deposito/config/router/routes.dart';
+import 'package:deposito/config/router/router.dart';
 import 'package:flutter/material.dart';
 // import 'package:provider/provider.dart';
 import '../provider/menu_provider.dart';
@@ -49,7 +49,7 @@ List<Widget> _filaBotones2(data, context, opciones,) {
           TextButton(
             onPressed: () {
               // Provider.of<OrdenProvider>(context, listen: false).setPageName(opt['texto']);
-              router.go(opt['ruta']);
+              appRouter.push(opt['ruta']);
               
               
             },
