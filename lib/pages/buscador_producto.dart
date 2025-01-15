@@ -3,10 +3,12 @@
 import 'package:deposito/config/router/router.dart';
 import 'package:deposito/models/almacen.dart';
 import 'package:deposito/models/client.dart';
+import 'package:deposito/models/codigo_barras.dart';
 import 'package:deposito/models/linea.dart';
 import 'package:deposito/models/product.dart';
 import 'package:deposito/provider/product_provider.dart';
 import 'package:deposito/services/product_services.dart';
+import 'package:deposito/services/qr_services.dart';
 import 'package:deposito/widgets/carteles.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -41,6 +43,8 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
   FocusNode focoDeScanner = FocusNode();
   bool noBusqueManual = true;
   late bool visible;
+  late bool tienePermiso = true;
+  late bool agregarCodBarra = false;
 
   @override
   void initState() {
@@ -117,6 +121,7 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
                   onSubmitted: (value) async {
                     setState(() => cargando = true);
                     query.text = value;
+                    offset = 0;
                     listItems = await ProductServices().getProductByName(
                       context,
                       query.text.trim(),
@@ -129,7 +134,7 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
                     setState(() {
                       busco = true;
                       cargando = false;
-                      offset += 20;
+                      // offset += 20;
                       noBusqueManual = false;
                     });
                   },
@@ -208,7 +213,7 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
           )
         else if (!busco)
           const SizedBox(height: 100),
-        if (!busco)
+        if (!busco && !agregarCodBarra)
           Align(
             alignment: Alignment.center,
             child: ElevatedButton(
@@ -244,8 +249,9 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
               onChanged: (value) async {
                 print('Valor del campo: $value');
                 if (value.isEmpty) return; // Ignorar si el valor está vacío
-
-                barcodeFinal = value;
+                setState(() {
+                  barcodeFinal = value;
+                });
                 final listaProductosTemporal = await ProductServices().getProductByName(
                   context,
                   '',
@@ -260,19 +266,16 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
                   final productoRetorno = listaProductosTemporal[0];
                   _navigateToProductPage(productoRetorno);
                 } else {
-                  Carteles.showDialogs(
-                    context,
-                    'No se pudo conseguir ningún producto con el código $barcodeFinal',
-                    false,
-                    false,
-                    false,
-                  );
+                  if(tienePermiso){
+                    await agregarCodBarraEscaneado();
+                  } else {
+                    Carteles.showDialogs(context, 'No se pudo conseguir ningún producto con el código $barcodeFinal', false, false, false,);
+                  }
                 }
-
                 // Reiniciar el estado para permitir nuevos escaneos
                 setState(() {
                   textController.clear();
-                  barcodeFinal = '';
+                  value = '';
                 });
 
                 // Volver a solicitar el foco para permitir un nuevo escaneo
@@ -283,6 +286,34 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
           ),
         ),
       ],
+    );
+  }
+
+  Future<void> agregarCodBarraEscaneado() async {
+    await showDialog(
+      barrierDismissible: true,
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Mensaje'),
+          content: Text('No se pudo conseguir ningún producto con el código $barcodeFinal\nDesea agregar el codigo escaneado?'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  agregarCodBarra = true;
+                });
+                appRouter.pop();
+              },
+              child: const Text('SI'),
+            ),
+            TextButton(
+              onPressed: () => appRouter.pop(),
+              child: const Text('NO'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -342,7 +373,9 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
             SizedBox(
               width: MediaQuery.of(context).size.width * 0.9,
               child: ListTile(
-                onTap: () => _navigateToProductPage(item),
+                onTap: () async {
+                  await confirmarAgregarCodBarra(context, item);
+                },
                 title: Text(item.raiz),
                 subtitle: Text('${item.descripcion} \nPrecio: ${item.signo}$precio    Disponibilidad: ${item.disponibleRaiz}'),
                 trailing: const Icon(Icons.chevron_right, size: 35),
@@ -352,6 +385,70 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
           ],
         );
       },
+    );
+  }
+
+  Future<void> confirmarAgregarCodBarra(BuildContext context, Product item) async {
+    late List<CodigoBarras> codigos = [];
+    codigos = await QrServices().getCodBarras(context, item.raiz, token);
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setStateBd) => AlertDialog(
+            title: Text('Está por asignar un nuevo código al item ${item.descripcion}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.grey[800]),),
+            content: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Se asignara el código escaneado $barcodeFinal al item ${item.descripcion}'),
+                if(codigos.isNotEmpty)...[
+                  const SizedBox(height: 10,),
+                  const Text('Codigos ya asignados:'),
+                  const SizedBox(height: 5,),
+                  Expanded(
+                    child: Scrollbar(
+                      thumbVisibility: true,
+                      trackVisibility: true,
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: codigos.length,
+                        itemBuilder: (context, i) {
+                          var codigo = codigos[i];
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(codigo.codigoBarra),
+                              const SizedBox(height: 5,)
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                  )
+                ] else ...[
+                  const SizedBox(height: 10,),
+                  const Text('El item no tiene codigos de barra asignados')
+                ]
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () async {
+                  await QrServices().postCB(context, item.raiz, barcodeFinal, token);
+                  _navigateToProductPage(item);
+                },
+                child: const Text('SI'),
+              ),
+              TextButton(
+                onPressed: () => appRouter.pop(),
+                child: const Text('NO'),
+              ),
+            ],
+          ),
+        );
+      }
     );
   }
 

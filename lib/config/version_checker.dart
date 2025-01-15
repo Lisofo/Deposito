@@ -46,7 +46,7 @@ class VersionChecker {
       packageInfo = await PackageInfo.fromPlatform();
       currentVersion = packageInfo.version;
       currentVersionParts = _parseVersion(currentVersion);
-      final response = await http.get(Uri.parse('${apiUrl}api/config/version-check'));
+      final response = await http.get(Uri.parse('$apiUrl/api/config/version-check'));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         latestVersion = data['latestVersion'];

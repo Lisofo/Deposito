@@ -4,12 +4,14 @@ import 'package:deposito/config/version_checker.dart';
 import 'package:deposito/provider/product_provider.dart';
 import 'package:deposito/provider/theme_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 // import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
 Future<void> main() async {
-
+  
+  WidgetsFlutterBinding.ensureInitialized();
   final initialLocation = await VersionChecker.checkVersion();
   appRouter = await AppRouter.createAppRouter(initialLocation);
 
@@ -23,9 +25,9 @@ Future<void> main() async {
     )
     
   );
-  // SystemChrome.setPreferredOrientations(
-  //   [DeviceOrientation.portraitUp, DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight],
-  // );
+  SystemChrome.setPreferredOrientations(
+    [DeviceOrientation.portraitUp],
+  );
   // SystemChrome.setEnabledSystemUIMode(
   //   SystemUiMode.immersiveSticky,
   // );
