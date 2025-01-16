@@ -31,6 +31,7 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
   late String token;
   late Client cliente;
   int offset = 0;
+  int minOffset = 0; // Offset mínimo cargado
   final TextEditingController query = TextEditingController();
   final ScrollController scrollController = ScrollController();
   bool cargandoMas = false;
@@ -54,8 +55,17 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
   }
 
   void _onScroll() {
-    if (scrollController.position.pixels == scrollController.position.maxScrollExtent && !cargandoMas) {
+    final double scrollPosition = scrollController.position.pixels;
+    final double maxScroll = scrollController.position.maxScrollExtent;
+
+    // Scroll hacia abajo
+    if (scrollPosition == maxScroll && !cargandoMas) {
       cargarMasDatos();
+    }
+
+    // Scroll hacia arriba
+    if (scrollPosition <= 100 && !cargandoMas && minOffset > 0) {
+      cargarDatosAnteriores();
     }
   }
 
@@ -68,7 +78,11 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
   }
 
   Future<void> cargarMasDatos() async {
+    if (cargandoMas) return; // Evitar múltiples llamadas
+  
     setState(() => cargandoMas = true);
+  
+    // Obtener nuevos elementos
     final nuevosItems = await ProductServices().getProductByName(
       context,
       query.text.trim(),
@@ -78,11 +92,73 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
       offset.toString(),
       token,
     );
-    setState(() {
-      listItems.addAll(nuevosItems);
+  
+    // Filtrar elementos duplicados
+    final itemsSinDuplicados = nuevosItems.where((nuevoItem) => !_existeEnLista(nuevoItem)).toList();
+  
+    // Si la lista alcanza los 100 elementos, eliminar los primeros 20
+    if (listItems.length + itemsSinDuplicados.length > 100) {
+      listItems.removeRange(0, itemsSinDuplicados.length);
+      minOffset += itemsSinDuplicados.length; // Actualizar el offset mínimo
+    }
+  
+    // Agregar los nuevos elementos al final
+    listItems.addAll(itemsSinDuplicados);
+  
+    // Actualizar el offset
+    if(itemsSinDuplicados.isEmpty){
       offset += 20;
+    } else {
+      offset += itemsSinDuplicados.length;
+    }
+  
+    setState(() {
       cargandoMas = false;
     });
+  }
+
+  Future<void> cargarDatosAnteriores() async {
+    if (cargandoMas) return; // Evitar múltiples llamadas
+  
+    setState(() => cargandoMas = true);
+  
+    // Calcular el nuevo offset para cargar los elementos anteriores
+    int nuevoOffset = minOffset - 20;
+    if (nuevoOffset < 0) nuevoOffset = 0; // No puede ser menor que 0
+  
+    // Obtener los elementos anteriores
+    final elementosAnteriores = await ProductServices().getProductByName(
+      context,
+      query.text.trim(),
+      '2',
+      almacen.almacenId.toString(),
+      '',
+      nuevoOffset.toString(),
+      token,
+    );
+  
+    // Filtrar elementos duplicados
+    final itemsSinDuplicados = elementosAnteriores.where((nuevoItem) => !_existeEnLista(nuevoItem)).toList();
+  
+    // Si la lista alcanza los 100 elementos, eliminar los últimos 20
+    if (listItems.length + itemsSinDuplicados.length > 100) {
+      listItems.removeRange(listItems.length - itemsSinDuplicados.length, listItems.length);
+      offset -= itemsSinDuplicados.length; // Actualizar el offset
+    }
+  
+    // Insertar los elementos anteriores al principio de la lista
+    listItems.insertAll(0, itemsSinDuplicados);
+  
+    // Actualizar el offset mínimo
+    minOffset = nuevoOffset;
+  
+    setState(() {
+      cargandoMas = false;
+    });
+  }
+
+  bool _existeEnLista(Product nuevoItem) {
+    return listItems.any((item) => item.raiz == nuevoItem.raiz);
   }
 
   @override
@@ -142,57 +218,41 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
             ),
           ],
         ),
-        body: cargando
-            ? const LoadingIndicator()
-            : SafeArea(
-                child: Stack(
-                  children: [
-                    SingleChildScrollView(
-                      controller: scrollController,
-                      child: Column(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Center(
-                              child: Text('Ultimo escaneado: $barcodeFinal', textAlign: TextAlign.center),
-                            ),
-                          ),
-                          if (isMobile)
-                            MobileScanner(
-                              onBarcodeScanned: _onBarcodeScanned,
-                              onScanBarcode: _scanBarcode,
-                              busco: busco,
-                              agregarCodBarra: agregarCodBarra,
-                              textController: textController,
-                              focoDeScanner: focoDeScanner,
-                              noBusqueManual: noBusqueManual,
-                            ),
-                          if (!isMobile && !busco) _buildDesktopScanner(),
-                          ProductList(
-                            listItems: listItems, 
-                            onProductTap: _navigateToProductPage,
-                            onImageProductTap: _navigateToSimpleProductPage,
-                            agregarCodBarra: agregarCodBarra,
-                            confirmarAgregarCodBarra: confirmarAgregarCodBarra,
-                          ),
-                          if (cargandoMas) const LoadingIndicator(),
-                        ],
-                      ),
-                    ),
-                    if (listItems.isNotEmpty || !noBusqueManual)
-                      Align(
-                        alignment: Alignment.bottomRight,
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: FloatingActionButton(
-                            onPressed: _resetSearch,
-                            child: const Icon(Icons.delete),
-                          ),
+        body: cargando ? _buildLoadingIndicator()
+        : SafeArea(
+            child: Stack(
+              children: [
+                SingleChildScrollView(
+                  controller: scrollController,
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Center(
+                          child: Text('Ultimo escaneado: $barcodeFinal', textAlign: TextAlign.center),
                         ),
                       ),
-                  ],
+                      if (isMobile) _buildMobileScanner(),
+                      if (!isMobile && !busco) _buildDesktopScanner(),
+                      _buildProductList(),
+                      if (cargandoMas) _buildLoadingIndicator(),
+                    ],
+                  ),
                 ),
-              ),
+                if (listItems.isNotEmpty || !noBusqueManual)
+                  Align(
+                    alignment: Alignment.bottomRight,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: FloatingActionButton(
+                        onPressed: _resetSearch,
+                        child: const Icon(Icons.delete),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
       ),
     );
   }
@@ -276,6 +336,10 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
               TextButton(
                 onPressed: () async {
                   await QrServices().postCB(context, item.raiz, barcodeFinal, token);
+                  setState(() {
+                    agregarCodBarra = false;
+                  });
+                  Navigator.of(context).pop();
                   _navigateToProductPage(item);
                 },
                 child: const Text('SI'),
@@ -315,6 +379,7 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
   }
 
   Future<void> _scanBarcode() async {
+    //Esto es para la camara del cel
     final code = await SimpleBarcodeScanner.scanBarcode(
       context,
       lineColor: '#FFFFFF',
@@ -323,6 +388,9 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
       isShowFlashIcon: false,
     );
     if (code == '-1') return;
+    setState(() {
+      barcodeFinal = code.toString();
+    });
 
     barcodeFinal = code.toString();
     final listaProductosTemporal = await ProductServices().getProductByName(
@@ -339,12 +407,17 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
       final productoRetorno = listaProductosTemporal[0];
       _navigateToProductPage(productoRetorno);
     } else {
-      Carteles.showDialogs(context, 'No se pudo conseguir ningún producto con el código $code', false, false, false);
+      if(tienePermiso){
+        await agregarCodBarraEscaneado();
+      } else {
+        Carteles.showDialogs(context, 'No se pudo conseguir ningún producto con el código $barcodeFinal', false, false, false,);
+      }
     }
     setState(() {});
   }
 
   Future<void> _onBarcodeScanned([String? barcode]) async {
+    //Esto es para PC
     print('Valor escaneado: $barcode');
 
     final listaProductosTemporal = await ProductServices().getProductByName(
@@ -363,13 +436,8 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
       Carteles.showDialogs(context, 'No se pudo conseguir ningún producto con el código $barcode', false, false, false);
     }
   }
-}
-
-class LoadingIndicator extends StatelessWidget {
-  const LoadingIndicator({super.key});
-
-  @override
-  Widget build(BuildContext context) {
+  
+  Widget _buildLoadingIndicator() {
     return const Padding(
       padding: EdgeInsets.all(8.0),
       child: Center(
@@ -385,30 +453,8 @@ class LoadingIndicator extends StatelessWidget {
       ),
     );
   }
-}
 
-class MobileScanner extends StatelessWidget {
-  final Function(String) onBarcodeScanned;
-  final Function() onScanBarcode;
-  final bool busco;
-  final bool agregarCodBarra;
-  final TextEditingController textController;
-  final FocusNode focoDeScanner;
-  final bool noBusqueManual;
-
-  const MobileScanner({
-    super.key,
-    required this.onBarcodeScanned,
-    required this.onScanBarcode,
-    required this.busco,
-    required this.agregarCodBarra,
-    required this.textController,
-    required this.focoDeScanner,
-    required this.noBusqueManual,
-  });
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildMobileScanner() {
     return Column(
       children: [
         if (kIsWeb)
@@ -417,7 +463,7 @@ class MobileScanner extends StatelessWidget {
               iconSize: const WidgetStatePropertyAll(40),
               backgroundColor: WidgetStatePropertyAll(Theme.of(context).colorScheme.primary),
             ),
-            onPressed: onScanBarcode,
+            onPressed: _scanBarcode,
             icon: const Icon(Icons.qr_code_scanner_outlined),
           )
         else if (!busco)
@@ -427,14 +473,16 @@ class MobileScanner extends StatelessWidget {
             alignment: Alignment.center,
             child: ElevatedButton(
               style: const ButtonStyle(iconSize: WidgetStatePropertyAll(100)),
-              onPressed: onScanBarcode,
+              onPressed: _scanBarcode,
               child: const Icon(Icons.qr_code_scanner_outlined),
             ),
           ),
+          //Esto es para la PDA
         VisibilityDetector(
           key: const Key('scanner-field-visibility'),
           onVisibilityChanged: (info) {
             if (info.visibleFraction > 0) {
+              // Solicitar el foco cuando el campo de texto sea visible
               focoDeScanner.requestFocus();
             }
           },
@@ -453,8 +501,42 @@ class MobileScanner extends StatelessWidget {
               ),
               autofocus: noBusqueManual,
               canRequestFocus: true,
-              keyboardType: TextInputType.none,
-              onChanged: onBarcodeScanned,
+              keyboardType: TextInputType.none, // Deshabilita el teclado virtual
+              onChanged: (value) async {
+                print('Valor del campo: $value');
+                if (value.isEmpty) return; // Ignorar si el valor está vacío
+                setState(() {
+                  barcodeFinal = value;
+                });
+                final listaProductosTemporal = await ProductServices().getProductByName(
+                  context,
+                  '',
+                  '2',
+                  almacen.almacenId.toString(),
+                  barcodeFinal,
+                  "0",
+                  token,
+                );
+
+                if (listaProductosTemporal.isNotEmpty) {
+                  final productoRetorno = listaProductosTemporal[0];
+                  _navigateToProductPage(productoRetorno);
+                } else {
+                  if(tienePermiso){
+                    await agregarCodBarraEscaneado();
+                  } else {
+                    Carteles.showDialogs(context, 'No se pudo conseguir ningún producto con el código $barcodeFinal', false, false, false,);
+                  }
+                }
+                // Reiniciar el estado para permitir nuevos escaneos
+                setState(() {
+                  textController.clear();
+                  value = '';
+                });
+
+                // Volver a solicitar el foco para permitir un nuevo escaneo
+                focoDeScanner.requestFocus();
+              },
               controller: textController,
             ),
           ),
@@ -462,26 +544,36 @@ class MobileScanner extends StatelessWidget {
       ],
     );
   }
-}
 
-class ProductList extends StatelessWidget {
-  final List<Product> listItems;
-  final Function(Product) onProductTap;
-  final Function(Product) onImageProductTap;
-  final bool agregarCodBarra;
-  final Function(BuildContext, Product) confirmarAgregarCodBarra;
+  Future<void> agregarCodBarraEscaneado() async {
+    await showDialog(
+      barrierDismissible: true,
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Mensaje'),
+          content: Text('No se pudo conseguir ningún producto con el código $barcodeFinal\nDesea agregar el codigo escaneado?'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  agregarCodBarra = true;
+                });
+                appRouter.pop();
+              },
+              child: const Text('SI'),
+            ),
+            TextButton(
+              onPressed: () => appRouter.pop(),
+              child: const Text('NO'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
-  const ProductList({
-    super.key,
-    required this.listItems,
-    required this.onProductTap,
-    required this.onImageProductTap,
-    required this.agregarCodBarra,
-    required this.confirmarAgregarCodBarra,
-  });
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildProductList() {
     return ListView.builder(
       shrinkWrap: true,
       itemCount: listItems.length,
@@ -490,12 +582,12 @@ class ProductList extends StatelessWidget {
         final item = listItems[i];
         final foto = item.imagenes[0];
         final precio = item.precioIvaIncluidoMin != item.precioIvaIncluidoMax ? '${item.precioIvaIncluidoMin} - ${item.precioIvaIncluidoMax}' : item.precioIvaIncluidoMax.toString();
-        final existe = context.watch<ProductProvider>().lineasGenericas.any((linea) => linea.raiz == item.raiz);
+        final existe = lineas.any((linea) => linea.raiz == item.raiz);
 
         return Row(
           children: [
             GestureDetector(
-              onTap: () => onImageProductTap(item),
+              onTap: () => _navigateToSimpleProductPage(item),
               child: SizedBox(
                 height: MediaQuery.of(context).size.height * 0.15,
                 width: MediaQuery.of(context).size.width * 0.1,
@@ -509,10 +601,10 @@ class ProductList extends StatelessWidget {
               width: MediaQuery.of(context).size.width * 0.9,
               child: ListTile(
                 onTap: () async {
-                  if (agregarCodBarra) {
+                  if(agregarCodBarra){
                     await confirmarAgregarCodBarra(context, item);
                   } else {
-                    onProductTap(item);
+                    _navigateToProductPage(item);
                   }
                 },
                 title: Text(item.raiz),
@@ -526,4 +618,5 @@ class ProductList extends StatelessWidget {
       },
     );
   }
+
 }
