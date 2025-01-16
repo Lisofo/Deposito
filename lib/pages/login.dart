@@ -440,7 +440,7 @@ class _LoginState extends State<Login> {
                               style: const TextStyle(color: Colors.black),
                             ),
                             const Text(
-                              '2025.01.14+1',
+                              '2025.01.15+1',
                               style: TextStyle(color: Colors.black),
                             ),
                           ],

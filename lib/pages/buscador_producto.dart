@@ -374,7 +374,11 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
               width: MediaQuery.of(context).size.width * 0.9,
               child: ListTile(
                 onTap: () async {
-                  await confirmarAgregarCodBarra(context, item);
+                  if(agregarCodBarra){
+                    await confirmarAgregarCodBarra(context, item);
+                  } else {
+                    _navigateToProductPage(item);
+                  }
                 },
                 title: Text(item.raiz),
                 subtitle: Text('${item.descripcion} \nPrecio: ${item.signo}$precio    Disponibilidad: ${item.disponibleRaiz}'),

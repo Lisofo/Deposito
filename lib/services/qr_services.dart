@@ -9,6 +9,14 @@ class QrServices {
   late String apirUrl = Config.APIURL;
   late int? statusCode;
 
+  Future<int?> getStatusCode () async {
+    return statusCode;
+  }
+
+  Future<void> resetStatusCode () async {
+    statusCode = null;
+  }
+
   Future getCodBarras(BuildContext context, String codItem, token) async {
     String link = '$apirUrl/api/v1/items/$codItem/codbarras';
 
@@ -97,7 +105,7 @@ class QrServices {
     }
   }
 
-  Future deleteCB (BuildContext context, String codItem, String codBarra, String token) async {
+  Future deleteCB (BuildContext context, String codItem, int codBarra, String token) async {
     String link = '$apirUrl/api/v1/items/$codItem/codBarras/$codBarra';
     
     try {
