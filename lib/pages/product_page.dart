@@ -35,10 +35,11 @@ class _ProductPageState extends State<ProductPage> {
   late ScaffoldMessengerState scaffoldMessenger;
   late List<Almacene> almacenes = [];
   late Almacene? almacenSeleccionado = Almacene.empty(); // Almacén seleccionado
-  late List<dynamic> ubicaciones = []; // Ubicaciones del almacén seleccionado
+  late List<Ubicacione> ubicaciones = []; // Ubicaciones del almacén seleccionado
   late List<CodigoBarras> codigos = [];
   final _qrServices = QrServices();
   final TextEditingController codBarrasController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -71,6 +72,7 @@ class _ProductPageState extends State<ProductPage> {
     productoSeleccionado = context.read<ProductProvider>().productoDeposito;
 
     productoNuevo = await ProductServices().getProductoDeposito(context, raiz, token);
+    print(productoNuevo.variantes[0].almacenes);
     codigos = await QrServices().getCodBarras(context, productoNuevo.variantes[0].codItem, token);
     _variantes = productoNuevo.variantes;
 
@@ -194,7 +196,7 @@ class _ProductPageState extends State<ProductPage> {
                     },
                   ),
                 ),
-                if (almacenSeleccionado != null)
+                if (almacenSeleccionado!.almacenId != 0)
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -207,25 +209,36 @@ class _ProductPageState extends State<ProductPage> {
                       ),
                     ),
                     const SizedBox(height: 10),
+                    TextButton(
+                      onPressed: () {
+                        Provider.of<ProductProvider>(context, listen: false).setAlmacenUbicacion(almacenSeleccionado!);
+                        appRouter.push('/editUbicaciones');
+                      },
+                      child: const Text('Editar ubicaciones')
+                    ),
+                    const SizedBox(height: 10),
                     if (ubicaciones.isEmpty)
                       const Text(
                         'Ubicación vacía',
                         style: TextStyle(fontSize: 16),
                       ),
                     if (ubicaciones.isNotEmpty)
-                      ListView.builder(
-                        shrinkWrap: false,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: ubicaciones.length,
-                        itemBuilder: (context, index) {
-                          var ubicacion = ubicaciones[index];
-                          return ListTile(
-                            title: Text(
-                              ubicacion.toString(),
-                              style: const TextStyle(fontSize: 16),
-                            ),
-                          );
-                        },
+                      SizedBox(
+                        height: 300,
+                        child: ListView.builder(
+                          shrinkWrap: false,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: ubicaciones.length,
+                          itemBuilder: (context, index) {
+                            var ubicacion = ubicaciones[index];
+                            return ListTile(
+                              title: Text(
+                                ubicacion.descUbicacion,
+                                style: const TextStyle(fontSize: 16),
+                              ),
+                            );
+                          },
+                        ),
                       ),
                   ],
                 ),

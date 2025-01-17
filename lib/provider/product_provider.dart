@@ -32,6 +32,9 @@ class ProductProvider with ChangeNotifier {
   Almacen _almacen = Almacen.empty();
   Almacen get almacen => _almacen;
 
+  Almacene _almacene = Almacene.empty();
+  Almacene get almacene => _almacene;
+
   String _mismoColor = '';
   String get mismoColor => _mismoColor;
 
@@ -136,6 +139,11 @@ class ProductProvider with ChangeNotifier {
 
   void setAlmacen(Almacen codAlmacen) {
     _almacen = codAlmacen;
+    notifyListeners();
+  }
+
+  void setAlmacenUbicacion(Almacene codAlmacen) {
+    _almacene = codAlmacen;
     notifyListeners();
   }
 

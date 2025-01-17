@@ -392,7 +392,6 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
       barcodeFinal = code.toString();
     });
 
-    barcodeFinal = code.toString();
     final listaProductosTemporal = await ProductServices().getProductByName(
       context,
       '',

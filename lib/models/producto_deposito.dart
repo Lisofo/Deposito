@@ -4,9 +4,9 @@
 
 import 'dart:convert';
 
-List<ProductoDeposito> productoDepositoFromJson(String str) => List<ProductoDeposito>.from(json.decode(str).map((x) => ProductoDeposito.fromJson(x)));
+ProductoDeposito productoDepositoFromJson(String str) => ProductoDeposito.fromJson(json.decode(str));
 
-String productoDepositoToJson(List<ProductoDeposito> data) => json.encode(List<dynamic>.from(data.map((x) => x.toJson())));
+String productoDepositoToJson(ProductoDeposito data) => json.encode(data.toJson());
 
 class ProductoDeposito {
   late String raiz;
@@ -77,7 +77,7 @@ class Almacene {
   late int stockAlmacen;
   late dynamic existenciaMaximaAlm;
   late dynamic existenciaMinimaAlm;
-  late List<dynamic> ubicaciones;
+  late List<Ubicacione> ubicaciones;
 
   Almacene({
     required this.almacenId,
@@ -96,7 +96,7 @@ class Almacene {
     stockAlmacen: json["stockAlmacen"],
     existenciaMaximaAlm: json["existenciaMaximaAlm"],
     existenciaMinimaAlm: json["existenciaMinimaAlm"],
-    ubicaciones: List<dynamic>.from(json["ubicaciones"].map((x) => x)),
+    ubicaciones: List<Ubicacione>.from(json["ubicaciones"].map((x) => Ubicacione.fromJson(x))),
   );
 
   Map<String, dynamic> toJson() => {
@@ -106,8 +106,9 @@ class Almacene {
     "stockAlmacen": stockAlmacen,
     "existenciaMaximaAlm": existenciaMaximaAlm,
     "existenciaMinimaAlm": existenciaMinimaAlm,
-    "ubicaciones": List<dynamic>.from(ubicaciones.map((x) => x)),
+    "ubicaciones": List<dynamic>.from(ubicaciones.map((x) => x.toJson())),
   };
+
 
   Almacene.empty() {
     almacenId = 0;
@@ -118,4 +119,41 @@ class Almacene {
     existenciaMinimaAlm = null;
     ubicaciones = [];
   }
+
+}
+
+class Ubicacione {
+  late int almacenUbicacionId;
+  late String codUbicacion;
+  late String descUbicacion;
+  late int existenciaActualUbi;
+  late int capacidad;
+  late int orden;
+
+  Ubicacione({
+    required this.almacenUbicacionId,
+    required this.codUbicacion,
+    required this.descUbicacion,
+    required this.existenciaActualUbi,
+    required this.capacidad,
+    required this.orden,
+  });
+
+  factory Ubicacione.fromJson(Map<String, dynamic> json) => Ubicacione(
+    almacenUbicacionId: json["almacenUbicacionId"],
+    codUbicacion: json["codUbicacion"],
+    descUbicacion: json["descUbicacion"],
+    existenciaActualUbi: json["existenciaActualUbi"],
+    capacidad: json["capacidad"],
+    orden: json["orden"],
+  );
+
+  Map<String, dynamic> toJson() => {
+    "almacenUbicacionId": almacenUbicacionId,
+    "codUbicacion": codUbicacion,
+    "descUbicacion": descUbicacion,
+    "existenciaActualUbi": existenciaActualUbi,
+    "capacidad": capacidad,
+    "orden": orden,
+  };
 }
