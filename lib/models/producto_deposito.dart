@@ -12,12 +12,14 @@ class ProductoDeposito {
   late String raiz;
   late String descripcion;
   late String modelos;
+  late List fotosUrl;
   late List<Variante> variantes;
 
   ProductoDeposito({
     required this.raiz,
     required this.descripcion,
     required this.modelos,
+    required this.fotosUrl,
     required this.variantes,
   });
 
@@ -25,6 +27,7 @@ class ProductoDeposito {
     raiz: json["raiz"] as String? ?? '',
     descripcion: json["descripcion"] as String? ?? '',
     modelos: json["modelos"] as String? ?? '',
+    fotosUrl: json["fotosUrl"],
     variantes: List<Variante>.from(json["variantes"].map((x) => Variante.fromJson(x))),
   );
 
@@ -38,6 +41,7 @@ class ProductoDeposito {
     raiz = '';
     descripcion = '';
     modelos = '';
+    fotosUrl = [];
     variantes = [];
   }
 }

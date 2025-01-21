@@ -11,6 +11,14 @@ class AlmacenServices {
   late String apirUrl = Config.APIURL;
   late int? statusCode;
 
+  Future<int?> getStatusCode () async {
+    return statusCode;
+  }
+
+  Future<void> resetStatusCode () async {
+    statusCode = null;
+  }
+
   Future getAlmacenes(BuildContext context, token) async {
     String link =  '$apirUrl/api/v1/almacenes';
 
@@ -136,5 +144,101 @@ class AlmacenServices {
       }
     }
   }
+
+  Future postUbicacionItemEnAlmacen(BuildContext context, String codItem, String codUbicacion, int almacenId, String token) async {
+    String link = '$apirUrl/api/v1/items/$codItem/ubicaciones';
+
+    var data = ({
+      "codUbicacion": codUbicacion,
+      "almacenId": almacenId,
+      "existenciaMaxima": 0,
+      "existenciaMinima": 0,
+    });
+
+    try {
+      var headers = {'Authorization': token};
+      var resp = await _dio.request(
+        link,
+        options: Options(
+          method: 'POST',
+          headers: headers,
+        ),
+        data: data
+      );
+      statusCode = 1;
+      if(resp.statusCode == 200){
+        return resp.data;
+      }
+    } catch (e) {
+      statusCode = 0;
+      if (e is DioException) {
+        if (e.response != null) {
+          final responseData = e.response!.data;
+          if (responseData != null) {
+            if(e.response!.statusCode == 403){
+              Carteles.showErrorDialog(context, 'Error: ${e.response!.data['message']}');
+            }else if(e.response!.statusCode! >= 500) {
+              Carteles.showErrorDialog(context, 'Error: No se pudo completar la solicitud');
+            } else{
+              final errors = responseData['errors'] as List<dynamic>;
+              final errorMessages = errors.map((error) {
+                return "Error: ${error['message']}";
+              }).toList();
+              Carteles.showErrorDialog(context, errorMessages.join('\n'));
+            }
+          } else {
+            Carteles.showErrorDialog(context, 'Error: ${e.response!.data}');
+          }
+        } else {
+          Carteles.showErrorDialog(context, 'Error: No se pudo completar la solicitud');
+        } 
+      }
+    }
+  }
+
+  Future deleteUbicacionItemEnAlmacen(BuildContext context, String codItem, int almacenUbicacionId, String token) async {
+    String link = '$apirUrl/api/v1/items/$codItem/ubicaciones/$almacenUbicacionId';
+
+    try {
+      var headers = {'Authorization': token};
+      var resp = await _dio.request(
+        link,
+        options: Options(
+          method: 'DELETE',
+          headers: headers,
+        ),
+      );
+      statusCode = 1;
+      if(resp.statusCode == 204){
+        return;
+      }
+    } catch (e) {
+      statusCode = 0;
+      if (e is DioException) {
+        if (e.response != null) {
+          final responseData = e.response!.data;
+          if (responseData != null) {
+            if(e.response!.statusCode == 403){
+              Carteles.showErrorDialog(context, 'Error: ${e.response!.data['message']}');
+            }else if(e.response!.statusCode! >= 500) {
+              Carteles.showErrorDialog(context, 'Error: No se pudo completar la solicitud');
+            } else{
+              final errors = responseData['errors'] as List<dynamic>;
+              final errorMessages = errors.map((error) {
+                return "Error: ${error['message']}";
+              }).toList();
+              Carteles.showErrorDialog(context, errorMessages.join('\n'));
+            }
+          } else {
+            Carteles.showErrorDialog(context, 'Error: ${e.response!.data}');
+          }
+        } else {
+          Carteles.showErrorDialog(context, 'Error: No se pudo completar la solicitud');
+        } 
+      }
+    }
+  }
+
+
   
 }

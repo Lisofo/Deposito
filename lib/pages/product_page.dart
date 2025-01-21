@@ -106,6 +106,16 @@ class _ProductPageState extends State<ProductPage> {
           iconTheme: IconThemeData(
             color: colores.surface,
           ),
+          actions: [
+            IconButton(
+              onPressed: () async {
+                final productProvider = Provider.of<ProductProvider>(context, listen: false);
+                productProvider.setFotos(productoNuevo.fotosUrl);
+                appRouter.push('/simpleProductPage');
+              },
+              icon: const Icon(Icons.image)
+            )
+          ],
         ),
         body: SingleChildScrollView(
           child: Padding(
