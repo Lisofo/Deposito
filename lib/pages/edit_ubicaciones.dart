@@ -4,6 +4,7 @@ import 'package:deposito/models/items_x_ubicacion.dart';
 import 'package:deposito/models/product.dart';
 import 'package:deposito/models/producto_deposito.dart';
 import 'package:deposito/provider/product_provider.dart';
+import 'package:deposito/provider/ubicacion_provider.dart';
 import 'package:deposito/services/almacen_services.dart';
 import 'package:deposito/widgets/carteles.dart';
 import 'package:flutter/material.dart';
@@ -43,7 +44,7 @@ class _EditUbicacionesState extends State<EditUbicaciones> {
     productoSeleccionado = context.read<ProductProvider>().product;
     
     itemsXUbicacionesAlmacen = await AlmacenServices().getItemPorUbicacionDeAlmacen(context, almacen.almacenId, productoSeleccionado.raiz, token);
-    
+    Provider.of<UbicacionProvider>(context, listen: false).setItemsXUbicacionesAlmacen(itemsXUbicacionesAlmacen);
     
     setState(() {
       buscando = false;
@@ -53,12 +54,12 @@ class _EditUbicacionesState extends State<EditUbicaciones> {
   @override
   Widget build(BuildContext context) {
     final colores = Theme.of(context).colorScheme;
-
+    // final ubicacionProvider = Provider.of<UbicacionProvider>(context);
     return SafeArea(
       child: Scaffold(
         appBar: AppBar(
           title: Text(
-            productoSeleccionado.raiz,
+            'Ubicaciones ${almacen.descAlmacen}',
             style: TextStyle(
               color: colores.onPrimary,
             ),
@@ -69,26 +70,46 @@ class _EditUbicacionesState extends State<EditUbicaciones> {
           ),
         ),
         body: buscando ? const Center(child: CircularProgressIndicator())
-        : Column(
-            children: [
-              Expanded(
-                child: ListView.builder(
-                  itemCount: itemsXUbicacionesAlmacen.length,
-                  itemBuilder: (context, i) {
-                    var item = itemsXUbicacionesAlmacen[i];
-                    return ListTile(
-                      title: Text(item.descripcion),
-                      subtitle: Text('${item.codUbicacion} stock: ${item.capacidad}'),
-                      trailing: IconButton(
-                        onPressed: () async {
-                          await borrar(context, item);
-                        },
-                        icon: const Icon(Icons.delete, color: Colors.red,)
-                      ),
-                    );
-                  }
-                )
+        : Stack(
+          children: [
+            Column(
+                children: [
+                  Expanded(
+                    child: Consumer<UbicacionProvider>(
+                      builder: (context, listaProvider, child) {
+                        return ListView.builder(
+                          itemCount: listaProvider.itemsXUbicacionesAlmacen.length,
+                          itemBuilder: (context, i) {
+                            var item = listaProvider.itemsXUbicacionesAlmacen[i];
+                            return ListTile(
+                              title: Text(item.descripcion),
+                              subtitle: Text('${item.codUbicacion} stock: ${item.existenciaActual}'),
+                              trailing: IconButton(
+                                onPressed: () async {
+                                  await borrar(context, item);
+                                },
+                                icon: const Icon(Icons.delete, color: Colors.red,)
+                              ),
+                            );
+                          }
+                        );
+                      },
+                    )
+                  ),
+              ],
+            ),
+            Align(
+              alignment: Alignment.bottomRight,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: FloatingActionButton(
+                  onPressed: () async {
+                    appRouter.push('/agregarUbicaciones');
+                  },
+                  child: const Icon(Icons.add),
+                ),
               ),
+            ),
           ],
         )
       )

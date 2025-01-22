@@ -3,6 +3,7 @@ import 'package:deposito/config/theme/app_theme.dart';
 import 'package:deposito/config/version_checker.dart';
 import 'package:deposito/provider/product_provider.dart';
 import 'package:deposito/provider/theme_provider.dart';
+import 'package:deposito/provider/ubicacion_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 // import 'package:flutter/services.dart';
@@ -20,6 +21,7 @@ Future<void> main() async {
       providers: [
         ChangeNotifierProvider(create: (_)=> ProductProvider(),),
         ChangeNotifierProvider(create: (_) => ThemeProvider(),),
+        ChangeNotifierProvider(create: (_) => UbicacionProvider(),),
       ],
       child: const MyApp(),
     )

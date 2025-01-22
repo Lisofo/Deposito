@@ -4,6 +4,7 @@ import 'package:deposito/models/almacen.dart';
 import 'package:deposito/models/client.dart';
 import 'package:deposito/models/codigo_barras.dart';
 import 'package:deposito/models/producto_deposito.dart';
+import 'package:deposito/provider/ubicacion_provider.dart';
 import 'package:deposito/services/product_services.dart';
 import 'package:deposito/services/qr_services.dart';
 import 'package:deposito/widgets/carteles.dart';
@@ -72,7 +73,6 @@ class _ProductPageState extends State<ProductPage> {
     productoSeleccionado = context.read<ProductProvider>().productoDeposito;
 
     productoNuevo = await ProductServices().getProductoDeposito(context, raiz, token);
-    print(productoNuevo.variantes[0].almacenes);
     codigos = await QrServices().getCodBarras(context, productoNuevo.variantes[0].codItem, token);
     _variantes = productoNuevo.variantes;
 
@@ -92,6 +92,7 @@ class _ProductPageState extends State<ProductPage> {
   @override
   Widget build(BuildContext context) {
     final colores = Theme.of(context).colorScheme;
+    final ubicacionProvider = Provider.of<UbicacionProvider>(context);
 
     return SafeArea(
       child: Scaffold(
@@ -168,7 +169,9 @@ class _ProductPageState extends State<ProductPage> {
                                   var almacen = item.almacenes[index];
                                   return GestureDetector(
                                     onTap: () {
+                                      ubicacionProvider.setUbicaciones([]);
                                       seleccionarAlmacen(almacen);
+                                      ubicacionProvider.setUbicaciones(almacen.ubicaciones);
                                     },
                                     child: Container(
                                       margin: const EdgeInsets.all(8),
@@ -227,27 +230,32 @@ class _ProductPageState extends State<ProductPage> {
                       child: const Text('Editar ubicaciones')
                     ),
                     const SizedBox(height: 10),
-                    if (ubicaciones.isEmpty)
+                    if (ubicacionProvider.ubicaciones.isEmpty)
                       const Text(
                         'Ubicación vacía',
                         style: TextStyle(fontSize: 16),
                       ),
-                    if (ubicaciones.isNotEmpty)
+                    if (ubicacionProvider.ubicaciones.isNotEmpty)
                       SizedBox(
                         height: 300,
-                        child: ListView.builder(
-                          shrinkWrap: false,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: ubicaciones.length,
-                          itemBuilder: (context, index) {
-                            var ubicacion = ubicaciones[index];
-                            return ListTile(
-                              title: Text(
-                                ubicacion.descUbicacion,
-                                style: const TextStyle(fontSize: 16),
-                              ),
+                        child: Consumer<UbicacionProvider>(
+                          builder: (context, listaProvider, child) {
+                            return ListView.builder(
+                              shrinkWrap: false,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: listaProvider.ubicaciones.length,
+                              itemBuilder: (context, index) {
+                                var ubicacion = listaProvider.ubicaciones[index];
+                                return ListTile(
+                                  title: Text(
+                                    '${ubicacion.codUbicacion} ${ubicacion.descUbicacion}',
+                                    style: const TextStyle(fontSize: 16),
+                                  ),
+                                  subtitle: Text('Existencia actual: ${ubicacion.existenciaActualUbi}'),
+                                );
+                              },
                             );
-                          },
+                          }
                         ),
                       ),
                   ],
@@ -385,33 +393,29 @@ class _ProductPageState extends State<ProductPage> {
   Widget middleBody() {
     final colores = Theme.of(context).colorScheme;
 
-    return buscando
-        ? const Center(child: CircularProgressIndicator())
-        : _variantes!.isEmpty || _variantes == null
-            ? const Center(
-                child: Text('El Producto no existe', style: TextStyle(fontSize: 24)),
-              )
-            : Padding(
-                padding: const EdgeInsets.only(left: 10, right: 10, top: 10),
-                child: Container(
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(5),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Center(
-                        child: Text(
-                          productoNuevo.descripcion,
-                          style: const TextStyle(fontSize: 24),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ],
+    return buscando ? const Center(child: CircularProgressIndicator())
+      : _variantes!.isEmpty || _variantes == null ? const Center(child: Text('El Producto no existe', style: TextStyle(fontSize: 24)),)
+        : Padding(
+          padding: const EdgeInsets.only(left: 10, right: 10, top: 10),
+          child: Container(
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(5),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Center(
+                  child: Text(
+                    productoNuevo.descripcion,
+                    style: const TextStyle(fontSize: 24),
+                    textAlign: TextAlign.center,
                   ),
                 ),
-              );
+              ],
+            ),
+          ),
+        );
   }
 }

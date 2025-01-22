@@ -145,14 +145,14 @@ class AlmacenServices {
     }
   }
 
-  Future postUbicacionItemEnAlmacen(BuildContext context, String codItem, String codUbicacion, int almacenId, String token) async {
+  Future postUbicacionItemEnAlmacen(BuildContext context, String codItem, String codUbicacion, int almacenId, int min, int max, String token) async {
     String link = '$apirUrl/api/v1/items/$codItem/ubicaciones';
 
     var data = ({
       "codUbicacion": codUbicacion,
       "almacenId": almacenId,
-      "existenciaMaxima": 0,
-      "existenciaMinima": 0,
+      "existenciaMaxima": max,
+      "existenciaMinima": min,
     });
 
     try {

@@ -440,7 +440,7 @@ class _LoginState extends State<Login> {
                               style: const TextStyle(color: Colors.black),
                             ),
                             const Text(
-                              '2025.01.20+1',
+                              '2025.01.21+1',
                               style: TextStyle(color: Colors.black),
                             ),
                           ],
@@ -481,8 +481,13 @@ class _LoginState extends State<Login> {
           await prefs.remove('username');
         }
         appRouter.go('/almacen');
-      } else if (statusCode == null) {
-        
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Credenciales inválidas. Intente nuevamente.'),
+            backgroundColor: colors.onError,
+          ),
+        );  
       }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(

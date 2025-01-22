@@ -51,4 +51,9 @@ class UbicacionAlmacen {
     capacidad = 0;
     orden = 0;
   }
+
+  @override
+  String toString() {
+    return '$codUbicacion $descripcion';
+  }
 }
