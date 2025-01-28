@@ -2,19 +2,31 @@
     // Use IntelliSense to learn about possible attributes.
     // Hover to view descriptions of existing attributes.
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
-"version": "0.2.0",
+    "version": "0.2.0",
     "configurations": [
-        
         {
-            "name": "Dart",
+            "name": "Dart (Production)",
             "type": "dart",
             "request": "launch",
             "program": "lib/main.dart",
             "args": [
+                "--flavor",
+                "production", // Especifica el flavor aquí
                 "--dart-define-from-file",
-                "config.json"
-              ]
+                "config_prod.json"
+            ]
+        },
+        {
+            "name": "Dart (QA)",
+            "type": "dart",
+            "request": "launch",
+            "program": "lib/main.dart",
+            "args": [
+                "--flavor",
+                "qa", // Especifica el flavor aquí
+                "--dart-define-from-file",
+                "config.json" // Cambia el archivo de configuración si es necesario
+            ]
         }
-        
     ]
 }

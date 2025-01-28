@@ -7,6 +7,7 @@ import 'package:deposito/provider/product_provider.dart';
 import 'package:deposito/provider/ubicacion_provider.dart';
 import 'package:deposito/services/almacen_services.dart';
 import 'package:deposito/widgets/carteles.dart';
+import 'package:deposito/widgets/custom_form_field.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -28,6 +29,8 @@ class _EditUbicacionesState extends State<EditUbicaciones> {
   Product productoSeleccionado = Product.empty();
   late List<ItemsPorUbicacion> itemsXUbicacionesAlmacen = [];
   final _almacenServices = AlmacenServices();
+  final TextEditingController minController = TextEditingController();
+  final TextEditingController maxController = TextEditingController();
 
   @override
   void initState() {
@@ -81,14 +84,26 @@ class _EditUbicacionesState extends State<EditUbicaciones> {
                           itemCount: listaProvider.itemsXUbicacionesAlmacen.length,
                           itemBuilder: (context, i) {
                             var item = listaProvider.itemsXUbicacionesAlmacen[i];
+                            print(item.almacenUbicacionId);
                             return ListTile(
                               title: Text(item.descripcion),
                               subtitle: Text('${item.codUbicacion} stock: ${item.existenciaActual}'),
-                              trailing: IconButton(
-                                onPressed: () async {
-                                  await borrar(context, item);
-                                },
-                                icon: const Icon(Icons.delete, color: Colors.red,)
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    onPressed: () async {
+                                      await editar(context, item);
+                                    },
+                                    icon: const Icon(Icons.edit, color: Colors.blue,)
+                                  ),
+                                  IconButton(
+                                    onPressed: () async {
+                                      await borrar(context, item);
+                                    },
+                                    icon: const Icon(Icons.delete, color: Colors.red,)
+                                  ),
+                                ],
                               ),
                             );
                           }
@@ -113,6 +128,79 @@ class _EditUbicacionesState extends State<EditUbicaciones> {
           ],
         )
       )
+    );
+  }
+
+  Future<void> editar(BuildContext context, ItemsPorUbicacion item) async {
+    int? statusCode;
+    minController.text = item.existenciaMinima.toString();
+    maxController.text = item.existenciaMaxima.toString();
+
+    await showDialog(
+      barrierDismissible: false,
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Esta editando la ubicación ${item.codUbicacion} ${item.descripcion}', style: const TextStyle(fontSize: 16),),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Editar capacidad mínima'),
+                const SizedBox(
+                  height: 5,
+                ),
+                CustomTextFormField(
+                  controller: minController,
+                  maxLines: 1,
+                ),
+                const SizedBox(
+                  height: 10,
+                ),
+                const Text('Editar capacidad máxima'),
+                const SizedBox(
+                  height: 5,
+                ),
+                CustomTextFormField(
+                  controller: maxController,
+                  maxLines: 1,
+                )
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () async {
+                int min = int.parse(minController.text);
+                int max = int.parse(maxController.text);
+                await _almacenServices.putUbicacionItemEnAlmacen(context, productoSeleccionado.raiz, item.almacenUbicacionId, min, max, token);
+                statusCode = await _almacenServices.getStatusCode();
+                await _almacenServices.resetStatusCode();
+                if(statusCode == 1) {
+                  String texto = '';
+                  if(min != item.existenciaMinima && max != item.existenciaMaxima) {
+                    texto = 'Cantidades mínimas y máximas editadas correctamente';
+                  } else if(min != item.existenciaMinima && max == item.existenciaMaxima) {
+                    texto = 'Cantidades mínimas editadas correctamente';
+                  } else if(min == item.existenciaMinima && max != item.existenciaMaxima) {
+                    texto = 'Cantidades máximas editadas correctamente';
+                  }
+                  print(texto);
+                  item.existenciaMaxima = max;
+                  item.existenciaMinima = min;
+                  Carteles.showDialogs(context, texto, true, false, false);
+                }
+              },
+              child: const Text('Confirmar'),
+            ),
+            TextButton(
+              onPressed: () => appRouter.pop(),
+              child: const Text('Cancelar'),
+            ),
+          ],
+        );
+      },
     );
   }
 

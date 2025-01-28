@@ -1,13 +1,19 @@
 // ignore_for_file: unused_field
 
+import 'package:deposito/models/almacen.dart';
+import 'package:deposito/models/ubicacion_almacen.dart';
+import 'package:deposito/provider/product_provider.dart';
+import 'package:deposito/services/almacen_services.dart';
 import 'package:flutter/material.dart';
 import 'package:deposito/config/router/router.dart';
 import 'package:deposito/models/product2.dart';
 import 'package:deposito/models/product.dart';
 import 'package:deposito/widgets/custom_button.dart';
 import 'package:deposito/widgets/custom_form_dropdown.dart';
+import 'package:provider/provider.dart';
 import 'package:simple_barcode_scanner/enum.dart';
 import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 
 class InventarioPage extends StatefulWidget {
   const InventarioPage({super.key});
@@ -17,12 +23,7 @@ class InventarioPage extends StatefulWidget {
 }
 
 class _InventarioPageState extends State<InventarioPage> {
-  List listaGondolas = [
-    'Gondola 1',
-    'Gondola 2',
-    'Gondola 3',
-    'Gondola 4',
-  ];
+  List<UbicacionAlmacen> listaUbicaciones = [];
   late Product productoSeleccionado = Product.empty();
   List<Product> historial = [];
   String ticket = '';
@@ -33,14 +34,20 @@ class _InventarioPageState extends State<InventarioPage> {
   List<Product> product = [];
   int duracion = 30;
   bool arrancarContador = false;
-  String token = '';
   List<Product> productosOffline = [];
   List<dynamic> productoScanner = [];
   List<dynamic> productoScannerVariante = [];
-//   String modo = Config.MODO;
   final String _previousQuery = '';
   final TextEditingController cantidadController = TextEditingController();
   final TextEditingController ubicacionController = TextEditingController();
+  late Almacen almacen;
+  late String token;
+  TextEditingController textController = TextEditingController();
+  FocusNode focoDeScanner = FocusNode();
+
+
+  late UbicacionAlmacen ubicacionSeleccionada = UbicacionAlmacen.empty();
+
 
   List<dynamic> productosBuscados = [];
   bool estoyBuscando = true;
@@ -50,6 +57,22 @@ class _InventarioPageState extends State<InventarioPage> {
     Product2(nombre: 'Colores', cantidadPedida: 52, ubicacion: 'Gondola 2', cantidadPickeada: 0),
     Product2(nombre: 'Azucar', cantidadPedida: 32, ubicacion: 'Gondola 5', cantidadPickeada: 0),
   ];
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    cargarDatos();
+  }
+
+  cargarDatos() async {
+    final productProvider = context.read<ProductProvider>();
+    almacen = productProvider.almacen;
+    token = productProvider.token;
+
+    listaUbicaciones = await AlmacenServices().getUbicacionDeAlmacen(context, almacen.almacenId, token);
+    setState(() {});
+  }
   
   @override
   Widget build(BuildContext context) {
@@ -69,7 +92,7 @@ class _InventarioPageState extends State<InventarioPage> {
             backgroundColor: WidgetStatePropertyAll(colors.primary)
           ),
           onPressed: () async {
-            appRouter.go('/almacen/menu');
+            appRouter.pop();
           },
           icon: const Icon(Icons.arrow_back,),
         ),
@@ -85,16 +108,37 @@ class _InventarioPageState extends State<InventarioPage> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               CustomDropdownFormMenu(
-                hint: 'Seleccione Gondola',
+                hint: 'Seleccione ubicacion del almacen',
                 onChanged: (value) {setState(() {});},
-                items: listaGondolas.map((e) {
+                items: listaUbicaciones.map((e) {
                   return DropdownMenuItem(
                     value: e,
-                    child: Text(e)
+                    child: Text(e.descripcion)
                   );
                 }).toList(),
+                value: ubicacionSeleccionada.almacenId == 0 ? null : ubicacionSeleccionada,
               ),
               const SizedBox(height: 20,),
+              VisibilityDetector(
+                key: const Key('scanner-field-visibility'),
+                onVisibilityChanged: (info) {
+                  if (info.visibleFraction > 0) {
+                    focoDeScanner.requestFocus();
+                  }
+                },
+                child: TextFormField(
+                  focusNode: focoDeScanner,
+                  cursorColor: Colors.transparent,
+                  decoration: const InputDecoration(
+                    border: UnderlineInputBorder(borderSide: BorderSide.none)
+                  ),
+                  style: const TextStyle(color: Colors.transparent),
+                  autofocus: true,
+                  keyboardType: TextInputType.none,
+                  controller: textController,
+                  onFieldSubmitted: procesarEscaneo, // Cambiado a usar onFieldSubmitted
+                ),
+              ),
               Expanded(
                 flex: 1,
                 child: ListView.separated(
@@ -225,6 +269,50 @@ class _InventarioPageState extends State<InventarioPage> {
             )
         ],
       ),
+    );
+  }
+
+  procesarEscaneo(String value) async {
+    if (value.isNotEmpty) {
+      print('Valor escaneado: $value');
+      try {
+        // Buscar la ubicación correspondiente al código escaneado
+        final ubicacionEncontrada = listaUbicaciones.firstWhere(
+          (element) => element.codUbicacion == value || element.descripcion.contains(value),
+        );
+        setState(() {
+          ubicacionSeleccionada = ubicacionEncontrada;
+        });
+        print('Ubicación seleccionada: ${ubicacionEncontrada.descripcion}');
+      } catch (e) {
+        await error(value);
+        print('Ubicación no encontrada: $value');
+      } finally {
+        // Restablecer el campo y reenfocar
+        textController.clear();
+        await Future.delayed(const Duration(milliseconds: 100)); // Breve pausa para evitar conflictos de enfoque
+        focoDeScanner.requestFocus();
+      }
+    }
+  }
+
+  error(String value) async {
+    await showDialog(
+      context: context, 
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Mensaje"),
+          content: Text('La ubicacion $value no existe o no ha sido encontrada'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                appRouter.pop();
+              },
+              child: const Text('Aceptar'),
+            ),
+          ],
+        );
+      },
     );
   }
 }

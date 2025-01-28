@@ -40,6 +40,7 @@ class _ProductPageState extends State<ProductPage> {
   late List<CodigoBarras> codigos = [];
   final _qrServices = QrServices();
   final TextEditingController codBarrasController = TextEditingController();
+  late int uId = 0;
 
   @override
   void initState() {
@@ -69,6 +70,7 @@ class _ProductPageState extends State<ProductPage> {
     token = context.read<ProductProvider>().token;
     cliente = context.read<ProductProvider>().client;
     raiz = context.read<ProductProvider>().raiz;
+    uId = context.read<ProductProvider>().uId;
 
     productoSeleccionado = context.read<ProductProvider>().productoDeposito;
 
@@ -222,6 +224,7 @@ class _ProductPageState extends State<ProductPage> {
                       ),
                     ),
                     const SizedBox(height: 10),
+                    if(uId == 1)
                     TextButton(
                       onPressed: () {
                         Provider.of<ProductProvider>(context, listen: false).setAlmacenUbicacion(almacenSeleccionado!);
@@ -270,6 +273,7 @@ class _ProductPageState extends State<ProductPage> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
+                    if(uId == 1)
                     TextButton(
                       onPressed: () async {
                         await postCB(context);
@@ -291,12 +295,12 @@ class _ProductPageState extends State<ProductPage> {
                         var codigo = codigos[i];
                         return ListTile(
                           title: Text(codigo.codigoBarra),
-                          trailing: IconButton(
+                          trailing: uId == 1 ? IconButton(
                             onPressed: () async {
                               await borrarCodBarra(context, codigo);
                             },
                             icon: const Icon(Icons.delete, color: Colors.red,)
-                          ),
+                          ) : const SizedBox(),
                         );
                       },
                     ),

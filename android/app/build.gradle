@@ -50,6 +50,20 @@ android {
             signingConfig = signingConfigs.debug
         }
     }
+
+    flavorDimensions "default"
+    productFlavors {
+        production {
+            dimension "default"
+            applicationId "com.deposito.prod"
+            versionNameSuffix "-prod"
+        }
+        qa {
+            dimension "default"
+            applicationId "com.deposito.qa"
+            versionNameSuffix "-qa"
+        }
+    }
 }
 
 flutter {

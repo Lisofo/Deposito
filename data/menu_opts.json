@@ -7,7 +7,14 @@
                 {
                     "ruta": "/buscadorProducto",
                     "icon": "calendar_month",
-                    "texto": "Productos"
+                    "texto": "Productos",
+                    "parametro": 1
+                },
+                {
+                    "ruta": "/editarInventario",
+                    "icon": "calendar_month",
+                    "texto": "Inventario",
+                    "parametro": 2
                 }
             ]
         }

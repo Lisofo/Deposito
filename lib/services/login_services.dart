@@ -32,7 +32,7 @@ class LoginServices {
         print(response.data['token']);
         print(response.data['vendedorId']);
         Provider.of<ProductProvider>(context, listen: false).setToken(response.data['token']);
-        // Provider.of<ProductProvider>(context, listen: false).setVendedorId(response.data['vendedorId'] ?? 0);
+        Provider.of<ProductProvider>(context, listen: false).setUsuarioId(response.data['uid']);
       } else { 
         print(response.statusMessage);
       }

@@ -111,6 +111,7 @@ class _AgregarUbicacionesState extends State<AgregarUbicaciones> {
               child: CustomTextFormField(
                 controller: cantMinController,
                 hint: 'Ingrese cantidad mínima',
+                maxLines: 1,
               ),
             ),
             const Text('Cantidad máxima'),
@@ -119,6 +120,7 @@ class _AgregarUbicacionesState extends State<AgregarUbicaciones> {
               child: CustomTextFormField(
                 controller: cantMaxController,
                 hint: 'Ingrese cantidad máxima',
+                maxLines: 1,
               ),
             ),
             Center(
@@ -169,7 +171,7 @@ class _AgregarUbicacionesState extends State<AgregarUbicaciones> {
                       codUbicacion: ubicacionSeleccionada.codUbicacion,
                       descripcion: ubicacionSeleccionada.descripcion,
                     ));
-                    Carteles.showDialogs(context, 'Ubicacion agregada correctamente', false, false, false);
+                    Carteles.showDialogs(context, 'Ubicacion agregada correctamente', true, false, false);
                   }
                 }
               ),

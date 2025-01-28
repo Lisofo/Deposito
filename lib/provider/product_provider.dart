@@ -65,6 +65,9 @@ class ProductProvider with ChangeNotifier {
   List _fotos = [];
   List get fotos => _fotos;
 
+  int _uId = 0;
+  int get uId => _uId;
+
   // Métodos para actualizar las variables y notificar cambios
 
   void setRptId(int rptGenId){
@@ -169,6 +172,11 @@ class ProductProvider with ChangeNotifier {
 
   void setPedido(Pedido pedid) {
     _pedido = pedid;
+    notifyListeners();
+  }
+
+  void setUsuarioId(int id) {
+    _uId = id;
     notifyListeners();
   }
 }

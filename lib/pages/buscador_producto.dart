@@ -19,7 +19,9 @@ import 'package:flutter_barcode_listener/flutter_barcode_listener.dart';
 import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 
 class BuscadorProducto extends StatefulWidget {
-  const BuscadorProducto({super.key});
+  final int parametro;
+
+  const BuscadorProducto({super.key, required this.parametro});
 
   @override
   State<BuscadorProducto> createState() => _BuscadorProductoState();
@@ -232,10 +234,17 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
                           child: Text('Ultimo escaneado: $barcodeFinal', textAlign: TextAlign.center),
                         ),
                       ),
-                      if (isMobile) _buildMobileScanner(),
-                      if (!isMobile && !busco) _buildDesktopScanner(),
+                      if(widget.parametro == 2) ... [
+                        Center(
+                          child: Text('${widget.parametro}'),
+                        )
+                      ] else ... [
+                        if (isMobile) _buildMobileScanner(),
+                        if (!isMobile && !busco) _buildDesktopScanner(),
+                      ],
                       _buildProductList(),
                       if (cargandoMas) _buildLoadingIndicator(),
+                      
                     ],
                   ),
                 ),
@@ -340,7 +349,7 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
                     agregarCodBarra = false;
                   });
                   Navigator.of(context).pop();
-                  _navigateToProductPage(item);
+                  _navigateToProductPage(item, widget.parametro);
                 },
                 child: const Text('SI'),
               ),
@@ -365,11 +374,17 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
     setState(() {});
   }
 
-  void _navigateToProductPage(Product product) {
+  void _navigateToProductPage(Product product, int parametro) {
+    String ruta = '';
+    if(parametro == 1) {
+      ruta = '/paginaProducto';
+    } else if(parametro == 2) {
+      ruta = '/editarInventario';
+    }
     final productProvider = Provider.of<ProductProvider>(context, listen: false);
     productProvider.setProduct(product);
     productProvider.setRaiz(product.raiz);
-    appRouter.push('/paginaProducto');
+    appRouter.push(ruta);
   }
 
   void _navigateToSimpleProductPage(Product product) {
@@ -404,7 +419,7 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
 
     if (listaProductosTemporal.isNotEmpty) {
       final productoRetorno = listaProductosTemporal[0];
-      _navigateToProductPage(productoRetorno);
+      _navigateToProductPage(productoRetorno, widget.parametro);
     } else {
       if(tienePermiso){
         await agregarCodBarraEscaneado();
@@ -430,7 +445,7 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
     );
     if (listaProductosTemporal.isNotEmpty) {
       final productoRetorno = listaProductosTemporal[0];
-      _navigateToProductPage(productoRetorno);
+      _navigateToProductPage(productoRetorno, widget.parametro);
     } else {
       Carteles.showDialogs(context, 'No se pudo conseguir ningún producto con el código $barcode', false, false, false);
     }
@@ -519,7 +534,7 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
 
                 if (listaProductosTemporal.isNotEmpty) {
                   final productoRetorno = listaProductosTemporal[0];
-                  _navigateToProductPage(productoRetorno);
+                  _navigateToProductPage(productoRetorno, widget.parametro);
                 } else {
                   if(tienePermiso){
                     await agregarCodBarraEscaneado();
@@ -603,7 +618,7 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
                   if(agregarCodBarra){
                     await confirmarAgregarCodBarra(context, item);
                   } else {
-                    _navigateToProductPage(item);
+                    _navigateToProductPage(item, widget.parametro);
                   }
                 },
                 title: Text(item.raiz),

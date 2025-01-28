@@ -94,7 +94,7 @@ class _MenuPageState extends State<MenuPage> {
                       style: const TextStyle(color: Colors.white),
                     ),
                     const Text(
-                      '2025.01.21+1',
+                      '2025.01.23+1',
                       style: TextStyle(color: Colors.white),
                     ),
                   ],
