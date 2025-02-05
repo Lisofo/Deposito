@@ -4,6 +4,7 @@ import 'package:deposito/models/linea.dart';
 import 'package:deposito/models/pedido.dart';
 import 'package:deposito/models/product.dart';
 import 'package:deposito/models/producto_deposito.dart';
+import 'package:deposito/models/ubicacion_almacen.dart';
 import 'package:flutter/material.dart';
 
 class ProductProvider with ChangeNotifier {
@@ -68,7 +69,15 @@ class ProductProvider with ChangeNotifier {
   int _uId = 0;
   int get uId => _uId;
 
+  UbicacionAlmacen _ubicacion = UbicacionAlmacen.empty();
+  UbicacionAlmacen get ubicacion => _ubicacion;
+
   // Métodos para actualizar las variables y notificar cambios
+
+  void setUbicacion (UbicacionAlmacen ubi) {
+    _ubicacion = ubi;
+    notifyListeners();
+  }
 
   void setRptId(int rptGenId){
     _rptGenId = rptGenId;

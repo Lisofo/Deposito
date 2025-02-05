@@ -376,10 +376,10 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
 
   void _navigateToProductPage(Product product, int parametro) {
     String ruta = '';
-    if(parametro == 1) {
+    if(parametro == 1) { 
       ruta = '/paginaProducto';
     } else if(parametro == 2) {
-      ruta = '/editarInventario';
+      ruta = '/inventario';
     }
     final productProvider = Provider.of<ProductProvider>(context, listen: false);
     productProvider.setProduct(product);
@@ -389,8 +389,10 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
 
   void _navigateToSimpleProductPage(Product product) {
     final productProvider = Provider.of<ProductProvider>(context, listen: false);
+    productProvider.setProduct(product);
+    productProvider.setRaiz(product.raiz);
     productProvider.setFotos(product.imagenes);
-    appRouter.push('/simpleProductPage');
+    appRouter.push('/simpleProductPage'); 
   }
 
   Future<void> _scanBarcode() async {

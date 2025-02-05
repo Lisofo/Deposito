@@ -234,6 +234,27 @@ class _LoginState extends State<Login> {
                                     ),
                                   )
                                 ),
+                                FutureBuilder(
+                                  future: PackageInfo.fromPlatform(),
+                                  builder: (BuildContext context, AsyncSnapshot<PackageInfo> snapshot) {
+                                    if (snapshot.hasData) {
+                                      return Column(
+                                        children: [
+                                          Text(
+                                            'Versión ${snapshot.data!.version} (Build ${snapshot.data!.buildNumber})',
+                                            style: const TextStyle(color: Colors.black),
+                                          ),
+                                          const Text(
+                                            '2025.02.05+1',
+                                            style: TextStyle(color: Colors.black),
+                                          ),
+                                        ],
+                                      );
+                                    } else {
+                                      return const Text('Cargando la app...');
+                                    }
+                                  }
+                                ),
                               ],
                             ),
                           ),
@@ -247,7 +268,7 @@ class _LoginState extends State<Login> {
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
                             SizedBox(
-                             height: MediaQuery.of(context).size.height * 0.962,
+                             height: MediaQuery.of(context).size.height * 0.6,
                              width: MediaQuery.of(context).size.width / 2,
                               child:Image.asset(
                                 'images/familcarLogo.png',
@@ -370,7 +391,7 @@ class _LoginState extends State<Login> {
                                                       borderRadius: BorderRadius.circular(4), // Bordes redondeados
                                                     ),
                                                     side: BorderSide(
-                                                      color: colors.onPrimary, // Color del contorno
+                                                      color: colors.onError, // Color del contorno
                                                       width: 2, // Grosor del contorno
                                                     ),
                                                   ),
@@ -384,7 +405,7 @@ class _LoginState extends State<Login> {
                                                     },
                                                   ),
                                                 ),
-                                                Text('Recordar usuario', style: TextStyle(color: colors.onPrimary),),
+                                                Text('Recordar usuario', style: TextStyle(color: colors.onError),),
                                               ],
                                             ),
                                           ),
@@ -419,6 +440,28 @@ class _LoginState extends State<Login> {
                                         ],
                                       )
                                     ),
+                                    const SizedBox(height: 10,),
+                                    FutureBuilder(
+                                      future: PackageInfo.fromPlatform(),
+                                      builder: (BuildContext context, AsyncSnapshot<PackageInfo> snapshot) {
+                                        if (snapshot.hasData) {
+                                          return Column(
+                                            children: [
+                                              Text(
+                                                'Versión ${snapshot.data!.version}',
+                                                style: const TextStyle(color: Colors.black),
+                                              ),
+                                              const Text(
+                                                '2025.02.05+1',
+                                                style: TextStyle(color: Colors.black),
+                                              ),
+                                            ],
+                                          );
+                                        } else {
+                                          return const Text('Cargando la app...');
+                                        }
+                                      }
+                                    ),
                                   ],
                                 ),
                               ),
@@ -429,27 +472,6 @@ class _LoginState extends State<Login> {
                       ],
                     ),
                   ],
-                  FutureBuilder(
-                    future: PackageInfo.fromPlatform(),
-                    builder: (BuildContext context, AsyncSnapshot<PackageInfo> snapshot) {
-                      if (snapshot.hasData) {
-                        return Column(
-                          children: [
-                            Text(
-                              'Versión ${snapshot.data!.version} (Build ${snapshot.data!.buildNumber})',
-                              style: const TextStyle(color: Colors.black),
-                            ),
-                            const Text(
-                              '2025.01.23+1',
-                              style: TextStyle(color: Colors.black),
-                            ),
-                          ],
-                        );
-                      } else {
-                        return const Text('Cargando la app...');
-                      }
-                    }
-                  ),
                 ],
               ),
             ),

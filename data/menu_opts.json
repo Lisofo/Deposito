@@ -11,7 +11,7 @@
                     "parametro": 1
                 },
                 {
-                    "ruta": "/editarInventario",
+                    "ruta": "/inventario",
                     "icon": "calendar_month",
                     "texto": "Inventario",
                     "parametro": 2

@@ -6,13 +6,10 @@ import 'package:deposito/provider/product_provider.dart';
 import 'package:deposito/services/almacen_services.dart';
 import 'package:flutter/material.dart';
 import 'package:deposito/config/router/router.dart';
-import 'package:deposito/models/product2.dart';
 import 'package:deposito/models/product.dart';
 import 'package:deposito/widgets/custom_button.dart';
 import 'package:deposito/widgets/custom_form_dropdown.dart';
 import 'package:provider/provider.dart';
-import 'package:simple_barcode_scanner/enum.dart';
-import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
 class InventarioPage extends StatefulWidget {
@@ -25,21 +22,10 @@ class InventarioPage extends StatefulWidget {
 class _InventarioPageState extends State<InventarioPage> {
   List<UbicacionAlmacen> listaUbicaciones = [];
   late Product productoSeleccionado = Product.empty();
-  List<Product> historial = [];
   String ticket = '';
-  List<String> tickets = [];
   String? _barcode;
   String result = '';
   late bool visible;
-  List<Product> product = [];
-  int duracion = 30;
-  bool arrancarContador = false;
-  List<Product> productosOffline = [];
-  List<dynamic> productoScanner = [];
-  List<dynamic> productoScannerVariante = [];
-  final String _previousQuery = '';
-  final TextEditingController cantidadController = TextEditingController();
-  final TextEditingController ubicacionController = TextEditingController();
   late Almacen almacen;
   late String token;
   TextEditingController textController = TextEditingController();
@@ -52,15 +38,8 @@ class _InventarioPageState extends State<InventarioPage> {
   List<dynamic> productosBuscados = [];
   bool estoyBuscando = true;
 
-  List<Product2> productosMostrar = [
-    Product2(nombre: 'Flores', cantidadPedida: 14, ubicacion: 'Gondola 12', cantidadPickeada: 0),
-    Product2(nombre: 'Colores', cantidadPedida: 52, ubicacion: 'Gondola 2', cantidadPickeada: 0),
-    Product2(nombre: 'Azucar', cantidadPedida: 32, ubicacion: 'Gondola 5', cantidadPickeada: 0),
-  ];
-
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
     cargarDatos();
   }
@@ -109,7 +88,12 @@ class _InventarioPageState extends State<InventarioPage> {
             children: [
               CustomDropdownFormMenu(
                 hint: 'Seleccione ubicacion del almacen',
-                onChanged: (value) {setState(() {});},
+                onChanged: (value) {
+                  ubicacionSeleccionada = value;
+                  Provider.of<ProductProvider>(context, listen: false).setUbicacion(ubicacionSeleccionada);
+                  appRouter.push('/editarInventario');
+                  setState(() {});
+                },
                 items: listaUbicaciones.map((e) {
                   return DropdownMenuItem(
                     value: e,
@@ -139,91 +123,9 @@ class _InventarioPageState extends State<InventarioPage> {
                   onFieldSubmitted: procesarEscaneo, // Cambiado a usar onFieldSubmitted
                 ),
               ),
-              Expanded(
-                flex: 1,
-                child: ListView.separated(
-                  itemCount: productosMostrar.length,
-                  itemBuilder: (context, i) {
-                    var item = productosMostrar[i];
-                    return ListTile(
-                      title: Text(item.nombre),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Stock: ${item.cantidadPedida.toString()}'),
-                          Text('Cantidad a agregar: ${item.cantidadPickeada.toString()}'),
-                        ],
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          IconButton(
-                            onPressed: () async {
-                              ubicacionController.text = item.ubicacion;
-                              cantidadController.text = item.cantidadPickeada.toString();
-                              await showDialog(
-                                context: context,
-                                builder: (context) {
-                                  return AlertDialog(
-                                    title: const Text('Editar Datos'),
-                                    content: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        TextFormField(
-                                          decoration: const InputDecoration(label: Text('Cantidad pickeada')),
-                                          controller: cantidadController,
-                                        ),
-                                        TextFormField(
-                                          decoration: const InputDecoration(label: Text('Ubicacion')),
-                                          controller: ubicacionController,
-                                        ),
-                                      ],
-                                    ),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () {
-                                          Navigator.of(context).pop();
-                                        },
-                                        child: const Text('Cancelar')
-                                      ),
-                                      TextButton(
-                                        onPressed: () {
-                                          item.cantidadPickeada = int.tryParse(cantidadController.text)!;
-                                          item.ubicacion = ubicacionController.text;
-                                          Navigator.of(context).pop();
-                                          cantidadController.clear();
-                                          ubicacionController.clear();
-                                          setState(() {});
-                                        },
-                                        child: const Text('Confirmar')
-                                      )
-                                    ],
-                                  );
-                                }
-                              );
-                            },
-                            icon: const Icon(Icons.edit)
-                          ),
-                          IconButton(
-                            onPressed: () {
-                              productosMostrar.removeAt(i);
-                              setState(() {});
-                            },
-                            icon: const Icon(Icons.delete)
-                          ),
-                        ],
-                      ),
-                    );
-                  }, 
-                  separatorBuilder: (BuildContext context, int index) { 
-                    return const Divider(
-                      indent: 16,
-                      endIndent: 16,
-                    ); 
-                  },
-                ),
-              ),
+              const Expanded(
+                child: Text('Escanee una ubicación')
+              )
             ],
           ),
         ),
@@ -232,41 +134,13 @@ class _InventarioPageState extends State<InventarioPage> {
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          IconButton(
-            iconSize: 40,
-              onPressed: () async {
-                var res = await SimpleBarcodeScanner.scanBarcode(context, lineColor: '#FFFFFF', cancelButtonText: 'Cancelar', scanType: ScanType.qr, isShowFlashIcon: false);
-                arrancarContador = false;
-                if (res is String) {
-                  result = res;
-                  if (result != '-1') {
-                    var productoAgregado = Product2.empty();
-                    productoAgregado.nombre = result;
-                    List<Product2> existeElProducto = productosMostrar.where((producto) => (producto.nombre == productoAgregado.nombre)).toList();
-                    if (existeElProducto.isEmpty){
-                      productoAgregado.cantidadPedida = 0;
-                      productoAgregado.cantidadPickeada = 1;
-                      productoAgregado.ubicacion = 'Gondola x';
-                      productosMostrar.add(productoAgregado);
-                    } else {
-                      existeElProducto[0].cantidadPickeada++;
-                    }
-                  }
-                }
-                setState(() {});
-              },
-              icon: const Icon(Icons.qr_code_2)
-            ),
-            CustomButton(
-              tamano: 24,
-              text: 'Finalizar', 
-              onPressed: () async {
-                for (var producto in productosMostrar) {
-                  producto.cantidadPedida = producto.cantidadPickeada;
-                }
-                setState(() {});
-              }
-            )
+          CustomButton(
+            tamano: 24,
+            text: 'Revisar', 
+            onPressed: () async {
+              appRouter.push('/revisarInventario');
+            }
+          )
         ],
       ),
     );
@@ -280,9 +154,11 @@ class _InventarioPageState extends State<InventarioPage> {
         final ubicacionEncontrada = listaUbicaciones.firstWhere(
           (element) => element.codUbicacion == value || element.descripcion.contains(value),
         );
+        Provider.of<ProductProvider>(context, listen: false).setUbicacion(ubicacionEncontrada);
         setState(() {
           ubicacionSeleccionada = ubicacionEncontrada;
         });
+        appRouter.push('/editarInventario');
         print('Ubicación seleccionada: ${ubicacionEncontrada.descripcion}');
       } catch (e) {
         await error(value);

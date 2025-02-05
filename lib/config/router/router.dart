@@ -1,10 +1,12 @@
 import 'package:deposito/pages/agregar_ubicaciones.dart';
 import 'package:deposito/pages/buscador_producto.dart';
 import 'package:deposito/pages/edit_ubicaciones.dart';
+import 'package:deposito/pages/editar_inventario.dart';
 import 'package:deposito/pages/inventario.dart';
 import 'package:deposito/pages/login.dart';
 import 'package:deposito/pages/menu.dart';
 import 'package:deposito/pages/product_page.dart';
+import 'package:deposito/pages/revisar_inventario.dart';
 import 'package:deposito/pages/seleccion_almacen.dart';
 import 'package:deposito/pages/simple_product_page.dart';
 import 'package:deposito/pages/version_check_page.dart';
@@ -31,7 +33,9 @@ class AppRouter {
         GoRoute(path: '/paginaProducto', builder: (context, state) => const ProductPage()),
         GoRoute(path: '/editUbicaciones', builder: (context, state) => const EditUbicaciones()),
         GoRoute(path: '/agregarUbicaciones', builder: (context, state) => const AgregarUbicaciones()),
-        GoRoute(path: '/editarInventario', builder: (context, state) => const InventarioPage()),
+        GoRoute(path: '/inventario', builder: (context, state) => const InventarioPage()),
+        GoRoute(path: '/editarInventario', builder: (context, state) => const EditarInventario()),
+        GoRoute(path: '/revisarInventario', builder: (context, state) => const RevisarInventario()),
       ],
     );
   }
