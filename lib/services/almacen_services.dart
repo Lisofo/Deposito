@@ -289,8 +289,8 @@ class AlmacenServices {
     }
   }
 
-  Future patchUbicacionItemEnAlmacen(BuildContext context, String codItem, int almacenUbicacionId, bool conConteo, int conteo, String token) async {
-    String link = '$apirUrl/api/v1/inventario/$almacenUbicacionId';
+  Future patchUbicacionItemEnAlmacen(BuildContext context, String codItem, int almacenId, int almacenUbicacionId, bool conConteo, int conteo, String token) async {
+    String link = '$apirUrl/api/v1/inventario/$almacenId';
 
     var data1 = ({
       "codItem": codItem,
@@ -386,8 +386,17 @@ class AlmacenServices {
     }
   }
 
-  Future deleteConteo(BuildContext context, int almacenId, String token) async {
+  Future deleteConteo(BuildContext context, int almacenId, int almacenUbicacionId, int itemId, String token) async {
     String link = '$apirUrl/api/v1/inventario/$almacenId';
+
+    if(almacenUbicacionId != 0) {
+      link += '?almacenUbicacionId=$almacenUbicacionId';
+      if(itemId != 0) {
+        link += '&itemId=$itemId';
+      }
+    } 
+
+    print(link);
 
     try {
       var headers = {'Authorization': token};

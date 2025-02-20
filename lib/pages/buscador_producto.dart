@@ -408,13 +408,14 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
     setState(() {
       barcodeFinal = code.toString();
     });
-
+    var codeTrimmed = code!.trim();
+    print(codeTrimmed);
     final listaProductosTemporal = await ProductServices().getProductByName(
       context,
       '',
       '2',
       almacen.almacenId.toString(),
-      code.toString(),
+      codeTrimmed,
       "0",
       token,
     );

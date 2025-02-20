@@ -15,6 +15,12 @@
                     "icon": "calendar_month",
                     "texto": "Inventario",
                     "parametro": 2
+                },
+                {
+                    "ruta": "/dashboard",
+                    "icon": "calendar_month",
+                    "texto": "Dashboard",
+                    "parametro": 2
                 }
             ]
         }

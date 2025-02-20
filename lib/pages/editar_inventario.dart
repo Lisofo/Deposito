@@ -8,6 +8,7 @@ import 'package:deposito/search/product_search_delegate.dart';
 import 'package:deposito/services/almacen_services.dart';
 import 'package:deposito/services/product_services.dart';
 import 'package:deposito/widgets/carteles.dart';
+import 'package:deposito/widgets/custom_button.dart';
 import 'package:deposito/widgets/custom_form_field.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -126,7 +127,9 @@ class _EditarInventarioState extends State<EditarInventario> {
                           icon: Icon(Icons.edit, color: colors.primary,)
                         ),
                         IconButton(
-                          onPressed: () async {},
+                          onPressed: () async {
+                            borrarConteoItem(context, product, false);
+                          },
                           icon: const Icon(Icons.delete, color: Colors.red,)
                         )
                       ],
@@ -137,17 +140,32 @@ class _EditarInventarioState extends State<EditarInventario> {
             )
           ],
         ),
+        bottomNavigationBar: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            CustomButton(
+              tamano: 16,
+              text: 'Borrar conteo de la ubicacion ${ubicacion.descripcion}',
+              disabled: conteoList.isEmpty,
+              onPressed: conteoList.isEmpty ? null : () async {
+                await borrarConteoTotal(context);
+              }
+            )
+          ],
+        ),
       )
     );
   }
 
-  Future<void> borrarConteo(BuildContext context, Conteo product) async {
+  Future<void> borrarConteoTotal(BuildContext context) async {
+    String texto = 'Desea eliminar todo los productos contados hasta ahora?';
     await showDialog(
       context: context, 
       builder: (context) {
         return AlertDialog(
           title: const Text("Mensaje"),
-          content: Text('Desea eliminar la cantidad contada total del producto ${product.descripcion}?'),
+          content: Text(texto),
           actions: [
             TextButton(
               onPressed: () async {
@@ -157,12 +175,49 @@ class _EditarInventarioState extends State<EditarInventario> {
             ),
             TextButton(
               onPressed: () async {
-                await _almacenServices.deleteConteo(context, product.almacenId, token);
+                await _almacenServices.deleteConteo(context, almacen.almacenId, ubicacion.almacenUbicacionId, 0, token);
+                int? statusCode;
+                statusCode = await _almacenServices.getStatusCode();
+                await _almacenServices.resetStatusCode();
+                if(statusCode == 1) {
+                  Carteles.showDialogs(context, 'Conteos eliminados de la lista correctamente', true, false, false);
+                  conteoList.clear();
+                  setState(() {});
+                }
+              },
+              child: const Text('Aceptar'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+  
+  Future<void> borrarConteoItem(BuildContext context, Conteo product, bool borrarTodo) async {
+    String texto = 'Desea eliminar la cantidad contada total del producto ${product.descripcion}?';
+    await showDialog(
+      context: context, 
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Mensaje"),
+          content: Text(texto),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                appRouter.pop();
+              },
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () async {
+                await _almacenServices.deleteConteo(context, product.almacenId, product.almacenUbicacionId, product.itemId, token);
                 int? statusCode;
                 statusCode = await _almacenServices.getStatusCode();
                 await _almacenServices.resetStatusCode();
                 if(statusCode == 1) {
                   Carteles.showDialogs(context, 'Producto eliminado de la lista correctamente', true, false, false);
+                  conteoList.removeWhere((e) => e.itemId == product.itemId);
+                  setState(() {});
                 }
               },
               child: const Text('Aceptar'),
@@ -204,12 +259,13 @@ class _EditarInventarioState extends State<EditarInventario> {
               onPressed: () async {
                 late int conteo = int.parse(conteoController.text);
                 int? statusCode;
-                await _almacenServices.patchUbicacionItemEnAlmacen(context, product.codItem, product.almacenUbicacionId, true, conteo, token);
+                await _almacenServices.patchUbicacionItemEnAlmacen(context, product.codItem, almacen.almacenId, product.almacenUbicacionId, true, conteo, token);
                 statusCode = await _almacenServices.getStatusCode();
                 await _almacenServices.resetStatusCode();
                 if(statusCode == 1) {
                   product.conteo = conteo;
                   Carteles.showDialogs(context, 'Conteo del producto ${product.descripcion} editado correctamente', true, false, false);
+                  setState(() {});
                 }
               },
               child: const Text('Aceptar'),
@@ -243,21 +299,14 @@ class _EditarInventarioState extends State<EditarInventario> {
             actions: [
               TextButton(
                 onPressed: () async {
-                  try {
-                    await _almacenServices.patchUbicacionItemEnAlmacen(context, selectedProduct.raiz, ubicacion.almacenUbicacionId, false, 0, token);
-                    statusCode = await _almacenServices.getStatusCode();
-                    await _almacenServices.resetStatusCode();
-                    if( statusCode == 1 ) {
-                      Carteles.showDialogs(context, 'Existencia del producto ${productoEscaneado.descripcion} ha sido actualizada', false, false, false);
-                    }
-                    setState(() {
-                      productosAgregados.add(productoEscaneado.descripcion);
-                    });
-                  } catch (e) {
-                    // await error(value);
-                    print('Hubo un error: $e');
+                  await _almacenServices.patchUbicacionItemEnAlmacen(context, selectedProduct.raiz, almacen.almacenId, ubicacion.almacenUbicacionId, false, 0, token);
+                  statusCode = await _almacenServices.getStatusCode();
+                  await _almacenServices.resetStatusCode();
+                  if( statusCode == 1 ) {
+                    Carteles.showDialogs(context, 'Existencia del producto ${productoEscaneado.descripcion} ha sido actualizada', true, false, false);
                   }
-                  appRouter.pop();
+                  conteoList = await _almacenServices.getConteoUbicacion(context, almacen.almacenId, ubicacion.almacenUbicacionId, token);
+                  setState(() {});
                 },
                 child: const Text('Aceptar'),
               ),
@@ -287,15 +336,14 @@ class _EditarInventarioState extends State<EditarInventario> {
       try {
         productos = await ProductServices().getProductByName(context, '', '2', almacen.almacenId.toString(), value, '0', token);
         productoEscaneado = productos[0];
-        await _almacenServices.patchUbicacionItemEnAlmacen(context, productoEscaneado.raiz, ubicacion.almacenUbicacionId, false, 0, token);
+        await _almacenServices.patchUbicacionItemEnAlmacen(context, productoEscaneado.raiz, almacen.almacenId, ubicacion.almacenUbicacionId, false, 0, token);
         statusCode = await _almacenServices.getStatusCode();
         await _almacenServices.resetStatusCode();
         if( statusCode == 1 ) {
-          Carteles.showDialogs(context, 'Existencia del producto ${productoEscaneado.descripcion} ha sido actualizada', false, false, false);
+          Carteles.showDialogs(context, 'Existencia del producto ${productoEscaneado.descripcion} ha sido actualizada', true, false, false);
         }
-        setState(() {
-          productosAgregados.add(productoEscaneado.descripcion);
-        });
+        conteoList = await _almacenServices.getConteoUbicacion(context, almacen.almacenId, ubicacion.almacenUbicacionId, token);
+        setState(() {});
       } catch (e) {
         // await error(value);
         print('Producto no encontrado: $value');

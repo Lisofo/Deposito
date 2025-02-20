@@ -1,5 +1,6 @@
 import 'package:deposito/pages/agregar_ubicaciones.dart';
 import 'package:deposito/pages/buscador_producto.dart';
+import 'package:deposito/pages/dashboard.dart';
 import 'package:deposito/pages/edit_ubicaciones.dart';
 import 'package:deposito/pages/editar_inventario.dart';
 import 'package:deposito/pages/inventario.dart';
@@ -36,6 +37,7 @@ class AppRouter {
         GoRoute(path: '/inventario', builder: (context, state) => const InventarioPage()),
         GoRoute(path: '/editarInventario', builder: (context, state) => const EditarInventario()),
         GoRoute(path: '/revisarInventario', builder: (context, state) => const RevisarInventario()),
+        GoRoute(path: '/dashboard', builder: (context, state) => const DashboardPage()),
       ],
     );
   }

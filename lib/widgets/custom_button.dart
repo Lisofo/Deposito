@@ -22,20 +22,24 @@ class CustomButton extends StatelessWidget {
       clipBehavior: clip,
       onPressed: disabled ? null : onPressed,
       style: ButtonStyle(
-          backgroundColor: disabled
-              ? const WidgetStatePropertyAll(Colors.grey)
-              : const WidgetStatePropertyAll(Colors.white),
-          elevation: const WidgetStatePropertyAll(10),
-          shape: const WidgetStatePropertyAll(RoundedRectangleBorder(
-              borderRadius: BorderRadius.horizontal(
-                  left: Radius.circular(50), right: Radius.circular(50))))),
+        backgroundColor: disabled ? const WidgetStatePropertyAll(Colors.grey) : const WidgetStatePropertyAll(Colors.white),
+        elevation: const WidgetStatePropertyAll(10),
+        shape: const WidgetStatePropertyAll(
+          RoundedRectangleBorder(
+            borderRadius: BorderRadius.horizontal(
+              left: Radius.circular(50), 
+              right: Radius.circular(50)
+            )
+          )
+        )
+      ),
       child: Text(text,
-          style: TextStyle(
-            fontSize: tamano,
-            color:  colors.primary,
-            fontWeight: FontWeight.bold,
-          )),
-          
+        style: TextStyle(
+          fontSize: tamano,
+          color:  colors.primary,
+          fontWeight: FontWeight.bold,
+        )
+      ),    
     );
   }
 }
