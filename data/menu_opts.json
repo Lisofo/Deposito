@@ -21,6 +21,12 @@
                     "icon": "calendar_month",
                     "texto": "Dashboard",
                     "parametro": 2
+                },
+                {
+                    "ruta": "/transferencia",
+                    "icon": "calendar_month",
+                    "texto": "Transferencia",
+                    "parametro": 2
                 }
             ]
         }

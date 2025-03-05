@@ -10,6 +10,8 @@ import 'package:deposito/pages/product_page.dart';
 import 'package:deposito/pages/revisar_inventario.dart';
 import 'package:deposito/pages/seleccion_almacen.dart';
 import 'package:deposito/pages/simple_product_page.dart';
+import 'package:deposito/pages/transferencia.dart';
+import 'package:deposito/pages/transferencia_almacen.dart';
 import 'package:deposito/pages/version_check_page.dart';
 import 'package:go_router/go_router.dart';
 
@@ -38,6 +40,7 @@ class AppRouter {
         GoRoute(path: '/editarInventario', builder: (context, state) => const EditarInventario()),
         GoRoute(path: '/revisarInventario', builder: (context, state) => const RevisarInventario()),
         GoRoute(path: '/dashboard', builder: (context, state) => const DashboardPage()),
+        GoRoute(path: '/transferencia', builder: (context, state) => const TransferenciaAlmacenPage()),
       ],
     );
   }

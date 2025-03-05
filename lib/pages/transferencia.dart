@@ -68,7 +68,7 @@ class _TransferenciaPageState extends State<TransferenciaPage> {
             backgroundColor: WidgetStatePropertyAll(colors.primary)
           ),
           onPressed: () async {
-            appRouter.go('/almacen/menu');
+            appRouter.pop();
           },
           icon: const Icon(Icons.arrow_back,),
         ),

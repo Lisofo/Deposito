@@ -5,11 +5,11 @@ import 'package:deposito/models/ubicacion_almacen.dart';
 import 'package:deposito/provider/product_provider.dart';
 import 'package:deposito/services/almacen_services.dart';
 import 'package:deposito/widgets/carteles.dart';
+import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
 import 'package:deposito/config/router/router.dart';
 import 'package:deposito/models/product.dart';
 import 'package:deposito/widgets/custom_button.dart';
-import 'package:deposito/widgets/custom_form_dropdown.dart';
 import 'package:provider/provider.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
@@ -88,22 +88,51 @@ class _InventarioPageState extends State<InventarioPage> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              CustomDropdownFormMenu(
-                hint: 'Seleccione ubicacion del almacen',
-                onChanged: (value) {
-                  ubicacionSeleccionada = value;
-                  Provider.of<ProductProvider>(context, listen: false).setUbicacion(ubicacionSeleccionada);
-                  appRouter.push('/editarInventario');
-                  setState(() {});
-                },
-                items: listaUbicaciones.map((e) {
-                  return DropdownMenuItem(
-                    value: e,
-                    child: Text(e.descripcion)
-                  );
-                }).toList(),
-                value: ubicacionSeleccionada.almacenId == 0 ? null : ubicacionSeleccionada,
+              Container(
+                decoration: BoxDecoration(
+                  border: Border.all(),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: DropdownSearch(
+                  dropdownDecoratorProps: const DropDownDecoratorProps(
+                    textAlign: TextAlign.center,
+                    textAlignVertical: TextAlignVertical.center,
+                    dropdownSearchDecoration: InputDecoration(
+                      hintText: 'Seleccione una ubicacion',
+                      alignLabelWithHint: true,
+                      border: InputBorder.none,
+                    ),
+                  ),
+                  popupProps: const PopupProps.menu(
+                    showSearchBox: true,
+                    searchDelay: Duration.zero,
+                  ),
+                  onChanged: (value) {
+                    ubicacionSeleccionada = value;
+                    Provider.of<ProductProvider>(context, listen: false).setUbicacion(ubicacionSeleccionada);
+                    appRouter.push('/editarInventario');
+                    setState(() {});
+                  },
+                  items: listaUbicaciones,
+                  selectedItem: ubicacionSeleccionada.almacenId == 0 ? null : ubicacionSeleccionada,
+                ),
               ),
+              // CustomDropdownFormMenu(
+              //   hint: 'Seleccione ubicacion del almacen',
+              //   onChanged: (value) {
+              //     ubicacionSeleccionada = value;
+              //     Provider.of<ProductProvider>(context, listen: false).setUbicacion(ubicacionSeleccionada);
+              //     appRouter.push('/editarInventario');
+              //     setState(() {});
+              //   },
+              //   items: listaUbicaciones.map((e) {
+              //     return DropdownMenuItem(
+              //       value: e,
+              //       child: Text(e.descripcion)
+              //     );
+              //   }).toList(),
+              //   value: ubicacionSeleccionada.almacenId == 0 ? null : ubicacionSeleccionada,
+              // ),
               const SizedBox(height: 20,),
               VisibilityDetector(
                 key: const Key('scanner-field-visibility'),
@@ -127,7 +156,18 @@ class _InventarioPageState extends State<InventarioPage> {
               ),
               const Expanded(
                 child: Text('Escanee una ubicación')
-              )
+              ),
+              if(ubicacionSeleccionada.almacenId != 0)
+              Align(
+                alignment: Alignment.bottomRight,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: FloatingActionButton(
+                    onPressed: _resetSearch,
+                    child: const Icon(Icons.delete),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -152,6 +192,12 @@ class _InventarioPageState extends State<InventarioPage> {
         ],
       ),
     );
+  }
+
+  void _resetSearch() {
+    ubicacionSeleccionada = UbicacionAlmacen.empty();
+    focoDeScanner.requestFocus();
+    setState(() {});
   }
 
   Future<void> borrarConteoTotal(BuildContext context) async {
