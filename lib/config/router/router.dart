@@ -41,6 +41,7 @@ class AppRouter {
         GoRoute(path: '/revisarInventario', builder: (context, state) => const RevisarInventario()),
         GoRoute(path: '/dashboard', builder: (context, state) => const DashboardPage()),
         GoRoute(path: '/transferencia', builder: (context, state) => const TransferenciaAlmacenPage()),
+        GoRoute(path: '/transferencia2', builder: (context, state) => const TransferenciaPage()),
       ],
     );
   }

@@ -19,6 +19,9 @@ class Conteo {
   late String descripcion;
   late int stock;
   late int conteo;
+  late String codigosBarra;
+  late String codUbicacion;
+  late String descUbicacion;
 
   Conteo({
     required this.itemConteoId,
@@ -31,6 +34,9 @@ class Conteo {
     required this.descripcion,
     required this.stock,
     required this.conteo,
+    required this.codigosBarra,
+    required this.codUbicacion,
+    required this.descUbicacion,
   });
 
   factory Conteo.fromJson(Map<String, dynamic> json) => Conteo(
@@ -42,6 +48,9 @@ class Conteo {
     itemId: json["itemId"] as int? ?? 0,
     codItem: json["codItem"] as String? ?? '',
     descripcion: json["descripcion"] as String? ?? '',
+    codigosBarra: json["codigosBarra"] as String? ?? '',
+    codUbicacion: json["codUbicacion"] as String? ?? '',
+    descUbicacion: json["descUbicacion"] as String? ?? '',
     stock: json["stock"] as int? ?? 0,
     conteo: json["conteo"] as int? ?? 0,
   );
@@ -57,6 +66,9 @@ class Conteo {
     "descripcion": descripcion,
     "stock": stock,
     "conteo": conteo,
+    "codigosBarra": codigosBarra,
+    "codUbicacion": codUbicacion,
+    "descUbicacion": descUbicacion,
   };
 
   Conteo.empty() {
@@ -68,6 +80,9 @@ class Conteo {
     itemId = 0;
     codItem = '';
     descripcion = '';
+    codigosBarra = '';
+    codUbicacion = '';
+    descUbicacion = '';
     stock = 0;
     conteo = 0;
   }

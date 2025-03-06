@@ -17,18 +17,18 @@ class TransferenciaPage extends StatefulWidget {
 }
 
 class _TransferenciaPageState extends State<TransferenciaPage> {
-  List listaAlmacenes = [
-    'Almacen 1',
-    'Almacen 2',
-    'Almacen 3',
-  ];
+  
   late Product productoSeleccionado = Product.empty();
   List<Product> historial = [];
   String ticket = '';
   List<String> tickets = [];
   String? _barcode;
   String result = '';
-  late bool visible;
+  late bool visible;List listaAlmacenes = [
+    'Almacen 1',
+    'Almacen 2',
+    'Almacen 3',
+  ];
   List<Product> product = [];
   int duracion = 30;
   bool arrancarContador = false;

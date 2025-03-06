@@ -35,6 +35,7 @@ class _EditarInventarioState extends State<EditarInventario> {
   late Product selectedProduct = Product.empty();
   late List<Conteo> conteoList = [];
   final TextEditingController conteoController = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
 
   @override
   void initState() {
@@ -116,7 +117,15 @@ class _EditarInventarioState extends State<EditarInventario> {
                   var product = conteoList[i];
                   return ListTile(
                     title: Text(product.descripcion),
-                    subtitle: Text('Cantidad contada: ${product.conteo}'),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('Cantidad: ${product.conteo}', style: const TextStyle(fontSize: 20),),
+                        Text('Código: ${product.codItem}'),
+                        Text('Código de barra: ${product.codigosBarra}'),
+                      ],
+                    ),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -233,6 +242,10 @@ class _EditarInventarioState extends State<EditarInventario> {
     await showDialog(
       context: context, 
       builder: (context) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _focusNode.requestFocus();
+          conteoController.selection = TextSelection(baseOffset: 0, extentOffset: conteoController.text.length);
+        });
         return AlertDialog(
           title: const Text("Editar/Agregar"),
           content: Column(
@@ -245,6 +258,7 @@ class _EditarInventarioState extends State<EditarInventario> {
               CustomTextFormField(
                 controller: conteoController,
                 keyboard: const TextInputType.numberWithOptions(),
+                focusNode: _focusNode,
               )
             ],
           ),
@@ -264,7 +278,7 @@ class _EditarInventarioState extends State<EditarInventario> {
                 await _almacenServices.resetStatusCode();
                 if(statusCode == 1) {
                   product.conteo = conteo;
-                  Carteles.showDialogs(context, 'Conteo del producto ${product.descripcion} editado correctamente', true, false, false);
+                  appRouter.pop();
                   setState(() {});
                 }
               },
@@ -290,36 +304,42 @@ class _EditarInventarioState extends State<EditarInventario> {
           historial.insert(0, producto);
         }
       });
-      await showDialog(
-        context: context, 
-        builder: (context) {
-          return AlertDialog(
-            title: const Text("Mensaje"),
-            content: Text('Desea agregar el producto ${selectedProduct.descripcion} a la ubicacion ${ubicacion.descripcion}'),
-            actions: [
-              TextButton(
-                onPressed: () async {
-                  await _almacenServices.patchUbicacionItemEnAlmacen(context, selectedProduct.raiz, almacen.almacenId, ubicacion.almacenUbicacionId, false, 0, token);
-                  statusCode = await _almacenServices.getStatusCode();
-                  await _almacenServices.resetStatusCode();
-                  if( statusCode == 1 ) {
-                    Carteles.showDialogs(context, 'Existencia del producto ${productoEscaneado.descripcion} ha sido actualizada', true, false, false);
-                  }
-                  conteoList = await _almacenServices.getConteoUbicacion(context, almacen.almacenId, ubicacion.almacenUbicacionId, token);
-                  setState(() {});
-                },
-                child: const Text('Aceptar'),
-              ),
-              TextButton(
-                onPressed: () {
-                  appRouter.pop();
-                },
-                child: const Text('Cancelar'),
-              ),
-            ],
-          );
-        },
-      );
+      // await showDialog(
+      //   context: context, 
+      //   builder: (context) {
+      //     return AlertDialog(
+      //       title: const Text("Mensaje"),
+      //       content: Text('Desea agregar el producto ${selectedProduct.descripcion} a la ubicacion ${ubicacion.descripcion}'),
+      //       actions: [
+      //         TextButton(
+      //           onPressed: () async {
+      //             await _almacenServices.patchUbicacionItemEnAlmacen(context, selectedProduct.raiz, almacen.almacenId, ubicacion.almacenUbicacionId, false, 0, token);
+      //             statusCode = await _almacenServices.getStatusCode();
+      //             await _almacenServices.resetStatusCode();
+      //             if( statusCode == 1 ) {
+      //               Carteles.showDialogs(context, 'Existencia del producto ${productoEscaneado.descripcion} ha sido actualizada', true, false, false);
+      //             }
+      //             conteoList = await _almacenServices.getConteoUbicacion(context, almacen.almacenId, ubicacion.almacenUbicacionId, token);
+      //             setState(() {});
+      //           },
+      //           child: const Text('Aceptar'),
+      //         ),
+      //         TextButton(
+      //           onPressed: () {
+      //             appRouter.pop();
+      //           },
+      //           child: const Text('Cancelar'),
+      //         ),
+      //       ],
+      //     );
+      //   },
+      // );
+      await _almacenServices.patchUbicacionItemEnAlmacen(context, selectedProduct.raiz, almacen.almacenId, ubicacion.almacenUbicacionId, false, 0, token);
+      statusCode = await _almacenServices.getStatusCode();
+      await _almacenServices.resetStatusCode();
+      if(statusCode == 1) {
+        conteoList = await _almacenServices.getConteoUbicacion(context, almacen.almacenId, ubicacion.almacenUbicacionId, token);
+      }
       
     } else {
       setState(() {
@@ -333,26 +353,55 @@ class _EditarInventarioState extends State<EditarInventario> {
     int? statusCode;
     if (value.isNotEmpty) {
       print('Valor escaneado: $value');
-      try {
-        productos = await ProductServices().getProductByName(context, '', '2', almacen.almacenId.toString(), value, '0', token);
+      productos = await ProductServices().getProductByName(context, '', '2', almacen.almacenId.toString(), value, '0', token);
+      if(productos.isEmpty || productos.length > 1) {
+        productoEscaneado = Product.empty();
+      } else {
         productoEscaneado = productos[0];
-        await _almacenServices.patchUbicacionItemEnAlmacen(context, productoEscaneado.raiz, almacen.almacenId, ubicacion.almacenUbicacionId, false, 0, token);
-        statusCode = await _almacenServices.getStatusCode();
-        await _almacenServices.resetStatusCode();
-        if( statusCode == 1 ) {
-          Carteles.showDialogs(context, 'Existencia del producto ${productoEscaneado.descripcion} ha sido actualizada', true, false, false);
-        }
+      }
+      
+      // Buscar si el producto ya está en la lista de conteo
+      var existeEnListaConteo = conteoList.firstWhere(
+        (e) => e.codItem == productoEscaneado.raiz,
+        orElse: () => Conteo.empty(), // Si no se encuentra, retornar null
+      );
+
+      if (existeEnListaConteo.itemConteoId != 0) {
+        // Si el producto está en la lista, incrementar su conteo
+        existeEnListaConteo.conteo += 1;
+        print('Conteo actualizado: ${existeEnListaConteo.conteo}');
+        await _almacenServices.patchUbicacionItemEnAlmacen(
+          context, 
+          productoEscaneado.raiz, 
+          almacen.almacenId, 
+          ubicacion.almacenUbicacionId, 
+          true, 
+          existeEnListaConteo.conteo, 
+          token
+        );
+      } else {
+        // Si el producto no está en la lista, agregarlo con conteo 0
+        await _almacenServices.patchUbicacionItemEnAlmacen(
+          context, 
+          productoEscaneado.raiz, 
+          almacen.almacenId, 
+          ubicacion.almacenUbicacionId, 
+          false, 
+          0, 
+          token
+        );
+      }
+
+      statusCode = await _almacenServices.getStatusCode();
+      await _almacenServices.resetStatusCode();
+      
+      if (statusCode == 1) {
         conteoList = await _almacenServices.getConteoUbicacion(context, almacen.almacenId, ubicacion.almacenUbicacionId, token);
-        setState(() {});
-      } catch (e) {
-        // await error(value);
-        print('Producto no encontrado: $value');
-      } finally {
-        // Restablecer el campo y reenfocar
         textController.clear();
         await Future.delayed(const Duration(milliseconds: 100)); // Breve pausa para evitar conflictos de enfoque
         focoDeScanner.requestFocus();
       }
+      setState(() {});
     }
   }
 

@@ -1,8 +1,8 @@
 import 'package:deposito/models/almacen.dart';
 import 'package:deposito/models/ubicacion_almacen.dart';
 import 'package:deposito/services/almacen_services.dart';
-import 'package:deposito/widgets/custom_form_dropdown.dart';
 import 'package:deposito/widgets/custom_form_field.dart';
+import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
@@ -15,7 +15,6 @@ import 'package:deposito/services/product_services.dart';
 import 'package:deposito/widgets/carteles.dart';
 
 class TransferenciaAlmacenPage extends StatefulWidget {
-
   const TransferenciaAlmacenPage({super.key});
 
   @override
@@ -32,8 +31,6 @@ class _TransferenciaAlmacenPageState extends State<TransferenciaAlmacenPage> {
   final TextEditingController _cantidadTransferirController = TextEditingController();
   List<UbicacionAlmacen> listaUbicaciones = [];
   late UbicacionAlmacen ubicacionSeleccionada = UbicacionAlmacen.empty();
-
-
 
   @override
   void initState() {
@@ -55,8 +52,6 @@ class _TransferenciaAlmacenPageState extends State<TransferenciaAlmacenPage> {
     _escaneoActivo = false; // Asegura que no se active automáticamente
   }
 
-
-
   void cargarDatos() async {
     final productProvider = context.read<ProductProvider>();
     almacen = productProvider.almacen;
@@ -68,74 +63,63 @@ class _TransferenciaAlmacenPageState extends State<TransferenciaAlmacenPage> {
   @override
   Widget build(BuildContext context) {
     final colores = Theme.of(context).colorScheme;
-    return PopScope(
-      canPop: false, // Evita que la acción predeterminada del botón de retroceso se ejecute
-      onPopInvokedWithResult: (bool didPop, result) {
-        // Navega a la ruta '/almacen' cuando se presiona el botón de retroceso
-        appRouter.pushReplacement('/almacen');
-        // No es necesario retornar nada, ya que `canPop` ya está configurado en `false`
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          elevation: 0,
-          backgroundColor: colores.primary,
-          iconTheme: IconThemeData(color: colores.surface),
-          leading: IconButton(
-            onPressed: () => appRouter.pop(),
-            icon: const Icon(Icons.arrow_back),
-          ),
-          title: Text('Escanee un producto', style: TextStyle(color: colores.onPrimary),),
-          actions: [
-            IconButton(
-              onPressed: () async {
-                await manualSearch(context);
-              },
-              icon: const Icon(Icons.search)
-            )
+    return Scaffold(
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: colores.primary,
+        iconTheme: IconThemeData(color: colores.surface),
+        leading: IconButton(
+          onPressed: () => appRouter.pop(),
+          icon: const Icon(Icons.arrow_back),
+        ),
+        title: Text('Escanee un producto', style: TextStyle(color: colores.onPrimary),),
+        actions: [
+          IconButton(
+            onPressed: () async {
+              await manualSearch(context);
+            },
+            icon: const Icon(Icons.search)
+          )
+        ],
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Center(
+                child: Text('Último escaneado: $barcodeFinal', textAlign: TextAlign.center),
+              ),
+            ),
+
+            Expanded(
+              child: VisibilityDetector(
+                key: const Key('visible-detector-key'),
+                onVisibilityChanged: (info) {
+                  if (info.visibleFraction > 0) {
+                    _onBarcodeScanned();
+                  }
+                },
+                child: BarcodeKeyboardListener(
+                  bufferDuration: const Duration(milliseconds: 200),
+                  onBarcodeScanned: (barcode) => _onBarcodeScanned(barcode),
+                  child: const Text('', style: TextStyle(fontSize: 16, color: Colors.white)),
+                ),
+              ),
+            ),
           ],
         ),
-        body: SafeArea(
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Center(
-                  child: Text('Último escaneado: $barcodeFinal', textAlign: TextAlign.center),
-                ),
-              ),
-              Align(
-                alignment: Alignment.center,
-                child: ElevatedButton(
-                  style: const ButtonStyle(iconSize: WidgetStatePropertyAll(100)),
-                  onPressed:() async {
-                    await _scanBarcode();
-                  },
-                  child: const Icon(Icons.qr_code_scanner_outlined),
-                ),
-              ),
-              Expanded(
-                child: VisibilityDetector(
-                  key: const Key('visible-detector-key'),
-                  onVisibilityChanged: (info) {
-                    if (info.visibleFraction > 0) {
-                      _onBarcodeScanned();
-                    }
-                  },
-                  child: BarcodeKeyboardListener(
-                    bufferDuration: const Duration(milliseconds: 200),
-                    onBarcodeScanned: (barcode) => _onBarcodeScanned(barcode),
-                    child: const Text('', style: TextStyle(fontSize: 16, color: Colors.white)),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          await _scanBarcode();
+        },
+        child: const Icon(Icons.qr_code_scanner_outlined),
       ),
     );
   }
 
-  Future<void> transferir (BuildContext context, Product producto) async {
+  Future<void> transferir(BuildContext context, Product producto) async {
     _cantidadTransferirController.clear();
     await showDialog(
       context: context,
@@ -150,17 +134,33 @@ class _TransferenciaAlmacenPageState extends State<TransferenciaAlmacenPage> {
                 controller: _cantidadTransferirController,
               ),
               const SizedBox(height: 10,),
-              CustomDropdownFormMenu(
-                items: listaUbicaciones.map((e) {
-                  return DropdownMenuItem(
-                    value: e,
-                    child: Text(e.descripcion)
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  ubicacionSeleccionada = value;
-                }
-              )
+              Container(
+                decoration: BoxDecoration(
+                  border: Border.all(),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: DropdownSearch(
+                  dropdownDecoratorProps: const DropDownDecoratorProps(
+                    textAlign: TextAlign.center,
+                    textAlignVertical: TextAlignVertical.center,
+                    dropdownSearchDecoration: InputDecoration(
+                      hintText: 'Seleccione una ubicacion',
+                      alignLabelWithHint: true,
+                      border: InputBorder.none,
+                    ),
+                  ),
+                  popupProps: const PopupProps.menu(
+                    showSearchBox: true,
+                    searchDelay: Duration.zero,
+                  ),
+                  onChanged: (value) {
+                    ubicacionSeleccionada = value;
+                    setState(() {});
+                  },
+                  items: listaUbicaciones,
+                  selectedItem: ubicacionSeleccionada.almacenId == 0 ? null : ubicacionSeleccionada,
+                ),
+              ),
             ],
           ),
           actions: [
@@ -174,7 +174,7 @@ class _TransferenciaAlmacenPageState extends State<TransferenciaAlmacenPage> {
               onPressed: () async {
                 appRouter.pop();
               },
-              child: const Text('Buscar'),
+              child: const Text('Transferir'),
             ),
           ],
         );

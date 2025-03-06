@@ -81,7 +81,13 @@ class _RevisarInventarioState extends State<RevisarInventario> {
                     var item = listaConteo[i];
                     return ListTile(
                       title: Text(item.descripcion),
-                      subtitle: Text('Cantidad contada: ${item.conteo}'),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Cantidad contada: ${item.conteo}'),
+                          Text('Ubicacion: ${item.codUbicacion}'),
+                        ],
+                      ),
                     );
                   }
                 )
