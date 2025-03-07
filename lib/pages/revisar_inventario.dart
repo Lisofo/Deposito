@@ -4,6 +4,7 @@ import 'package:deposito/models/conteo.dart';
 import 'package:deposito/models/product.dart';
 import 'package:deposito/provider/product_provider.dart';
 import 'package:deposito/services/almacen_services.dart';
+import 'package:deposito/widgets/carteles.dart';
 import 'package:deposito/widgets/custom_button.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -23,6 +24,7 @@ class _RevisarInventarioState extends State<RevisarInventario> {
   late bool visible;
   late Almacen almacen;
   late String token;
+  final _almacenServices = AlmacenServices();
 
   bool estoyBuscando = true;
 
@@ -101,13 +103,59 @@ class _RevisarInventarioState extends State<RevisarInventario> {
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           CustomButton(
-            tamano: 24,
+            text: 'Borrar conteo del almacen',
+            onPressed: () async {
+              borrarConteoTotal(context);
+            }
+          ),
+          CustomButton(
+            tamano: 18,
             text: 'Finalizar', 
             onPressed: () async {
+              int? statusCode;
+              await _almacenServices.confirmarConteo(context, almacen.almacenId, token);
+              statusCode = await _almacenServices.getStatusCode();
+              await _almacenServices.resetStatusCode();
+              if(statusCode == 1) {
+                appRouter.pop();
+              }
             }
           )
         ],
       ),
+    );
+  }
+
+  Future<void> borrarConteoTotal(BuildContext context) async {
+    String texto = 'Desea eliminar todo los productos contados hasta ahora?';
+    await showDialog(
+      context: context, 
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Mensaje"),
+          content: Text(texto),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                appRouter.pop();
+              },
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () async {
+                await _almacenServices.deleteConteo(context, almacen.almacenId, 0, 0, token);
+                int? statusCode;
+                statusCode = await _almacenServices.getStatusCode();
+                await _almacenServices.resetStatusCode();
+                if(statusCode == 1) {
+                  Carteles.showDialogs(context, 'Conteos del almacen eliminados correctamente', true, true, false);
+                }
+              },
+              child: const Text('Aceptar'),
+            ),
+          ],
+        );
+      },
     );
   }
 }

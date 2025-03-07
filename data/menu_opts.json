@@ -27,12 +27,6 @@
                     "icon": "calendar_month",
                     "texto": "Transferencia",
                     "parametro": 2
-                },
-                {
-                    "ruta": "/transferencia2",
-                    "icon": "calendar_month",
-                    "texto": "Transferencia2",
-                    "parametro": 2
                 }
             ]
         }

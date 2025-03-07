@@ -1,18 +1,16 @@
-import 'package:deposito/models/almacen.dart';
-import 'package:deposito/models/ubicacion_almacen.dart';
-import 'package:deposito/services/almacen_services.dart';
-import 'package:deposito/widgets/custom_form_field.dart';
 import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
-import 'package:visibility_detector/visibility_detector.dart';
-import 'package:flutter_barcode_listener/flutter_barcode_listener.dart';
 import 'package:deposito/config/router/router.dart';
+import 'package:deposito/models/almacen.dart';
+import 'package:deposito/models/ubicacion_almacen.dart';
 import 'package:deposito/models/product.dart';
 import 'package:deposito/provider/product_provider.dart';
+import 'package:deposito/services/almacen_services.dart';
 import 'package:deposito/services/product_services.dart';
 import 'package:deposito/widgets/carteles.dart';
+import 'package:deposito/widgets/custom_button.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 
 class TransferenciaAlmacenPage extends StatefulWidget {
   const TransferenciaAlmacenPage({super.key});
@@ -22,15 +20,15 @@ class TransferenciaAlmacenPage extends StatefulWidget {
 }
 
 class _TransferenciaAlmacenPageState extends State<TransferenciaAlmacenPage> {
-  String barcodeFinal = '';
-  late String token;
-  late bool tienePermiso = true;
   late Almacen almacen;
-  bool _escaneoActivo = false;
-  final TextEditingController _searchController = TextEditingController();
-  final TextEditingController _cantidadTransferirController = TextEditingController();
+  late String token;
+  late UbicacionAlmacen ubicacionOrigen = UbicacionAlmacen.empty();
+  TextEditingController textController = TextEditingController();
+  FocusNode focoDeScanner = FocusNode();
+  final _almacenServices = AlmacenServices();
+  List<Product> productosEscaneados = [];
   List<UbicacionAlmacen> listaUbicaciones = [];
-  late UbicacionAlmacen ubicacionSeleccionada = UbicacionAlmacen.empty();
+  bool ubicacionEscaneada = false; // Controla si la ubicación ya fue escaneada
 
   @override
   void initState() {
@@ -38,260 +36,175 @@ class _TransferenciaAlmacenPageState extends State<TransferenciaAlmacenPage> {
     cargarDatos();
   }
 
-  @override
-  void dispose() {
-    _searchController.dispose();
-    _cantidadTransferirController.dispose();
-    super.dispose();
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    print("didChangeDependencies llamado");
-    _escaneoActivo = false; // Asegura que no se active automáticamente
-  }
-
-  void cargarDatos() async {
+  cargarDatos() async {
     final productProvider = context.read<ProductProvider>();
     almacen = productProvider.almacen;
     token = productProvider.token;
-    listaUbicaciones = await AlmacenServices().getUbicacionDeAlmacen(context, almacen.almacenId, token);
+    listaUbicaciones = await _almacenServices.getUbicacionDeAlmacen(context, almacen.almacenId, token);
     setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
-    final colores = Theme.of(context).colorScheme;
-    return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: colores.primary,
-        iconTheme: IconThemeData(color: colores.surface),
-        leading: IconButton(
-          onPressed: () => appRouter.pop(),
-          icon: const Icon(Icons.arrow_back),
-        ),
-        title: Text('Escanee un producto', style: TextStyle(color: colores.onPrimary),),
-        actions: [
-          IconButton(
+    final colors = Theme.of(context).colorScheme;
+    return SafeArea(
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text(
+            'Transferencia - Origen',
+            style: TextStyle(color: Colors.white),
+          ),
+          leading: IconButton.filledTonal(
+            style: ButtonStyle(
+              backgroundColor: WidgetStatePropertyAll(colors.primary),
+            ),
             onPressed: () async {
-              await manualSearch(context);
+              appRouter.pop();
             },
-            icon: const Icon(Icons.search)
-          )
-        ],
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Center(
-                child: Text('Último escaneado: $barcodeFinal', textAlign: TextAlign.center),
-              ),
-            ),
-
-            Expanded(
-              child: VisibilityDetector(
-                key: const Key('visible-detector-key'),
-                onVisibilityChanged: (info) {
-                  if (info.visibleFraction > 0) {
-                    _onBarcodeScanned();
-                  }
-                },
-                child: BarcodeKeyboardListener(
-                  bufferDuration: const Duration(milliseconds: 200),
-                  onBarcodeScanned: (barcode) => _onBarcodeScanned(barcode),
-                  child: const Text('', style: TextStyle(fontSize: 16, color: Colors.white)),
-                ),
-              ),
-            ),
-          ],
+            icon: const Icon(Icons.arrow_back),
+          ),
+          iconTheme: const IconThemeData(color: Colors.white),
+          elevation: 0,
+          backgroundColor: colors.primary,
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          await _scanBarcode();
-        },
-        child: const Icon(Icons.qr_code_scanner_outlined),
-      ),
-    );
-  }
-
-  Future<void> transferir(BuildContext context, Product producto) async {
-    _cantidadTransferirController.clear();
-    await showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text('Transferir ${producto.descripcion}'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
+        body: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Column(
             children: [
-              CustomTextFormField(
-                hint: 'Cantidad a transferir',
-                controller: _cantidadTransferirController,
-              ),
-              const SizedBox(height: 10,),
-              Container(
-                decoration: BoxDecoration(
-                  border: Border.all(),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: DropdownSearch(
-                  dropdownDecoratorProps: const DropDownDecoratorProps(
-                    textAlign: TextAlign.center,
-                    textAlignVertical: TextAlignVertical.center,
-                    dropdownSearchDecoration: InputDecoration(
-                      hintText: 'Seleccione una ubicacion',
-                      alignLabelWithHint: true,
-                      border: InputBorder.none,
+              // Escaneo de ubicación de origen
+              if (!ubicacionEscaneada) // Solo muestra si la ubicación no ha sido escaneada
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: DropdownSearch<UbicacionAlmacen>(
+                    dropdownDecoratorProps: const DropDownDecoratorProps(
+                      textAlign: TextAlign.center,
+                      textAlignVertical: TextAlignVertical.center,
+                      dropdownSearchDecoration: InputDecoration(
+                        hintText: 'Seleccione ubicación de origen',
+                        alignLabelWithHint: true,
+                        border: InputBorder.none,
+                      ),
                     ),
+                    popupProps: const PopupProps.menu(
+                      showSearchBox: true,
+                      searchDelay: Duration.zero,
+                    ),
+                    onChanged: (value) {
+                      setState(() {
+                        ubicacionOrigen = value!;
+                        ubicacionEscaneada = true; // Marca la ubicación como escaneada
+                      });
+                    },
+                    items: listaUbicaciones,
+                    selectedItem: ubicacionOrigen.almacenId == 0 ? null : ubicacionOrigen,
                   ),
-                  popupProps: const PopupProps.menu(
-                    showSearchBox: true,
-                    searchDelay: Duration.zero,
-                  ),
-                  onChanged: (value) {
-                    ubicacionSeleccionada = value;
-                    setState(() {});
-                  },
-                  items: listaUbicaciones,
-                  selectedItem: ubicacionSeleccionada.almacenId == 0 ? null : ubicacionSeleccionada,
                 ),
-              ),
+              const SizedBox(height: 20),
+              // Escaneo de productos (solo si la ubicación ya fue escaneada)
+              if (ubicacionEscaneada)
+                VisibilityDetector(
+                  key: const Key('scanner-field-visibility'),
+                  onVisibilityChanged: (info) {
+                    if (info.visibleFraction > 0) {
+                      focoDeScanner.requestFocus();
+                    }
+                  },
+                  child: TextFormField(
+                    focusNode: focoDeScanner,
+                    cursorColor: Colors.transparent,
+                    decoration: const InputDecoration(
+                      border: UnderlineInputBorder(borderSide: BorderSide.none),
+                    ),
+                    style: const TextStyle(color: Colors.transparent),
+                    autofocus: true,
+                    keyboardType: TextInputType.none,
+                    controller: textController,
+                    onFieldSubmitted: procesarEscaneoProducto,
+                  ),
+                ),
+              const SizedBox(height: 20),
+              // Lista de productos escaneados (solo si la ubicación ya fue escaneada)
+              if (ubicacionEscaneada)
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: productosEscaneados.length,
+                    itemBuilder: (context, index) {
+                      final producto = productosEscaneados[index];
+                      return ListTile(
+                        title: Text(producto.descripcion),
+                        subtitle: Text('Código: ${producto.raiz}'),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          onPressed: () {
+                            setState(() {
+                              productosEscaneados.removeAt(index);
+                            });
+                          },
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              // Botón para continuar a la siguiente pantalla (solo si la ubicación ya fue escaneada)
+              if (ubicacionEscaneada)
+                CustomButton(
+                  text: 'Continuar',
+                  onPressed: () {
+                    if (ubicacionOrigen.almacenId == 0 || productosEscaneados.isEmpty) {
+                      Carteles.showDialogs(context, 'Complete todos los campos para continuar', false, true, false);
+                      return;
+                    }
+                    // Pasar los argumentos a la siguiente pantalla
+                    appRouter.push('/transferencia-destino', extra: {
+                      'ubicacionOrigen': ubicacionOrigen,
+                      'productosEscaneados': productosEscaneados,
+                    });
+                  },
+                ),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                appRouter.pop();
-              },
-              child: const Text('Cerrar'),
-            ),
-            TextButton(
-              onPressed: () async {
-                appRouter.pop();
-              },
-              child: const Text('Transferir'),
-            ),
-          ],
-        );
+        ),
+      ),
+    );
+  }
+
+  Future<void> procesarEscaneoProducto(String value) async {
+    if (value.isNotEmpty) {
+      print('el valor es $value');
+      if (!ubicacionEscaneada) {
+        // Si la ubicación no ha sido escaneada, procesar como ubicación
+        try {
+          final ubicacionEncontrada = listaUbicaciones.firstWhere(
+            (element) => element.codUbicacion == value || element.descripcion.contains(value),
+          );
+          ubicacionOrigen = ubicacionEncontrada;
+          print(ubicacionOrigen.descripcion);
+          ubicacionEscaneada = true; // Marca la ubicación como escaneada
+          setState(() {});
+          textController.clear();
+          await Future.delayed(const Duration(milliseconds: 100));
+          focoDeScanner.requestFocus();
+        } catch (e) {
+          Carteles.showDialogs(context, 'Ubicación no encontrada', false, false, false);
+        }
+      } else {
+        // Si la ubicación ya fue escaneada, procesar como producto
+        final productos = await ProductServices().getProductByName(context, '', '2', almacen.almacenId.toString(), value, '0', token);
+        if (productos.isNotEmpty) {
+          final producto = productos[0];
+          setState(() {
+            productosEscaneados.add(producto);
+          });
+          textController.clear();
+          await Future.delayed(const Duration(milliseconds: 100));
+          focoDeScanner.requestFocus();
+        } else {
+          Carteles.showDialogs(context, 'Producto no encontrado', false, false, false);
+        }
       }
-    );
-  }
-
-  Future<void> manualSearch(BuildContext context) async {
-    _searchController.clear();
-    await showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Buscar'),
-          content: CustomTextFormField(
-            maxLines: 1,
-            hint: 'Buscar código de barras',
-            controller: _searchController,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                appRouter.pop();
-              },
-              child: const Text('Cerrar'),
-            ),
-            TextButton(
-              onPressed: () async {
-                String barcode = _searchController.text;
-                final listaProductosTemporal = await ProductServices().getProductByName(
-                  context,
-                  '',
-                  '2',
-                  almacen.almacenId.toString(),
-                  barcode,
-                  "0",
-                  token,
-                );
-
-                if (listaProductosTemporal.isNotEmpty) {
-                  final productoRetorno = listaProductosTemporal[0];
-                } else {
-                  Carteles.showDialogs(context, 'No se pudo conseguir ningún producto con el código $barcode', false, false, false);
-                }
-              },
-              child: const Text('Buscar'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<void> _onBarcodeScanned([String? barcode]) async {
-    print('Valor escaneado: $barcode');
-
-    final listaProductosTemporal = await ProductServices().getProductByName(
-      context,
-      '',
-      '2',
-      Provider.of<ProductProvider>(context, listen: false).almacen.almacenId.toString(),
-      barcode.toString(),
-      "0",
-      token,
-    );
-
-    if (listaProductosTemporal.isNotEmpty) {
-      final productoRetorno = listaProductosTemporal[0];
-    } else {
-      Carteles.showDialogs(context, 'No se pudo conseguir ningún producto con el código $barcode', false, false, false);
     }
-  }
-
-  Future<void> _scanBarcode() async {
-    print('Intentando escanear: $_escaneoActivo');
-    if (_escaneoActivo) return;
-    _escaneoActivo = true;
-
-    String? code = await SimpleBarcodeScanner.scanBarcode(
-      context,
-      lineColor: '#FFFFFF',
-      cancelButtonText: 'Cancelar',
-      isShowFlashIcon: false,
-      delayMillis: 1000,
-    );
-
-    if (code == '-1') {
-      _escaneoActivo = false; // Restablecer la variable si se cancela el escaneo
-      return;
-    }
-
-    setState(() {
-      barcodeFinal = code.toString();
-    });
-
-    final listaProductosTemporal = await ProductServices().getProductByName(
-      context,
-      '',
-      '2',
-      almacen.almacenId.toString(),
-      code.toString(),
-      "0",
-      token,
-    );
-
-    if (listaProductosTemporal.isNotEmpty) {
-      final productoRetorno = listaProductosTemporal[0];
-    } else {
-      Carteles.showDialogs(
-        context,
-        'No se pudo conseguir ningún producto con el código $barcodeFinal',
-        false,
-        false,
-        false,
-      );
-    }
-
-    _escaneoActivo = false; // Permitir otro escaneo después de la navegación
   }
 }

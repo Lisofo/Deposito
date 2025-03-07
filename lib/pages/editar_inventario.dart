@@ -340,7 +340,7 @@ class _EditarInventarioState extends State<EditarInventario> {
       if(statusCode == 1) {
         conteoList = await _almacenServices.getConteoUbicacion(context, almacen.almacenId, ubicacion.almacenUbicacionId, token);
       }
-      
+      setState(() {});
     } else {
       setState(() {
         selectedProduct = Product.empty();
@@ -348,7 +348,7 @@ class _EditarInventarioState extends State<EditarInventario> {
     }
   }
 
-   procesarEscaneo(String value) async {
+  procesarEscaneo(String value) async {
     late List<Product> productos = [];
     int? statusCode;
     if (value.isNotEmpty) {
@@ -358,6 +358,14 @@ class _EditarInventarioState extends State<EditarInventario> {
         productoEscaneado = Product.empty();
       } else {
         productoEscaneado = productos[0];
+      }
+
+      if(productoEscaneado.raiz == '') {
+        textController.clear();
+        await Future.delayed(const Duration(milliseconds: 100)); // Breve pausa para evitar conflictos de enfoque
+        focoDeScanner.requestFocus();
+        await error(value);
+        return;
       }
       
       // Buscar si el producto ya está en la lista de conteo
@@ -397,10 +405,10 @@ class _EditarInventarioState extends State<EditarInventario> {
       
       if (statusCode == 1) {
         conteoList = await _almacenServices.getConteoUbicacion(context, almacen.almacenId, ubicacion.almacenUbicacionId, token);
-        textController.clear();
-        await Future.delayed(const Duration(milliseconds: 100)); // Breve pausa para evitar conflictos de enfoque
-        focoDeScanner.requestFocus();
       }
+      textController.clear();
+      await Future.delayed(const Duration(milliseconds: 100)); // Breve pausa para evitar conflictos de enfoque
+      focoDeScanner.requestFocus();
       setState(() {});
     }
   }
@@ -411,7 +419,7 @@ class _EditarInventarioState extends State<EditarInventario> {
       builder: (context) {
         return AlertDialog(
           title: const Text("Mensaje"),
-          content: Text('La ubicacion $value no existe o no ha sido encontrada'),
+          content: Text('El producto $value no se encontró'),
           actions: [
             TextButton(
               onPressed: () {

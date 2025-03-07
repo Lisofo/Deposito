@@ -112,6 +112,7 @@ class _AgregarUbicacionesState extends State<AgregarUbicaciones> {
                 controller: cantMinController,
                 hint: 'Ingrese cantidad mínima',
                 maxLines: 1,
+                keyboard: const TextInputType.numberWithOptions(),
               ),
             ),
             const Text('Cantidad máxima'),
@@ -121,6 +122,7 @@ class _AgregarUbicacionesState extends State<AgregarUbicaciones> {
                 controller: cantMaxController,
                 hint: 'Ingrese cantidad máxima',
                 maxLines: 1,
+                keyboard: const TextInputType.numberWithOptions(),
               ),
             ),
             Center(
@@ -129,8 +131,8 @@ class _AgregarUbicacionesState extends State<AgregarUbicaciones> {
                 tamano: 24,
                 text: 'Agregar +',
                 onPressed: ubicacionSeleccionada.almacenId == 0 ? null : () async {
-                  int min = int.parse(cantMinController.text);
-                  int max = int.parse(cantMaxController.text);
+                  int min = cantMinController.text == '' ? 0 : int.parse(cantMinController.text);
+                  int max = cantMaxController.text == '' ? 0 : int.parse(cantMaxController.text);
                   if(min > max) {
                     return Carteles.showDialogs(context, 'Revise la cantidad de minimos y maximos', false, false, false);
                   }

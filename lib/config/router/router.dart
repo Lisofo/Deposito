@@ -10,8 +10,8 @@ import 'package:deposito/pages/product_page.dart';
 import 'package:deposito/pages/revisar_inventario.dart';
 import 'package:deposito/pages/seleccion_almacen.dart';
 import 'package:deposito/pages/simple_product_page.dart';
-import 'package:deposito/pages/transferencia.dart';
 import 'package:deposito/pages/transferencia_almacen.dart';
+import 'package:deposito/pages/transferencia_ubicacion_destino.dart'; // Importa la nueva pantalla
 import 'package:deposito/pages/version_check_page.dart';
 import 'package:go_router/go_router.dart';
 
@@ -41,7 +41,18 @@ class AppRouter {
         GoRoute(path: '/revisarInventario', builder: (context, state) => const RevisarInventario()),
         GoRoute(path: '/dashboard', builder: (context, state) => const DashboardPage()),
         GoRoute(path: '/transferencia', builder: (context, state) => const TransferenciaAlmacenPage()),
-        GoRoute(path: '/transferencia2', builder: (context, state) => const TransferenciaPage()),
+        // Nueva ruta para TransferenciaUbicacionDestino
+        GoRoute(
+          path: '/transferencia-destino',
+          builder: (context, state) {
+            // Obtener los argumentos pasados a través de `extra`
+            final args = state.extra as Map<String, dynamic>;
+            return TransferenciaUbicacionDestino(
+              ubicacionOrigen: args['ubicacionOrigen'],
+              productosEscaneados: args['productosEscaneados'],
+            );
+          },
+        ),
       ],
     );
   }

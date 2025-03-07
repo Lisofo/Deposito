@@ -185,6 +185,8 @@ class _EditUbicacionesState extends State<EditUbicaciones> {
                     texto = 'Cantidades mínimas editadas correctamente';
                   } else if(min == item.existenciaMinima && max != item.existenciaMaxima) {
                     texto = 'Cantidades máximas editadas correctamente';
+                  } else if(min == 0 && max == 0){
+                    texto = 'Cantidades mínimas y máximas editadas correctamente';
                   }
                   print(texto);
                   item.existenciaMaxima = max;
@@ -221,7 +223,7 @@ class _EditUbicacionesState extends State<EditUbicaciones> {
                 statusCode = await _almacenServices.getStatusCode();
                 await _almacenServices.resetStatusCode();
                 if(statusCode == 1) {
-                  Carteles.showDialogs(context, 'Item borrado correctamente', true, false, false);
+                  Carteles.showDialogs(context, 'Ubicación borrada correctamente', true, false, false);
                   itemsXUbicacionesAlmacen.removeWhere((ItemsPorUbicacion element) => element.itemAlmacenUbicacionId == item.itemAlmacenUbicacionId);
                   setState(() {});
                 }

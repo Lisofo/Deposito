@@ -117,22 +117,6 @@ class _InventarioPageState extends State<InventarioPage> {
                   selectedItem: ubicacionSeleccionada.almacenId == 0 ? null : ubicacionSeleccionada,
                 ),
               ),
-              // CustomDropdownFormMenu(
-              //   hint: 'Seleccione ubicacion del almacen',
-              //   onChanged: (value) {
-              //     ubicacionSeleccionada = value;
-              //     Provider.of<ProductProvider>(context, listen: false).setUbicacion(ubicacionSeleccionada);
-              //     appRouter.push('/editarInventario');
-              //     setState(() {});
-              //   },
-              //   items: listaUbicaciones.map((e) {
-              //     return DropdownMenuItem(
-              //       value: e,
-              //       child: Text(e.descripcion)
-              //     );
-              //   }).toList(),
-              //   value: ubicacionSeleccionada.almacenId == 0 ? null : ubicacionSeleccionada,
-              // ),
               const SizedBox(height: 20,),
               VisibilityDetector(
                 key: const Key('scanner-field-visibility'),
@@ -177,14 +161,8 @@ class _InventarioPageState extends State<InventarioPage> {
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           CustomButton(
-            text: 'Borrar conteo del almacen',
-            onPressed: () async {
-              borrarConteoTotal(context);
-            }
-          ),
-          const SizedBox(width: 10,), 
-          CustomButton(
-            text: 'Revisar', 
+            text: 'Revisar',
+            tamano: 24,
             onPressed: () async {
               appRouter.push('/revisarInventario');
             }
@@ -198,39 +176,6 @@ class _InventarioPageState extends State<InventarioPage> {
     ubicacionSeleccionada = UbicacionAlmacen.empty();
     focoDeScanner.requestFocus();
     setState(() {});
-  }
-
-  Future<void> borrarConteoTotal(BuildContext context) async {
-    String texto = 'Desea eliminar todo los productos contados hasta ahora?';
-    await showDialog(
-      context: context, 
-      builder: (context) {
-        return AlertDialog(
-          title: const Text("Mensaje"),
-          content: Text(texto),
-          actions: [
-            TextButton(
-              onPressed: () async {
-                appRouter.pop();
-              },
-              child: const Text('Cancelar'),
-            ),
-            TextButton(
-              onPressed: () async {
-                await _almacenServices.deleteConteo(context, almacen.almacenId, 0, 0, token);
-                int? statusCode;
-                statusCode = await _almacenServices.getStatusCode();
-                await _almacenServices.resetStatusCode();
-                if(statusCode == 1) {
-                  Carteles.showDialogs(context, 'Conteos del almacen eliminados correctamente', true, false, false);
-                }
-              },
-              child: const Text('Aceptar'),
-            ),
-          ],
-        );
-      },
-    );
   }
 
   procesarEscaneo(String value) async {
