@@ -49,7 +49,7 @@ List<Widget> _filaBotones2(data, context, opciones,) {
           TextButton(
             onPressed: () {
               // Provider.of<OrdenProvider>(context, listen: false).setPageName(opt['texto']);
-              appRouter.push(opt['ruta'], extra: opt['parametro']);
+              appRouter.push(opt['ruta']);
             },
             child: Text(opt['texto'],
               style: const TextStyle(color: Colors.black),

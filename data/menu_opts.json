@@ -1,5 +1,5 @@
 {
-    "nombreApp": "showroom",
+    "nombreApp": "deposito",
     "rutas": [
         {
             "camino": "Planificador",
@@ -7,32 +7,27 @@
                 {
                     "ruta": "/buscadorProducto",
                     "icon": "calendar_month",
-                    "texto": "Productos",
-                    "parametro": 1
+                    "texto": "Productos"
                 },
                 {
                     "ruta": "/inventario",
                     "icon": "calendar_month",
-                    "texto": "Inventario",
-                    "parametro": 2
+                    "texto": "Inventario"
                 },
                 {
                     "ruta": "/dashboard",
                     "icon": "calendar_month",
-                    "texto": "Dashboard",
-                    "parametro": 2
+                    "texto": "Dashboard"
                 },
                 {
                     "ruta": "/transferencia",
                     "icon": "calendar_month",
-                    "texto": "Transferencia",
-                    "parametro": 2
+                    "texto": "Transferencia"
                 },
                 {
                     "ruta": "/resumenInventario",
                     "icon": "calendar_month",
-                    "texto": "Resumen Inventario",
-                    "parametro": 2
+                    "texto": "Resumen Inventario"
                 }
             ]
         }

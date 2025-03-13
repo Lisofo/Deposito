@@ -26,14 +26,15 @@ class AppRouter {
         GoRoute(path: '/login', builder: (context, state) => const Login()),
         GoRoute(path: '/almacen', builder: (context, state) => const SeleccionAlmacen()),
         GoRoute(path: '/menu', builder: (context, state) => const MenuPage()),
-        GoRoute(
-          path: '/buscadorProducto',
-          builder: (context, state) {
-            // Obtener el parámetro pasado a través de `extra`
-            final parametro = state.extra as int? ?? 0; // Valor por defecto si no se pasa nada
-            return BuscadorProducto(parametro: parametro);
-          },
-        ),
+        // GoRoute(
+        //   path: '/buscadorProducto',
+        //   builder: (context, state) {
+        //     // Obtener el parámetro pasado a través de `extra`
+        //     final parametro = state.extra as int? ?? 0; // Valor por defecto si no se pasa nada
+        //     return BuscadorProducto(parametro: parametro);
+        //   },
+        // ),
+        GoRoute(path: '/buscadorProducto', builder: (context, state) => const BuscadorProducto()),
         GoRoute(path: '/simpleProductPage', builder: (context, state) => const SimpleProductPage()),
         GoRoute(path: '/paginaProducto', builder: (context, state) => const ProductPage()),
         GoRoute(path: '/editUbicaciones', builder: (context, state) => const EditUbicaciones()),
