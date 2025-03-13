@@ -28,6 +28,11 @@
                     "ruta": "/resumenInventario",
                     "icon": "calendar_month",
                     "texto": "Resumen Inventario"
+                },
+                {
+                    "ruta": "/consultaUbicaciones",
+                    "icon": "calendar_month",
+                    "texto": "Consulta Ubicaciones"
                 }
             ]
         }

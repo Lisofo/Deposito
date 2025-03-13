@@ -4,6 +4,7 @@ import 'package:deposito/pages/Dashboard/dashboard.dart';
 import 'package:deposito/pages/Productos/edit_ubicaciones.dart';
 import 'package:deposito/pages/Inventario/editar_inventario.dart';
 import 'package:deposito/pages/Inventario/inventario.dart';
+import 'package:deposito/pages/consutlaUbicaciones/consulta_ubicaciones.dart';
 import 'package:deposito/pages/login&menu/login.dart';
 import 'package:deposito/pages/login&menu/menu.dart';
 import 'package:deposito/pages/Productos/product_page.dart';
@@ -58,6 +59,7 @@ class AppRouter {
             );
           },
         ),
+        GoRoute(path: '/consultaUbicaciones', builder: (context, state) => const ConsultaUbicacionesPage()),
       ],
     );
   }
