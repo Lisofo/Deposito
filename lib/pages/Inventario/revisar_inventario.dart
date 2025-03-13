@@ -25,6 +25,8 @@ class _RevisarInventarioState extends State<RevisarInventario> {
   late Almacen almacen;
   late String token;
   final _almacenServices = AlmacenServices();
+  late List<String> permisos = [];
+  late bool permisoConteo = false;
 
   bool estoyBuscando = true;
 
@@ -38,6 +40,8 @@ class _RevisarInventarioState extends State<RevisarInventario> {
     final productProvider = context.read<ProductProvider>();
     almacen = productProvider.almacen;
     token = productProvider.token;
+    permisos = productProvider.permisos;
+    permisoConteo = permisos.contains('WMS_INV_CONFIRMAR');
 
     listaConteo = await AlmacenServices().getConteoUbicacion(context, almacen.almacenId, 0, token);
     setState(() {});
@@ -102,25 +106,27 @@ class _RevisarInventarioState extends State<RevisarInventario> {
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          CustomButton(
-            text: 'Borrar conteo del almacen',
-            onPressed: () async {
-              borrarConteoTotal(context);
-            }
-          ),
-          CustomButton(
-            tamano: 18,
-            text: 'Finalizar', 
-            onPressed: () async {
-              int? statusCode;
-              await _almacenServices.confirmarConteo(context, almacen.almacenId, token);
-              statusCode = await _almacenServices.getStatusCode();
-              await _almacenServices.resetStatusCode();
-              if(statusCode == 1) {
-                appRouter.pop();
+          if(permisoConteo) ...[
+            CustomButton(
+              text: 'Borrar conteo del almacen',
+              onPressed: () async {
+                borrarConteoTotal(context);
               }
-            }
-          )
+            ),
+            CustomButton(
+              tamano: 18,
+              text: 'Finalizar', 
+              onPressed: () async {
+                int? statusCode;
+                await _almacenServices.confirmarConteo(context, almacen.almacenId, token);
+                statusCode = await _almacenServices.getStatusCode();
+                await _almacenServices.resetStatusCode();
+                if(statusCode == 1) {
+                  appRouter.pop();
+                }
+              }
+            )
+          ]
         ],
       ),
     );

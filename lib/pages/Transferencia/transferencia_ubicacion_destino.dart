@@ -1,7 +1,7 @@
 import 'package:deposito/config/router/router.dart';
 import 'package:deposito/models/almacen.dart';
-import 'package:deposito/models/product.dart';
 import 'package:deposito/models/ubicacion_almacen.dart';
+import 'package:deposito/pages/Transferencia/transferencia_almacen.dart';
 import 'package:deposito/provider/product_provider.dart';
 import 'package:deposito/services/almacen_services.dart';
 import 'package:deposito/widgets/carteles.dart';
@@ -9,11 +9,11 @@ import 'package:deposito/widgets/custom_button.dart';
 import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
+import 'package:visibility_detector/visibility_detector.dart';
 
 class TransferenciaUbicacionDestino extends StatefulWidget {
   final UbicacionAlmacen ubicacionOrigen;
-  final List<Product> productosEscaneados;
+  final List<ProductoAAgregar> productosEscaneados; // Cambiado a List<ProductoAAgregar>
 
   const TransferenciaUbicacionDestino({
     super.key,
@@ -31,6 +31,8 @@ class _TransferenciaUbicacionDestinoState extends State<TransferenciaUbicacionDe
   late UbicacionAlmacen ubicacionDestino = UbicacionAlmacen.empty();
   List<UbicacionAlmacen> listaUbicaciones = [];
   final _almacenServices = AlmacenServices();
+  TextEditingController textController = TextEditingController();
+  FocusNode focoDeScanner = FocusNode();
 
   @override
   void didChangeDependencies() {
@@ -102,7 +104,40 @@ class _TransferenciaUbicacionDestinoState extends State<TransferenciaUbicacionDe
                   selectedItem: ubicacionDestino.almacenId == 0 ? null : ubicacionDestino,
                 ),
               ),
+              VisibilityDetector(
+                key: const Key('scanner-field-visibility'),
+                onVisibilityChanged: (info) {
+                  if (info.visibleFraction > 0) {
+                    focoDeScanner.requestFocus();
+                  }
+                },
+                child: TextFormField(
+                  focusNode: focoDeScanner,
+                  cursorColor: Colors.transparent,
+                  decoration: const InputDecoration(
+                    border: UnderlineInputBorder(borderSide: BorderSide.none),
+                  ),
+                  style: const TextStyle(color: Colors.transparent),
+                  autofocus: true,
+                  keyboardType: TextInputType.none,
+                  controller: textController,
+                  onFieldSubmitted: procesarEscaneo,
+                ),
+              ),
               const SizedBox(height: 20),
+              // Lista de productos a transferir
+              Expanded(
+                child: ListView.builder(
+                  itemCount: widget.productosEscaneados.length,
+                  itemBuilder: (context, I) {
+                    final productoAAgregar = widget.productosEscaneados[I];
+                    return ListTile(
+                      title: Text(productoAAgregar.productoAgregado.descripcion),
+                      subtitle: Text('Cantidad: ${productoAAgregar.cantidad}'),
+                    );
+                  },
+                ),
+              ),
               // Botón de transferir
               CustomButton(
                 text: 'Transferir',
@@ -121,18 +156,40 @@ class _TransferenciaUbicacionDestinoState extends State<TransferenciaUbicacionDe
     );
   }
 
+  Future<void> procesarEscaneo(String value) async {
+    if (value.isNotEmpty) {
+      // Si la ubicación no ha sido escaneada, procesar como ubicación
+      try {
+        final ubicacionEncontrada = listaUbicaciones.firstWhere((element) => element.codUbicacion == value);
+        setState(() {
+          ubicacionDestino = ubicacionEncontrada;
+        });
+        textController.clear();
+        await Future.delayed(const Duration(milliseconds: 100));
+        focoDeScanner.requestFocus();
+      } catch (e) {
+        Carteles.showDialogs(context, 'Ubicación no encontrada', false, false, false);
+      }
+    }
+  }
+
   Future<void> transferirProductos(BuildContext context) async {
-    for (final producto in widget.productosEscaneados) {
+    int? statusCode;
+    for (final productoAAgregar in widget.productosEscaneados) {
       await _almacenServices.postTransferencia(
         context,
-        producto.raiz,
+        productoAAgregar.productoAgregado.raiz,
         almacen.almacenId,
         widget.ubicacionOrigen.almacenUbicacionId,
         ubicacionDestino.almacenUbicacionId,
+        productoAAgregar.cantidad,
         token,
       );
     }
-    Carteles.showDialogs(context, 'Transferencia completada', true, false, false);
-    appRouter.pop('/transferencia');
+    statusCode = await _almacenServices.getStatusCode();
+    await _almacenServices.resetStatusCode();
+    if(statusCode == 1) {
+      Carteles.showDialogs(context, 'Transferencia completada', true, false, false);
+    }
   }
 }

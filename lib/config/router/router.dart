@@ -1,17 +1,19 @@
-import 'package:deposito/pages/agregar_ubicaciones.dart';
-import 'package:deposito/pages/buscador_producto.dart';
-import 'package:deposito/pages/dashboard.dart';
-import 'package:deposito/pages/edit_ubicaciones.dart';
-import 'package:deposito/pages/editar_inventario.dart';
-import 'package:deposito/pages/inventario.dart';
-import 'package:deposito/pages/login.dart';
-import 'package:deposito/pages/menu.dart';
-import 'package:deposito/pages/product_page.dart';
-import 'package:deposito/pages/revisar_inventario.dart';
+import 'package:deposito/pages/Productos/agregar_ubicaciones.dart';
+import 'package:deposito/pages/Productos/buscador_producto.dart';
+import 'package:deposito/pages/Dashboard/dashboard.dart';
+import 'package:deposito/pages/Productos/edit_ubicaciones.dart';
+import 'package:deposito/pages/Inventario/editar_inventario.dart';
+import 'package:deposito/pages/Inventario/inventario.dart';
+import 'package:deposito/pages/login&menu/login.dart';
+import 'package:deposito/pages/login&menu/menu.dart';
+import 'package:deposito/pages/Productos/product_page.dart';
+import 'package:deposito/pages/Inventario/revisar_inventario.dart';
+import 'package:deposito/pages/resumenInventario/resumen_general_inventario.dart';
+import 'package:deposito/pages/resumenInventario/resumen_inventario.dart';
 import 'package:deposito/pages/seleccion_almacen.dart';
 import 'package:deposito/pages/simple_product_page.dart';
-import 'package:deposito/pages/transferencia_almacen.dart';
-import 'package:deposito/pages/transferencia_ubicacion_destino.dart'; // Importa la nueva pantalla
+import 'package:deposito/pages/Transferencia/transferencia_almacen.dart';
+import 'package:deposito/pages/Transferencia/transferencia_ubicacion_destino.dart'; // Importa la nueva pantalla
 import 'package:deposito/pages/version_check_page.dart';
 import 'package:go_router/go_router.dart';
 
@@ -41,6 +43,8 @@ class AppRouter {
         GoRoute(path: '/revisarInventario', builder: (context, state) => const RevisarInventario()),
         GoRoute(path: '/dashboard', builder: (context, state) => const DashboardPage()),
         GoRoute(path: '/transferencia', builder: (context, state) => const TransferenciaAlmacenPage()),
+        GoRoute(path: '/resumenInventario', builder: (context, state) => const ResumenInventarioPage()),
+        GoRoute(path: '/resumenGeneralnventarioPage', builder: (context, state) => const ResumenGeneralInventarioPage()),
         // Nueva ruta para TransferenciaUbicacionDestino
         GoRoute(
           path: '/transferencia-destino',

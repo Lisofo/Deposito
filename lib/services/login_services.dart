@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:deposito/provider/product_provider.dart';
+import 'package:deposito/widgets/carteles.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -10,11 +11,11 @@ class LoginServices {
   int? statusCode;
   late String apiUrl = Config.APIURL;
   late String apiLink = '$apiUrl/api/auth/login-pin';
+  var dio = Dio();
 
   Future<void> login(String login, password, BuildContext context) async {
     var headers = {'Content-Type': 'application/json'};
     var data = json.encode({"login": login, "pin2": password});
-    var dio = Dio();
     String link = apiLink;
     try {
       var response = await dio.request(
@@ -45,4 +46,59 @@ class LoginServices {
   Future<int?> getStatusCode() async {
     return statusCode;
   }
+
+  Future<List<String>> getPermisos(BuildContext context, String token) async {
+    String link = '$apiUrl/api/auth/permisos';
+    List<String> permisos = [];
+  
+    try {
+      var headers = {'Authorization': token};
+      var resp = await dio.request(
+        link,
+        options: Options(
+          method: 'GET',
+          headers: headers,
+        ),
+      );
+  
+      if (resp.statusCode == 200) {
+        print(resp.data.runtimeType); // Ver qué tipo de datos devuelve la API
+  
+        if (resp.data is List) {
+          permisos = (resp.data as List).map((e) => e.toString()).toList();
+        } else if (resp.data is Map && resp.data.containsKey('permisos')) {
+          permisos = (resp.data['permisos'] as List).map((e) => e.toString()).toList();
+        }
+  
+        print(permisos);
+        return permisos;
+      }
+    } catch (e) {
+      if (e is DioException) {
+        if (e.response != null) {
+          final responseData = e.response!.data;
+          if (responseData != null) {
+            if (e.response!.statusCode == 403) {
+              Carteles.showErrorDialog(context, 'Error: ${e.response!.data['message']}');
+            } else if (e.response!.statusCode! >= 500) {
+              Carteles.showErrorDialog(context, 'Error: No se pudo completar la solicitud');
+            } else {
+              final errors = responseData['errors'] as List<dynamic>;
+              final errorMessages = errors.map((error) {
+                return "Error: ${error['message']}";
+              }).toList();
+              Carteles.showErrorDialog(context, errorMessages.join('\n'));
+            }
+          } else {
+            Carteles.showErrorDialog(context, 'Error: ${e.response!.data}');
+          }
+        } else {
+          Carteles.showErrorDialog(context, 'Error: No se pudo completar la solicitud');
+        }
+      }
+    }
+  
+    return permisos;
+  }
+
 }

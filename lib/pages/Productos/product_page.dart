@@ -41,6 +41,9 @@ class _ProductPageState extends State<ProductPage> {
   final _qrServices = QrServices();
   final TextEditingController codBarrasController = TextEditingController();
   late int uId = 0;
+  late List<String> permisos = [];
+  late bool editUbi = false;
+  late bool editCodBarras = false;
 
   @override
   void initState() {
@@ -71,6 +74,9 @@ class _ProductPageState extends State<ProductPage> {
     cliente = context.read<ProductProvider>().client;
     raiz = context.read<ProductProvider>().raiz;
     uId = context.read<ProductProvider>().uId;
+    permisos = context.read<ProductProvider>().permisos;
+    editCodBarras = permisos.contains('WMS_MANT_ITEM_CB');
+    editUbi = permisos.contains('WMS_MANT_ITEM_UBI');
 
     productoSeleccionado = context.read<ProductProvider>().productoDeposito;
 
@@ -224,7 +230,7 @@ class _ProductPageState extends State<ProductPage> {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    if(uId == 1)
+                    if(editUbi)
                     TextButton(
                       onPressed: () {
                         Provider.of<ProductProvider>(context, listen: false).setAlmacenUbicacion(almacenSeleccionado!);
@@ -273,7 +279,7 @@ class _ProductPageState extends State<ProductPage> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    if(uId == 1)
+                    if(editCodBarras)
                     TextButton(
                       onPressed: () async {
                         await postCB(context);
@@ -295,7 +301,7 @@ class _ProductPageState extends State<ProductPage> {
                         var codigo = codigos[i];
                         return ListTile(
                           title: Text(codigo.codigoBarra),
-                          trailing: uId == 1 ? IconButton(
+                          trailing: editCodBarras ? IconButton(
                             onPressed: () async {
                               await borrarCodBarra(context, codigo);
                             },

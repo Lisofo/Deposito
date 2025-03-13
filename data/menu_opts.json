@@ -27,6 +27,12 @@
                     "icon": "calendar_month",
                     "texto": "Transferencia",
                     "parametro": 2
+                },
+                {
+                    "ruta": "/resumenInventario",
+                    "icon": "calendar_month",
+                    "texto": "Resumen Inventario",
+                    "parametro": 2
                 }
             ]
         }

@@ -4,7 +4,6 @@ import 'package:deposito/models/almacen.dart';
 import 'package:deposito/models/ubicacion_almacen.dart';
 import 'package:deposito/provider/product_provider.dart';
 import 'package:deposito/services/almacen_services.dart';
-import 'package:deposito/widgets/carteles.dart';
 import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
 import 'package:deposito/config/router/router.dart';
@@ -32,6 +31,7 @@ class _InventarioPageState extends State<InventarioPage> {
   TextEditingController textController = TextEditingController();
   FocusNode focoDeScanner = FocusNode();
   final _almacenServices = AlmacenServices();
+  
 
 
   late UbicacionAlmacen ubicacionSeleccionada = UbicacionAlmacen.empty();
@@ -139,7 +139,7 @@ class _InventarioPageState extends State<InventarioPage> {
                 ),
               ),
               const Expanded(
-                child: Text('Escanee una ubicación')
+                child: Text('Escanee una ubicación'),
               ),
               if(ubicacionSeleccionada.almacenId != 0)
               Align(
@@ -224,3 +224,4 @@ class _InventarioPageState extends State<InventarioPage> {
     );
   }
 }
+

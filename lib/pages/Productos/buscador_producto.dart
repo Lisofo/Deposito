@@ -48,6 +48,7 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
   late bool visible;
   late bool tienePermiso = true;
   late bool agregarCodBarra = false;
+  late List<String> permisos = [];
 
   @override
   void initState() {
@@ -75,7 +76,8 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
     final productProvider = context.read<ProductProvider>();
     almacen = productProvider.almacen;
     token = productProvider.token;
-    cliente = productProvider.client;
+    permisos = productProvider.permisos;
+    tienePermiso = permisos.contains('WMS_MANT_ITEM_CB');
     setState(() {});
   }
 

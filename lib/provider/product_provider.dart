@@ -72,7 +72,23 @@ class ProductProvider with ChangeNotifier {
   UbicacionAlmacen _ubicacion = UbicacionAlmacen.empty();
   UbicacionAlmacen get ubicacion => _ubicacion;
 
+  List<String> _permisos = [];
+  List<String> get permisos => _permisos;
+
+  int _usuarioConteo = 0;
+  int get usuarioConteo => _usuarioConteo;
+
   // Métodos para actualizar las variables y notificar cambios
+
+  void setUsuarioConteo(int userId) {
+    _usuarioConteo = userId;
+    notifyListeners();
+  }
+
+  void setPermisos(List<String> permi) {
+    _permisos = permi;
+    notifyListeners();
+  }
 
   void setUbicacion (UbicacionAlmacen ubi) {
     _ubicacion = ubi;

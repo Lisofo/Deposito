@@ -1,8 +1,10 @@
+import 'package:deposito/provider/product_provider.dart';
 import 'package:deposito/services/login_services.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:deposito/config/router/router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 
@@ -24,6 +26,7 @@ class _LoginState extends State<Login> {
   TextEditingController passwordController = TextEditingController();
   final _loginServices = LoginServices();
   bool rememberUser = false;
+  List<String> permisos = [];
    
   @override
   void initState() {
@@ -245,7 +248,7 @@ class _LoginState extends State<Login> {
                                             style: const TextStyle(color: Colors.black),
                                           ),
                                           const Text(
-                                            '2025.03.07+1',
+                                            '2025.03.12+2',
                                             style: TextStyle(color: Colors.black),
                                           ),
                                         ],
@@ -452,7 +455,7 @@ class _LoginState extends State<Login> {
                                                 style: const TextStyle(color: Colors.black),
                                               ),
                                               const Text(
-                                                '2025.03.07+1',
+                                                '2025.03.12+2',
                                                 style: TextStyle(color: Colors.black),
                                               ),
                                             ],
@@ -502,6 +505,8 @@ class _LoginState extends State<Login> {
           SharedPreferences prefs = await SharedPreferences.getInstance();
           await prefs.remove('username');
         }
+        permisos = await _loginServices.getPermisos(context, context.read<ProductProvider>().token);
+        Provider.of<ProductProvider>(context, listen: false).setPermisos(permisos);
         appRouter.go('/almacen');
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
