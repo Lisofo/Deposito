@@ -27,6 +27,7 @@ class _ConsultaUbicacionesPageState extends State<ConsultaUbicacionesPage> {
   FocusNode focoDeScanner = FocusNode();
   late String valorUbicacion = '';
   late List<ItemConsulta> listaItems = [];
+  late List<Variante> variantes = [];
 
   @override
   void initState() {
@@ -39,6 +40,7 @@ class _ConsultaUbicacionesPageState extends State<ConsultaUbicacionesPage> {
     almacen = productProvider.almacen;
     token = productProvider.token;
     listaUbicaciones = await _almacenServices.getUbicacionDeAlmacen(context, almacen.almacenId, token);
+    
     setState(() {});
   }
   
@@ -64,72 +66,90 @@ class _ConsultaUbicacionesPageState extends State<ConsultaUbicacionesPage> {
         elevation: 0,
         backgroundColor: colors.primary,
       ),
-      body: Column(
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              border: Border.all(),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: DropdownSearch<UbicacionAlmacen>(
-              dropdownDecoratorProps: const DropDownDecoratorProps(
-                textAlign: TextAlign.center,
-                textAlignVertical: TextAlignVertical.center,
-                dropdownSearchDecoration: InputDecoration(
-                  hintText: 'Seleccione ubicación',
-                  alignLabelWithHint: true,
-                  border: InputBorder.none,
+      body: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                border: Border.all(),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: DropdownSearch<UbicacionAlmacen>(
+                dropdownDecoratorProps: const DropDownDecoratorProps(
+                  textAlign: TextAlign.center,
+                  textAlignVertical: TextAlignVertical.center,
+                  dropdownSearchDecoration: InputDecoration(
+                    hintText: 'Seleccione ubicación',
+                    alignLabelWithHint: true,
+                    border: InputBorder.none,
+                  ),
                 ),
+                popupProps: const PopupProps.menu(
+                  showSearchBox: true,
+                  searchDelay: Duration.zero,
+                ),
+                onChanged: (value) async {
+                  ubicacionOrigen = value!;
+                  listaItems = await AlmacenServices().getItemXUbicacion(context, almacen.almacenId, ubicacionOrigen.almacenUbicacionId, token);
+                  variantes.clear();
+                  for (var item in listaItems) {
+                    variantes.addAll(item.variantes);
+                  }
+                  setState(() {});
+                },
+                items: listaUbicaciones,
+                selectedItem: ubicacionOrigen.almacenId == 0 ? null : ubicacionOrigen,
               ),
-              popupProps: const PopupProps.menu(
-                showSearchBox: true,
-                searchDelay: Duration.zero,
-              ),
-              onChanged: (value) async {
-                ubicacionOrigen = value!;
-                listaItems = await AlmacenServices().getItemXUbicacion(context, almacen.almacenId, ubicacionOrigen.almacenUbicacionId, token);
-                setState(() {});
+            ),
+            const SizedBox(height: 20),
+            Expanded(
+              child: ListView.builder(
+                itemCount: variantes.length,
+                itemBuilder: (context, i) {
+                  var item = listaItems[i];
+                  var variante = variantes[i];
+                  return ListTile(
+                    title: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(item.raiz),
+                        Text(item.descripcion),
+                      ],
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Existencia actual: ${variante.existenciaActualUbi}'),
+                        Text('Existencia mínima: ${variante.existenciaMinimaUbi} - Existencia máxima: ${variante.existenciaMaximaUbi}'),
+                      ],
+                    ),
+                  );
+                }
+              )
+            ),
+            VisibilityDetector(
+              key: const Key('scanner-field-visibility'),
+              onVisibilityChanged: (info) {
+                if (info.visibleFraction > 0) {
+                  focoDeScanner.requestFocus();
+                }
               },
-              items: listaUbicaciones,
-              selectedItem: ubicacionOrigen.almacenId == 0 ? null : ubicacionOrigen,
-            ),
-          ),
-          const SizedBox(height: 20),
-          // Escaneo de productos (solo si la ubicación ya fue escaneada)
-          VisibilityDetector(
-            key: const Key('scanner-field-visibility'),
-            onVisibilityChanged: (info) {
-              if (info.visibleFraction > 0) {
-                focoDeScanner.requestFocus();
-              }
-            },
-            child: TextFormField(
-              focusNode: focoDeScanner,
-              cursorColor: Colors.transparent,
-              decoration: const InputDecoration(
-                border: UnderlineInputBorder(borderSide: BorderSide.none),
+              child: TextFormField(
+                focusNode: focoDeScanner,
+                cursorColor: Colors.transparent,
+                decoration: const InputDecoration(
+                  border: UnderlineInputBorder(borderSide: BorderSide.none),
+                ),
+                style: const TextStyle(color: Colors.transparent),
+                autofocus: true,
+                keyboardType: TextInputType.none,
+                controller: textController,
+                onFieldSubmitted: procesarEscaneoProducto,
               ),
-              style: const TextStyle(color: Colors.transparent),
-              autofocus: true,
-              keyboardType: TextInputType.none,
-              controller: textController,
-              onFieldSubmitted: procesarEscaneoProducto,
             ),
-          ),
-          const SizedBox(height: 20),
-          Expanded(
-            child: ListView.builder(
-              itemCount: listaItems.length,
-              itemBuilder: (context, i) {
-                var item = listaItems[i];
-                return ListTile(
-                  title: Text(item.descripcion),
-                  subtitle: Text(item.raiz),
-                );
-              }
-            )
-          )
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -148,8 +168,11 @@ class _ConsultaUbicacionesPageState extends State<ConsultaUbicacionesPage> {
           setState(() {
             ubicacionOrigen = ubicacionEscaneada;
           });
-
           listaItems = await AlmacenServices().getItemXUbicacion(context, almacen.almacenId, ubicacionOrigen.almacenUbicacionId, token);
+          variantes.clear();
+          for (var item in listaItems) {
+            variantes.addAll(item.variantes);
+          }
           setState(() {});
         } else {
           // Si no se encuentra la ubicación, mostrar un mensaje de error

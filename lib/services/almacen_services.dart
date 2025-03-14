@@ -3,7 +3,6 @@ import 'package:deposito/models/almacen.dart';
 import 'package:deposito/models/conteo.dart';
 import 'package:deposito/models/item_consulta.dart';
 import 'package:deposito/models/items_x_ubicacion.dart';
-import 'package:deposito/models/producto_deposito.dart';
 import 'package:deposito/models/resumen_general.dart';
 import 'package:deposito/models/ubicacion_almacen.dart';
 import 'package:deposito/widgets/carteles.dart';
