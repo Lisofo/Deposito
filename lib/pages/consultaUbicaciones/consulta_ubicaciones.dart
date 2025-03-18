@@ -8,6 +8,8 @@ import 'package:deposito/widgets/carteles.dart';
 import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:simple_barcode_scanner/enum.dart';
+import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
 class ConsultaUbicacionesPage extends StatefulWidget {
@@ -40,7 +42,7 @@ class _ConsultaUbicacionesPageState extends State<ConsultaUbicacionesPage> {
     almacen = productProvider.almacen;
     token = productProvider.token;
     listaUbicaciones = await _almacenServices.getUbicacionDeAlmacen(context, almacen.almacenId, token);
-    
+    focoDeScanner.requestFocus();
     setState(() {});
   }
   
@@ -151,7 +153,57 @@ class _ConsultaUbicacionesPageState extends State<ConsultaUbicacionesPage> {
           ],
         ),
       ),
+      floatingActionButton: ElevatedButton(
+        style: const ButtonStyle(iconSize: WidgetStatePropertyAll(50)),
+        onPressed: _scanBarcode,
+        child: const Icon(Icons.qr_code_scanner_outlined),
+      ),
     );
+  }
+
+  Future<void> _scanBarcode() async {
+    //Esto es para la camara del cel
+    final code = await SimpleBarcodeScanner.scanBarcode(
+      context,
+      lineColor: '#FFFFFF',
+      cancelButtonText: 'Cancelar',
+      scanType: ScanType.qr,
+      isShowFlashIcon: false,
+    );
+    if (code == '-1') return;
+    if (code != '-1') {
+      try {
+        // Buscar la ubicación escaneada en la lista de ubicaciones
+        UbicacionAlmacen? ubicacionEscaneada = listaUbicaciones.firstWhere(
+          (ubicacion) => ubicacion.codUbicacion == code,
+          orElse: () => UbicacionAlmacen.empty(),
+        );
+
+        if (ubicacionEscaneada.almacenUbicacionId != 0) {
+          // Si se encuentra la ubicación, actualizar el estado y cargar los productos
+          setState(() {
+            ubicacionOrigen = ubicacionEscaneada;
+          });
+          listaItems = await AlmacenServices().getItemXUbicacion(context, almacen.almacenId, ubicacionOrigen.almacenUbicacionId, token);
+          variantes.clear();
+          for (var item in listaItems) {
+            variantes.addAll(item.variantes);
+          }
+          setState(() {});
+        } else {
+          // Si no se encuentra la ubicación, mostrar un mensaje de error
+          Carteles.showDialogs(context, 'Ubicación no encontrada', false, false, false);
+        }
+
+        textController.clear();
+        await Future.delayed(const Duration(milliseconds: 100));
+        focoDeScanner.requestFocus();
+      } catch (e) {
+        Carteles.showDialogs(context, 'Error al procesar el escaneo', false, false, false);
+      }
+    }
+    
+    setState(() {});
   }
 
   Future<void> procesarEscaneoProducto(String value) async {

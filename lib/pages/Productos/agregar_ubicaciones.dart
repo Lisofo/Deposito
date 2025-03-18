@@ -41,6 +41,7 @@ class _AgregarUbicacionesState extends State<AgregarUbicaciones> {
   @override
   void initState() {
     super.initState();
+    focoDeScanner.requestFocus();
     cargarDatos();
   }
 

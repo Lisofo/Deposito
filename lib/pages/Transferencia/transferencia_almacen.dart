@@ -11,6 +11,8 @@ import 'package:deposito/services/almacen_services.dart';
 import 'package:deposito/services/product_services.dart';
 import 'package:deposito/widgets/carteles.dart';
 import 'package:deposito/widgets/custom_button.dart';
+import 'package:simple_barcode_scanner/enum.dart';
+import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
 class TransferenciaAlmacenPage extends StatefulWidget {
@@ -144,7 +146,13 @@ class _TransferenciaAlmacenPageState extends State<TransferenciaAlmacenPage> {
                     itemBuilder: (context, index) {
                       final productoAAgregar = productosEscaneados[index];
                       return ListTile(
-                        title: Text(productoAAgregar.productoAgregado.descripcion),
+                        title: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(productoAAgregar.productoAgregado.raiz),
+                            Text(productoAAgregar.productoAgregado.descripcion),
+                          ],
+                        ),
                         subtitle: Text('Cantidad: ${productoAAgregar.cantidad}'),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -185,6 +193,11 @@ class _TransferenciaAlmacenPageState extends State<TransferenciaAlmacenPage> {
                 ),
             ],
           ),
+        ),
+        floatingActionButton: ElevatedButton(
+          style: const ButtonStyle(iconSize: WidgetStatePropertyAll(50)),
+          onPressed: _scanBarcode,
+          child: const Icon(Icons.qr_code_scanner_outlined),
         ),
       ),
     );
@@ -306,6 +319,62 @@ class _TransferenciaAlmacenPageState extends State<TransferenciaAlmacenPage> {
         );
       },
     );
+  }
+
+  Future<void> _scanBarcode() async {
+    //Esto es para la camara del cel
+    final code = await SimpleBarcodeScanner.scanBarcode(
+      context,
+      lineColor: '#FFFFFF',
+      cancelButtonText: 'Cancelar',
+      scanType: ScanType.qr,
+      isShowFlashIcon: false,
+    );
+    if (code == '-1') return;
+    if (code != '-1') {
+      if (!ubicacionEscaneada) {
+        // Si la ubicación no ha sido escaneada, procesar como ubicación
+        try {
+          final ubicacionEncontrada = listaUbicaciones.firstWhere((element) => element.codUbicacion == code);
+          setState(() {
+            ubicacionOrigen = ubicacionEncontrada;
+            valorUbicacion = ubicacionEncontrada.codUbicacion;
+            ubicacionEscaneada = true; // Marca la ubicación como escaneada
+          });
+          textController.clear();
+          await Future.delayed(const Duration(milliseconds: 100));
+          focoDeScanner.requestFocus();
+        } catch (e) {
+          Carteles.showDialogs(context, 'Ubicación no encontrada', false, false, false);
+        }
+      } else {
+        // Si la ubicación ya fue escaneada, procesar como producto
+        final productos = await ProductServices().getProductByName(context, '', '2', almacen.almacenId.toString(), code.toString(), '0', token);
+        if (productos.isNotEmpty) {
+          final producto = productos[0];
+          // Verificar si el producto ya está en la lista
+          final productoExistente = productosEscaneados.firstWhere(
+            (p) => p.productoAgregado.raiz == producto.raiz,
+            orElse: () => ProductoAAgregar(productoAgregado: Product.empty(), cantidad: 0),
+          );
+          if (productoExistente.productoAgregado.raiz != '') {
+            // Si el producto ya está en la lista, incrementar la cantidad
+            productoExistente.cantidad += 1;
+          } else {
+            // Si el producto no está en la lista, agregarlo con cantidad 1
+            productosEscaneados.add(ProductoAAgregar(productoAgregado: producto, cantidad: 1));
+          }
+          setState(() {});
+          textController.clear();
+          await Future.delayed(const Duration(milliseconds: 100));
+          focoDeScanner.requestFocus();
+        } else {
+          Carteles.showDialogs(context, 'Producto no encontrado', false, false, false);
+        }
+      }
+    }
+    
+    setState(() {});
   }
 }
 

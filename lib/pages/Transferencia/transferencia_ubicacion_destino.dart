@@ -132,7 +132,13 @@ class _TransferenciaUbicacionDestinoState extends State<TransferenciaUbicacionDe
                   itemBuilder: (context, I) {
                     final productoAAgregar = widget.productosEscaneados[I];
                     return ListTile(
-                      title: Text(productoAAgregar.productoAgregado.descripcion),
+                      title: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(productoAAgregar.productoAgregado.raiz),
+                          Text(productoAAgregar.productoAgregado.descripcion),
+                        ],
+                      ),
                       subtitle: Text('Cantidad: ${productoAAgregar.cantidad}'),
                     );
                   },

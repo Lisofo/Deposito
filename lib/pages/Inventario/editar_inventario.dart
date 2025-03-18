@@ -49,6 +49,7 @@ class _EditarInventarioState extends State<EditarInventario> {
     token = productProvider.token;
     ubicacion = productProvider.ubicacion;
     conteoList = await _almacenServices.getConteoUbicacion(context, almacen.almacenId, ubicacion.almacenUbicacionId, token);
+    focoDeScanner.requestFocus();
     setState(() {});
   }
   

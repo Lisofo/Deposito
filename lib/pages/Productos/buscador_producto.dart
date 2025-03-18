@@ -242,17 +242,16 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
                     ],
                   ),
                 ),
-                if (listItems.isNotEmpty || !noBusqueManual)
-                  Align(
-                    alignment: Alignment.bottomRight,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: FloatingActionButton(
-                        onPressed: _resetSearch,
-                        child: const Icon(Icons.delete),
-                      ),
+                Align(
+                  alignment: Alignment.bottomRight,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: FloatingActionButton(
+                      onPressed: _resetSearch,
+                      child: const Icon(Icons.delete),
                     ),
                   ),
+                ),
               ],
             ),
           ),

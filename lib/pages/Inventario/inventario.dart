@@ -50,7 +50,7 @@ class _InventarioPageState extends State<InventarioPage> {
     final productProvider = context.read<ProductProvider>();
     almacen = productProvider.almacen;
     token = productProvider.token;
-
+    focoDeScanner.requestFocus();
     listaUbicaciones = await AlmacenServices().getUbicacionDeAlmacen(context, almacen.almacenId, token);
     setState(() {});
   }
@@ -141,7 +141,6 @@ class _InventarioPageState extends State<InventarioPage> {
               const Expanded(
                 child: Text('Escanee una ubicación'),
               ),
-              if(ubicacionSeleccionada.almacenId != 0)
               Align(
                 alignment: Alignment.bottomRight,
                 child: Padding(
