@@ -78,6 +78,9 @@ class ProductProvider with ChangeNotifier {
   int _usuarioConteo = 0;
   int get usuarioConteo => _usuarioConteo;
 
+  String _name = '';
+  String get name => _name;
+
   // Métodos para actualizar las variables y notificar cambios
 
   void setUsuarioConteo(int userId) {
@@ -202,6 +205,11 @@ class ProductProvider with ChangeNotifier {
 
   void setUsuarioId(int id) {
     _uId = id;
+    notifyListeners();
+  }
+
+  void setUsuarioName(String name) {
+    _name = name;
     notifyListeners();
   }
 }

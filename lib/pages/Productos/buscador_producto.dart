@@ -12,6 +12,7 @@ import 'package:deposito/services/qr_services.dart';
 import 'package:deposito/widgets/carteles.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:provider/provider.dart';
 import 'package:simple_barcode_scanner/enum.dart';
 import 'package:visibility_detector/visibility_detector.dart';
@@ -255,6 +256,28 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
               ],
             ),
           ),
+        floatingActionButton: SpeedDial(
+          icon: Icons.add,
+          activeIcon: Icons.close,
+          backgroundColor: colores.primary,
+          foregroundColor: Colors.white,
+          children: [
+            SpeedDialChild(
+              child: const Icon(Icons.qr_code_scanner_outlined),
+              backgroundColor: colores.primary,
+              foregroundColor: Colors.white,
+              label: 'Escanear',
+              onTap: _scanBarcode,
+            ),
+            SpeedDialChild(
+              child: const Icon(Icons.restore),
+              backgroundColor: colores.primary,
+              foregroundColor: Colors.white,
+              label: 'Reiniciar',
+              onTap: _resetSearch,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -474,15 +497,15 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
           )
         else if (!busco)
           const SizedBox(height: 100),
-        if (!busco && !agregarCodBarra)
-          Align(
-            alignment: Alignment.center,
-            child: ElevatedButton(
-              style: const ButtonStyle(iconSize: WidgetStatePropertyAll(100)),
-              onPressed: _scanBarcode,
-              child: const Icon(Icons.qr_code_scanner_outlined),
-            ),
-          ),
+        // if (!busco && !agregarCodBarra)
+        //   Align(
+        //     alignment: Alignment.center,
+        //     child: ElevatedButton(
+        //       style: const ButtonStyle(iconSize: WidgetStatePropertyAll(100)),
+        //       onPressed: _scanBarcode,
+        //       child: const Icon(Icons.qr_code_scanner_outlined),
+        //     ),
+        //   ),
           //Esto es para la PDA
         VisibilityDetector(
           key: const Key('scanner-field-visibility'),

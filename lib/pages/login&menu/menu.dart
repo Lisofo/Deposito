@@ -16,6 +16,7 @@ class _MenuPageState extends State<MenuPage> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    late String name = context.read<ProductProvider>().name;
     String almacen = context.watch<ProductProvider>().almacenNombre;
     return SafeArea(
       child: Scaffold(
@@ -53,7 +54,30 @@ class _MenuPageState extends State<MenuPage> {
         ),
         drawer: Drawer(
           backgroundColor: colors.surface,
-          child: const BotonesDrawer(),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      maxRadius: 13,
+                      backgroundColor: colors.primary,
+                      child: const Icon(Icons.person),
+                    ),
+                    const SizedBox(width: 10,),
+                    Text(
+                      name,
+                      style: const TextStyle(
+                        fontSize: 24
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Expanded(child: BotonesDrawer()),
+            ],
+          ),
         ),
         body: const Padding(
           padding: EdgeInsets.only(bottom: 8.0),
@@ -94,7 +118,7 @@ class _MenuPageState extends State<MenuPage> {
                       style: const TextStyle(color: Colors.white),
                     ),
                     const Text(
-                      '2025.03.18+1',
+                      '2025.03.19+1',
                       style: TextStyle(color: Colors.white),
                     ),
                   ],

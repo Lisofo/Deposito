@@ -31,9 +31,10 @@ class LoginServices {
 
       if (statusCode == 1) {
         print(response.data['token']);
-        print(response.data['vendedorId']);
+        print(response.data['nombre']);
         Provider.of<ProductProvider>(context, listen: false).setToken(response.data['token']);
         Provider.of<ProductProvider>(context, listen: false).setUsuarioId(response.data['uid']);
+        Provider.of<ProductProvider>(context, listen: false).setUsuarioName(response.data['nombre']);
       } else { 
         print(response.statusMessage);
       }

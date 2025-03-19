@@ -9,7 +9,10 @@ import 'package:flutter/material.dart';
 import 'package:deposito/config/router/router.dart';
 import 'package:deposito/models/product.dart';
 import 'package:deposito/widgets/custom_button.dart';
+import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:provider/provider.dart';
+import 'package:simple_barcode_scanner/enum.dart';
+import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
 class InventarioPage extends StatefulWidget {
@@ -141,19 +144,31 @@ class _InventarioPageState extends State<InventarioPage> {
               const Expanded(
                 child: Text('Escanee una ubicación'),
               ),
-              Align(
-                alignment: Alignment.bottomRight,
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: FloatingActionButton(
-                    onPressed: _resetSearch,
-                    child: const Icon(Icons.delete),
-                  ),
-                ),
-              ),
             ],
           ),
         ),
+      ),
+      floatingActionButton: SpeedDial(
+        icon: Icons.add,
+        activeIcon: Icons.close,
+        backgroundColor: colors.primary,
+        foregroundColor: Colors.white,
+        children: [
+          SpeedDialChild(
+            child: const Icon(Icons.qr_code_scanner_outlined),
+            backgroundColor: colors.primary,
+            foregroundColor: Colors.white,
+            label: 'Escanear',
+            onTap: _scanBarcode
+          ),
+          SpeedDialChild(
+            child: const Icon(Icons.restore),
+            backgroundColor: colors.primary,
+            foregroundColor: Colors.white,
+            label: 'Reiniciar',
+            onTap: _resetSearch,
+          ),
+        ],
       ),
       bottomNavigationBar: Row(
         mainAxisSize: MainAxisSize.min,
@@ -169,6 +184,42 @@ class _InventarioPageState extends State<InventarioPage> {
         ],
       ),
     );
+  }
+
+  Future<void> _scanBarcode() async {
+    //Esto es para la camara del cel
+    final code = await SimpleBarcodeScanner.scanBarcode(
+      context,
+      lineColor: '#FFFFFF',
+      cancelButtonText: 'Cancelar',
+      scanType: ScanType.qr,
+      isShowFlashIcon: false,
+    );
+    if (code == '-1') return;
+    if (code != '-1') {
+      try {
+        // Buscar la ubicación correspondiente al código escaneado
+        final ubicacionEncontrada = listaUbicaciones.firstWhere(
+          (element) => element.codUbicacion == code || element.descripcion.contains(code!),
+        );
+        Provider.of<ProductProvider>(context, listen: false).setUbicacion(ubicacionEncontrada);
+        setState(() {
+          ubicacionSeleccionada = ubicacionEncontrada;
+        });
+        appRouter.push('/editarInventario');
+        print('Ubicación seleccionada: ${ubicacionEncontrada.descripcion}');
+      } catch (e) {
+        await error(code!);
+        print('Ubicación no encontrada: $code');
+      } finally {
+        // Restablecer el campo y reenfocar
+        textController.clear();
+        await Future.delayed(const Duration(milliseconds: 100)); // Breve pausa para evitar conflictos de enfoque
+        focoDeScanner.requestFocus();
+      }
+    }
+    
+    setState(() {});
   }
 
   void _resetSearch() {

@@ -11,6 +11,7 @@ import 'package:provider/provider.dart';
 import 'package:simple_barcode_scanner/enum.dart';
 import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 import 'package:visibility_detector/visibility_detector.dart';
+import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 
 class ConsultaUbicacionesPage extends StatefulWidget {
   const ConsultaUbicacionesPage({super.key});
@@ -153,12 +154,35 @@ class _ConsultaUbicacionesPageState extends State<ConsultaUbicacionesPage> {
           ],
         ),
       ),
-      floatingActionButton: ElevatedButton(
-        style: const ButtonStyle(iconSize: WidgetStatePropertyAll(50)),
-        onPressed: _scanBarcode,
-        child: const Icon(Icons.qr_code_scanner_outlined),
+      floatingActionButton: SpeedDial(
+        icon: Icons.add,
+        activeIcon: Icons.close,
+        backgroundColor: colors.primary,
+        foregroundColor: Colors.white,
+        children: [
+          SpeedDialChild(
+            child: const Icon(Icons.qr_code_scanner_outlined),
+            backgroundColor: colors.primary,
+            foregroundColor: Colors.white,
+            label: 'Escanear',
+            onTap: _scanBarcode,
+          ),
+          SpeedDialChild(
+            child: const Icon(Icons.restore),
+            backgroundColor: colors.primary,
+            foregroundColor: Colors.white,
+            label: 'Reiniciar',
+            onTap: _resetSearch,
+          ),
+        ],
       ),
     );
+  }
+
+  void _resetSearch() {
+    ubicacionOrigen = UbicacionAlmacen.empty();
+    focoDeScanner.requestFocus();
+    setState(() {});
   }
 
   Future<void> _scanBarcode() async {
