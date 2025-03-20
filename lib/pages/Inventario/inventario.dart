@@ -2,6 +2,7 @@
 
 import 'package:deposito/models/almacen.dart';
 import 'package:deposito/models/ubicacion_almacen.dart';
+import 'package:deposito/pages/Inventario/editar_inventario.dart';
 import 'package:deposito/provider/product_provider.dart';
 import 'package:deposito/services/almacen_services.dart';
 import 'package:dropdown_search/dropdown_search.dart';
@@ -11,7 +12,6 @@ import 'package:deposito/models/product.dart';
 import 'package:deposito/widgets/custom_button.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:provider/provider.dart';
-import 'package:simple_barcode_scanner/enum.dart';
 import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
@@ -33,13 +33,8 @@ class _InventarioPageState extends State<InventarioPage> {
   late String token;
   TextEditingController textController = TextEditingController();
   FocusNode focoDeScanner = FocusNode();
-  final _almacenServices = AlmacenServices();
-  
-
-
+  final _almacenServices = AlmacenServices();  
   late UbicacionAlmacen ubicacionSeleccionada = UbicacionAlmacen.empty();
-
-
   List<dynamic> productosBuscados = [];
   bool estoyBuscando = true;
 
@@ -49,11 +44,29 @@ class _InventarioPageState extends State<InventarioPage> {
     cargarDatos();
   }
 
+  @override
+  void dispose() {
+    // Cancelar cualquier foco o listener
+    focoDeScanner.dispose();
+    textController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Esto asegura que cuando volvemos a esta página, el foco se restablezca correctamente
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        focoDeScanner.requestFocus();
+      }
+    });
+  }
+
   cargarDatos() async {
     final productProvider = context.read<ProductProvider>();
     almacen = productProvider.almacen;
     token = productProvider.token;
-    focoDeScanner.requestFocus();
     listaUbicaciones = await AlmacenServices().getUbicacionDeAlmacen(context, almacen.almacenId, token);
     setState(() {});
   }
@@ -187,7 +200,11 @@ class _InventarioPageState extends State<InventarioPage> {
   }
 
   Future<void> _scanBarcode() async {
-    //Esto es para la camara del cel
+    if (!mounted) return;
+    
+    // Desenfoca antes de abrir el escáner para evitar problemas
+    focoDeScanner.unfocus();
+    
     final code = await SimpleBarcodeScanner.scanBarcode(
       context,
       lineColor: '#FFFFFF',
@@ -195,32 +212,51 @@ class _InventarioPageState extends State<InventarioPage> {
       scanType: ScanType.qr,
       isShowFlashIcon: false,
     );
-    if (code == '-1') return;
-    if (code != '-1') {
-      try {
-        // Buscar la ubicación correspondiente al código escaneado
-        final ubicacionEncontrada = listaUbicaciones.firstWhere(
-          (element) => element.codUbicacion == code || element.descripcion.contains(code!),
-        );
+
+    if (!mounted || code == '-1') return;
+
+    var codeTrimmed = code!.trim();
+    try {
+      final ubicacionEncontrada = listaUbicaciones.firstWhere(
+        (element) => element.codUbicacion == codeTrimmed || element.descripcion.contains(codeTrimmed),
+        orElse: () => UbicacionAlmacen.empty(),
+      );
+      
+      if (ubicacionEncontrada.almacenId == 0) {
+        if (mounted) {
+          await error(codeTrimmed);
+        }
+        return;
+      }
+
+      if (!mounted) return;
+
+      // Cancelar cualquier foco o proceso pendiente
+      focoDeScanner.unfocus();
+      textController.clear();
+      
+      // Actualizar el estado y navegar
+      if (mounted) {
         Provider.of<ProductProvider>(context, listen: false).setUbicacion(ubicacionEncontrada);
         setState(() {
           ubicacionSeleccionada = ubicacionEncontrada;
         });
-        appRouter.push('/editarInventario');
-        print('Ubicación seleccionada: ${ubicacionEncontrada.descripcion}');
-      } catch (e) {
-        await error(code!);
-        print('Ubicación no encontrada: $code');
-      } finally {
-        // Restablecer el campo y reenfocar
-        textController.clear();
-        await Future.delayed(const Duration(milliseconds: 100)); // Breve pausa para evitar conflictos de enfoque
-        focoDeScanner.requestFocus();
+        
+        // Utiliza await para asegurarse de que la navegación se complete
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => const EditarInventario(),
+          ),
+        );
       }
+    } catch (e) {
+      if (mounted) {
+        await error(codeTrimmed);
+      }
+      print('Ubicación no encontrada: $codeTrimmed');
     }
-    
-    setState(() {});
   }
+
 
   void _resetSearch() {
     ubicacionSeleccionada = UbicacionAlmacen.empty();

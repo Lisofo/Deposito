@@ -11,7 +11,9 @@ import 'package:deposito/widgets/carteles.dart';
 import 'package:deposito/widgets/custom_button.dart';
 import 'package:deposito/widgets/custom_form_field.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:provider/provider.dart';
+import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
 class EditarInventario extends StatefulWidget {
@@ -90,11 +92,10 @@ class _EditarInventarioState extends State<EditarInventario> {
         ),
         body: Column(
           children: [
-            // Text(productoEscaneado.descripcion),
             VisibilityDetector(
               key: const Key('scanner-field-visibility'),
               onVisibilityChanged: (info) {
-                if (info.visibleFraction > 0) {
+                if (info.visibleFraction > 0  && mounted) {
                   focoDeScanner.requestFocus();
                 }
               },
@@ -150,6 +151,28 @@ class _EditarInventarioState extends State<EditarInventario> {
             )
           ],
         ),
+        floatingActionButton: SpeedDial(
+          icon: Icons.add,
+          activeIcon: Icons.close,
+          backgroundColor: colors.primary,
+          foregroundColor: Colors.white,
+          children: [
+            SpeedDialChild(
+              child: const Icon(Icons.qr_code_scanner_outlined),
+              backgroundColor: colors.primary,
+              foregroundColor: Colors.white,
+              label: 'Escanear',
+              onTap: _scanBarcode,
+            ),
+            SpeedDialChild(
+              child: const Icon(Icons.restore),
+              backgroundColor: colors.primary,
+              foregroundColor: Colors.white,
+              label: 'Reiniciar',
+              onTap: _resetSearch,
+            ),
+          ],
+        ),
         bottomNavigationBar: Row(
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -166,6 +189,87 @@ class _EditarInventarioState extends State<EditarInventario> {
         ),
       )
     );
+  }
+
+  Future<void> _scanBarcode() async {
+    //Esto es para la camara del cel
+    late List<Product> productos = [];
+    int? statusCode;
+    final code = await SimpleBarcodeScanner.scanBarcode(
+      context,
+      lineColor: '#FFFFFF',
+      cancelButtonText: 'Cancelar',
+      scanType: ScanType.qr,
+      isShowFlashIcon: false,
+    );
+    if (code == '-1') return;
+    if (code != '-1') {
+      print('Valor escaneado: $code');
+      productos = await ProductServices().getProductByName(context, '', '2', almacen.almacenId.toString(), code.toString(), '0', token);
+      if(productos.isEmpty || productos.length > 1) {
+        productoEscaneado = Product.empty();
+      } else {
+        productoEscaneado = productos[0];
+      }
+
+      if(productoEscaneado.raiz == '') {
+        textController.clear();
+        await Future.delayed(const Duration(milliseconds: 100)); // Breve pausa para evitar conflictos de enfoque
+        focoDeScanner.requestFocus();
+        await error('$code');
+        return;
+      }
+      
+      // Buscar si el producto ya está en la lista de conteo
+      var existeEnListaConteo = conteoList.firstWhere(
+        (e) => e.codItem == productoEscaneado.raiz,
+        orElse: () => Conteo.empty(), // Si no se encuentra, retornar null
+      );
+
+      if (existeEnListaConteo.itemConteoId != 0) {
+        // Si el producto está en la lista, incrementar su conteo
+        existeEnListaConteo.conteo += 1;
+        print('Conteo actualizado: ${existeEnListaConteo.conteo}');
+        await _almacenServices.patchUbicacionItemEnAlmacen(
+          context, 
+          productoEscaneado.raiz, 
+          almacen.almacenId, 
+          ubicacion.almacenUbicacionId, 
+          true, 
+          existeEnListaConteo.conteo, 
+          token
+        );
+      } else {
+        // Si el producto no está en la lista, agregarlo con conteo 0
+        await _almacenServices.patchUbicacionItemEnAlmacen(
+          context, 
+          productoEscaneado.raiz, 
+          almacen.almacenId, 
+          ubicacion.almacenUbicacionId, 
+          false, 
+          0, 
+          token
+        );
+      }
+
+      statusCode = await _almacenServices.getStatusCode();
+      await _almacenServices.resetStatusCode();
+      
+      if (statusCode == 1) {
+        conteoList = await _almacenServices.getConteoUbicacion(context, almacen.almacenId, ubicacion.almacenUbicacionId, token);
+      }
+      textController.clear();
+      await Future.delayed(const Duration(milliseconds: 100)); // Breve pausa para evitar conflictos de enfoque
+      focoDeScanner.requestFocus();
+      setState(() {});
+    }
+    
+    setState(() {});
+  }
+
+  void _resetSearch() {
+    focoDeScanner.requestFocus();
+    setState(() {});
   }
 
   Future<void> borrarConteoTotal(BuildContext context) async {

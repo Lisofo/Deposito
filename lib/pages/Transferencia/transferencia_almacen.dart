@@ -12,7 +12,6 @@ import 'package:deposito/services/almacen_services.dart';
 import 'package:deposito/services/product_services.dart';
 import 'package:deposito/widgets/carteles.dart';
 import 'package:deposito/widgets/custom_button.dart';
-import 'package:simple_barcode_scanner/enum.dart';
 import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
@@ -102,6 +101,7 @@ class _TransferenciaAlmacenPageState extends State<TransferenciaAlmacenPage> {
                       border: InputBorder.none,
                     ),
                   ),
+                  enabled: productosEscaneados.isNotEmpty ? false : true,
                   popupProps: const PopupProps.menu(
                     showSearchBox: true,
                     searchDelay: Duration.zero,
@@ -116,28 +116,7 @@ class _TransferenciaAlmacenPageState extends State<TransferenciaAlmacenPage> {
                   selectedItem: ubicacionOrigen.almacenId == 0 ? null : ubicacionOrigen,
                 ),
               ),
-              const SizedBox(height: 20),
               // Escaneo de productos (solo si la ubicación ya fue escaneada)
-              VisibilityDetector(
-                key: const Key('scanner-field-visibility'),
-                onVisibilityChanged: (info) {
-                  if (info.visibleFraction > 0) {
-                    focoDeScanner.requestFocus();
-                  }
-                },
-                child: TextFormField(
-                  focusNode: focoDeScanner,
-                  cursorColor: Colors.transparent,
-                  decoration: const InputDecoration(
-                    border: UnderlineInputBorder(borderSide: BorderSide.none),
-                  ),
-                  style: const TextStyle(color: Colors.transparent),
-                  autofocus: true,
-                  keyboardType: TextInputType.none,
-                  controller: textController,
-                  onFieldSubmitted: procesarEscaneoProducto,
-                ),
-              ),
               const SizedBox(height: 20),
               // Lista de productos escaneados (solo si la ubicación ya fue escaneada)
               if (ubicacionEscaneada)
@@ -176,6 +155,26 @@ class _TransferenciaAlmacenPageState extends State<TransferenciaAlmacenPage> {
                     },
                   ),
                 ),
+              VisibilityDetector(
+                key: const Key('scanner-field-visibility'),
+                onVisibilityChanged: (info) {
+                  if (info.visibleFraction > 0) {
+                    focoDeScanner.requestFocus();
+                  }
+                },
+                child: TextFormField(
+                  focusNode: focoDeScanner,
+                  cursorColor: Colors.transparent,
+                  decoration: const InputDecoration(
+                    border: UnderlineInputBorder(borderSide: BorderSide.none),
+                  ),
+                  style: const TextStyle(color: Colors.transparent),
+                  autofocus: true,
+                  keyboardType: TextInputType.none,
+                  controller: textController,
+                  onFieldSubmitted: procesarEscaneoProducto,
+                ),
+              ),
               // Botón para continuar a la siguiente pantalla (solo si la ubicación ya fue escaneada)
               if (ubicacionEscaneada)
                 CustomButton(
@@ -224,6 +223,8 @@ class _TransferenciaAlmacenPageState extends State<TransferenciaAlmacenPage> {
 
   void _resetSearch() {
     ubicacionOrigen = UbicacionAlmacen.empty();
+    productosEscaneados = [];
+    ubicacionEscaneada = false;
     focoDeScanner.requestFocus();
     setState(() {});
   }

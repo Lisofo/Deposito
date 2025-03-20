@@ -8,7 +8,6 @@ import 'package:deposito/widgets/carteles.dart';
 import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:simple_barcode_scanner/enum.dart';
 import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
@@ -181,6 +180,7 @@ class _ConsultaUbicacionesPageState extends State<ConsultaUbicacionesPage> {
 
   void _resetSearch() {
     ubicacionOrigen = UbicacionAlmacen.empty();
+    variantes = [];
     focoDeScanner.requestFocus();
     setState(() {});
   }

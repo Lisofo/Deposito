@@ -8,7 +8,9 @@ import 'package:deposito/widgets/carteles.dart';
 import 'package:deposito/widgets/custom_button.dart';
 import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:provider/provider.dart';
+import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
 class TransferenciaUbicacionDestino extends StatefulWidget {
@@ -158,8 +160,64 @@ class _TransferenciaUbicacionDestinoState extends State<TransferenciaUbicacionDe
             ],
           ),
         ),
+        floatingActionButton: SpeedDial(
+          icon: Icons.add,
+          activeIcon: Icons.close,
+          backgroundColor: colors.primary,
+          foregroundColor: Colors.white,
+          children: [
+            SpeedDialChild(
+              child: const Icon(Icons.qr_code_scanner_outlined),
+              backgroundColor: colors.primary,
+              foregroundColor: Colors.white,
+              label: 'Escanear',
+              onTap: _scanBarcode,
+            ),
+            SpeedDialChild(
+              child: const Icon(Icons.restore),
+              backgroundColor: colors.primary,
+              foregroundColor: Colors.white,
+              label: 'Reiniciar',
+              onTap: _resetSearch,
+            ),
+          ],
+        ),
       ),
     );
+  }
+
+  Future<void> _scanBarcode() async {
+    //Esto es para la camara del cel
+    final code = await SimpleBarcodeScanner.scanBarcode(
+      context,
+      lineColor: '#FFFFFF',
+      cancelButtonText: 'Cancelar',
+      scanType: ScanType.qr,
+      isShowFlashIcon: false,
+    );
+    if (code == '-1') return;
+    if (code != '-1') {
+      // Si la ubicación no ha sido escaneada, procesar como ubicación
+      try {
+        final ubicacionEncontrada = listaUbicaciones.firstWhere((element) => element.codUbicacion == code);
+        setState(() {
+          ubicacionDestino = ubicacionEncontrada;
+        });
+        textController.clear();
+        await Future.delayed(const Duration(milliseconds: 100));
+        focoDeScanner.requestFocus();
+      } catch (e) {
+        Carteles.showDialogs(context, 'Ubicación no encontrada', false, false, false);
+      }
+    }
+    
+    setState(() {});
+  }
+
+  void _resetSearch() {
+    ubicacionDestino = UbicacionAlmacen.empty();
+    focoDeScanner.requestFocus();
+    setState(() {});
   }
 
   Future<void> procesarEscaneo(String value) async {

@@ -6,6 +6,7 @@ import 'package:deposito/models/client.dart';
 import 'package:deposito/models/codigo_barras.dart';
 import 'package:deposito/models/linea.dart';
 import 'package:deposito/models/product.dart';
+import 'package:deposito/pages/Productos/product_page.dart';
 import 'package:deposito/provider/product_provider.dart';
 import 'package:deposito/services/product_services.dart';
 import 'package:deposito/services/qr_services.dart';
@@ -14,7 +15,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:provider/provider.dart';
-import 'package:simple_barcode_scanner/enum.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 import 'package:flutter_barcode_listener/flutter_barcode_listener.dart';
 import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
@@ -390,13 +390,18 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
     setState(() {});
   }
 
-  void _navigateToProductPage(Product product) {
+  _navigateToProductPage(Product product) {
+    // ignore: unused_local_variable
     String ruta = '';
     ruta = '/paginaProducto';
     final productProvider = Provider.of<ProductProvider>(context, listen: false);
     productProvider.setProduct(product);
     productProvider.setRaiz(product.raiz);
-    appRouter.push(ruta);
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const ProductPage(),
+      ),
+    );
   }
 
   void _navigateToSimpleProductPage(Product product) {
@@ -434,7 +439,7 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
 
     if (listaProductosTemporal.isNotEmpty) {
       final productoRetorno = listaProductosTemporal[0];
-      _navigateToProductPage(productoRetorno);
+      await _navigateToProductPage(productoRetorno);
     } else {
       if(tienePermiso){
         await agregarCodBarraEscaneado();
