@@ -5,7 +5,7 @@ import 'package:deposito/models/ubicacion_almacen.dart';
 import 'package:deposito/provider/product_provider.dart';
 import 'package:deposito/services/almacen_services.dart';
 import 'package:deposito/widgets/carteles.dart';
-import 'package:dropdown_search/dropdown_search.dart';
+import 'package:deposito/widgets/ubicacion_dropdown.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
@@ -72,37 +72,19 @@ class _ConsultaUbicacionesPageState extends State<ConsultaUbicacionesPage> {
         padding: const EdgeInsets.all(8.0),
         child: Column(
           children: [
-            Container(
-              decoration: BoxDecoration(
-                border: Border.all(),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: DropdownSearch<UbicacionAlmacen>(
-                dropdownDecoratorProps: const DropDownDecoratorProps(
-                  textAlign: TextAlign.center,
-                  textAlignVertical: TextAlignVertical.center,
-                  dropdownSearchDecoration: InputDecoration(
-                    hintText: 'Seleccione ubicación',
-                    alignLabelWithHint: true,
-                    border: InputBorder.none,
-                  ),
-                ),
-                popupProps: const PopupProps.menu(
-                  showSearchBox: true,
-                  searchDelay: Duration.zero,
-                ),
-                onChanged: (value) async {
-                  ubicacionOrigen = value!;
-                  listaItems = await AlmacenServices().getItemXUbicacion(context, almacen.almacenId, ubicacionOrigen.almacenUbicacionId, token);
-                  variantes.clear();
-                  for (var item in listaItems) {
-                    variantes.addAll(item.variantes);
-                  }
-                  setState(() {});
-                },
-                items: listaUbicaciones,
-                selectedItem: ubicacionOrigen.almacenId == 0 ? null : ubicacionOrigen,
-              ),
+            UbicacionDropdown(
+              listaUbicaciones: listaUbicaciones, 
+              selectedItem: ubicacionOrigen.almacenId == 0 ? null : ubicacionOrigen,
+              onChanged: (value) async {
+                ubicacionOrigen = value!;
+                listaItems = await AlmacenServices().getItemXUbicacion(context, almacen.almacenId, ubicacionOrigen.almacenUbicacionId, token);
+                variantes.clear();
+                for (var item in listaItems) {
+                  variantes.addAll(item.variantes);
+                }
+                setState(() {});
+              },
+              hintText: 'Seleccione ubicación',
             ),
             const SizedBox(height: 20),
             Expanded(

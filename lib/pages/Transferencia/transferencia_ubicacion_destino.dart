@@ -6,7 +6,7 @@ import 'package:deposito/provider/product_provider.dart';
 import 'package:deposito/services/almacen_services.dart';
 import 'package:deposito/widgets/carteles.dart';
 import 'package:deposito/widgets/custom_button.dart';
-import 'package:dropdown_search/dropdown_search.dart';
+import 'package:deposito/widgets/ubicacion_dropdown.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:provider/provider.dart';
@@ -78,33 +78,15 @@ class _TransferenciaUbicacionDestinoState extends State<TransferenciaUbicacionDe
           child: Column(
             children: [
               // Selección de ubicación de destino
-              Container(
-                decoration: BoxDecoration(
-                  border: Border.all(),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: DropdownSearch<UbicacionAlmacen>(
-                  dropdownDecoratorProps: const DropDownDecoratorProps(
-                    textAlign: TextAlign.center,
-                    textAlignVertical: TextAlignVertical.center,
-                    dropdownSearchDecoration: InputDecoration(
-                      hintText: 'Seleccione ubicación de destino',
-                      alignLabelWithHint: true,
-                      border: InputBorder.none,
-                    ),
-                  ),
-                  popupProps: const PopupProps.menu(
-                    showSearchBox: true,
-                    searchDelay: Duration.zero,
-                  ),
-                  onChanged: (value) {
-                    setState(() {
-                      ubicacionDestino = value!;
-                    });
-                  },
-                  items: listaUbicaciones,
-                  selectedItem: ubicacionDestino.almacenId == 0 ? null : ubicacionDestino,
-                ),
+              UbicacionDropdown(
+                listaUbicaciones: listaUbicaciones,
+                selectedItem: ubicacionDestino.almacenId == 0 ? null : ubicacionDestino,
+                onChanged: (value) {
+                  setState(() {
+                    ubicacionDestino = value!;
+                  });
+                },
+                hintText: 'Seleccione ubicación de destino',
               ),
               VisibilityDetector(
                 key: const Key('scanner-field-visibility'),

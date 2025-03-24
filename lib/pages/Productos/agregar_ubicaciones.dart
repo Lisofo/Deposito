@@ -10,7 +10,7 @@ import 'package:deposito/services/almacen_services.dart';
 import 'package:deposito/widgets/carteles.dart';
 import 'package:deposito/widgets/custom_button.dart';
 import 'package:deposito/widgets/custom_form_field.dart';
-import 'package:dropdown_search/dropdown_search.dart';
+import 'package:deposito/widgets/ubicacion_dropdown.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:visibility_detector/visibility_detector.dart';
@@ -77,33 +77,15 @@ class _AgregarUbicacionesState extends State<AgregarUbicaciones> {
           children: [
             Padding(
               padding: const EdgeInsets.all(8.0),
-              child: Container(
-                decoration: BoxDecoration(
-                  border: Border.all(),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: DropdownSearch<UbicacionAlmacen>(
-                  items: ubicaciones,
-                  dropdownDecoratorProps: const DropDownDecoratorProps(
-                    textAlign: TextAlign.center,
-                    textAlignVertical: TextAlignVertical.center,
-                    dropdownSearchDecoration: InputDecoration(
-                      hintText: 'Seleccione una ubicacion',
-                      alignLabelWithHint: true,
-                      border: InputBorder.none,
-                    ),
-                  ),
-                  popupProps: const PopupProps.menu(
-                    showSearchBox: true,
-                    searchDelay: Duration.zero,
-                  ),
-                  onChanged: (value) {
-                    setState(() {
-                      ubicacionSeleccionada = value!;
-                    });
-                  },
-                  selectedItem: ubicacionSeleccionada,
-                ),
+              child: UbicacionDropdown(
+                listaUbicaciones: ubicaciones, 
+                selectedItem: ubicacionSeleccionada,
+                onChanged: (value) {
+                  setState(() {
+                    ubicacionSeleccionada = value!;
+                  });
+                },
+                hintText: 'Seleccione una ubicacion',
               ),
             ),
             const Text('Cantidad mínima'),

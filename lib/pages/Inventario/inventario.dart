@@ -5,7 +5,7 @@ import 'package:deposito/models/ubicacion_almacen.dart';
 import 'package:deposito/pages/Inventario/editar_inventario.dart';
 import 'package:deposito/provider/product_provider.dart';
 import 'package:deposito/services/almacen_services.dart';
-import 'package:dropdown_search/dropdown_search.dart';
+import 'package:deposito/widgets/ubicacion_dropdown.dart';
 import 'package:flutter/material.dart';
 import 'package:deposito/config/router/router.dart';
 import 'package:deposito/models/product.dart';
@@ -104,34 +104,16 @@ class _InventarioPageState extends State<InventarioPage> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Container(
-                decoration: BoxDecoration(
-                  border: Border.all(),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: DropdownSearch(
-                  dropdownDecoratorProps: const DropDownDecoratorProps(
-                    textAlign: TextAlign.center,
-                    textAlignVertical: TextAlignVertical.center,
-                    dropdownSearchDecoration: InputDecoration(
-                      hintText: 'Seleccione una ubicacion',
-                      alignLabelWithHint: true,
-                      border: InputBorder.none,
-                    ),
-                  ),
-                  popupProps: const PopupProps.menu(
-                    showSearchBox: true,
-                    searchDelay: Duration.zero,
-                  ),
-                  onChanged: (value) {
-                    ubicacionSeleccionada = value;
-                    Provider.of<ProductProvider>(context, listen: false).setUbicacion(ubicacionSeleccionada);
-                    appRouter.push('/editarInventario');
-                    setState(() {});
-                  },
-                  items: listaUbicaciones,
-                  selectedItem: ubicacionSeleccionada.almacenId == 0 ? null : ubicacionSeleccionada,
-                ),
+              UbicacionDropdown(
+                listaUbicaciones: listaUbicaciones, 
+                selectedItem: ubicacionSeleccionada.almacenId == 0 ? null : ubicacionSeleccionada,
+                onChanged: (value) {
+                  ubicacionSeleccionada = value!;
+                  Provider.of<ProductProvider>(context, listen: false).setUbicacion(ubicacionSeleccionada);
+                  appRouter.push('/editarInventario');
+                  setState(() {});
+                },
+                hintText: 'Seleccione una ubicacion',
               ),
               const SizedBox(height: 20,),
               VisibilityDetector(

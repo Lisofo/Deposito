@@ -15,6 +15,7 @@ class UbicacionAlmacen {
   late String descripcion;
   late int capacidad;
   late int orden;
+  late String tipoUbicacion;
 
   UbicacionAlmacen({
     required this.almacenUbicacionId,
@@ -23,6 +24,7 @@ class UbicacionAlmacen {
     required this.descripcion,
     required this.capacidad,
     required this.orden,
+    required this.tipoUbicacion,
   });
 
   factory UbicacionAlmacen.fromJson(Map<String, dynamic> json) => UbicacionAlmacen(
@@ -30,6 +32,7 @@ class UbicacionAlmacen {
     almacenId: json["almacenId"] as int? ?? 0,
     codUbicacion: json["codUbicacion"] as String? ?? '',
     descripcion: json["descripcion"] as String? ?? '',
+    tipoUbicacion: json["tipoUbicacion"] as String? ?? '',
     capacidad: json["capacidad"] as int? ?? 0,
     orden: json["orden"] as int? ?? 0,
   );
@@ -50,6 +53,7 @@ class UbicacionAlmacen {
     descripcion = '';
     capacidad = 0;
     orden = 0;
+    tipoUbicacion = '';
   }
 
   @override

@@ -1,5 +1,5 @@
 import 'package:deposito/search/product_search_delegate.dart';
-import 'package:dropdown_search/dropdown_search.dart';
+import 'package:deposito/widgets/ubicacion_dropdown.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:provider/provider.dart';
@@ -86,35 +86,17 @@ class _TransferenciaAlmacenPageState extends State<TransferenciaAlmacenPage> {
           child: Column(
             children: [
               // Escaneo de ubicación de origen
-              Container(
-                decoration: BoxDecoration(
-                  border: Border.all(),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: DropdownSearch<UbicacionAlmacen>(
-                  dropdownDecoratorProps: const DropDownDecoratorProps(
-                    textAlign: TextAlign.center,
-                    textAlignVertical: TextAlignVertical.center,
-                    dropdownSearchDecoration: InputDecoration(
-                      hintText: 'Seleccione ubicación de origen',
-                      alignLabelWithHint: true,
-                      border: InputBorder.none,
-                    ),
-                  ),
-                  enabled: productosEscaneados.isNotEmpty ? false : true,
-                  popupProps: const PopupProps.menu(
-                    showSearchBox: true,
-                    searchDelay: Duration.zero,
-                  ),
-                  onChanged: (value) {
-                    setState(() {
-                      ubicacionOrigen = value!;
-                      ubicacionEscaneada = true; // Marca la ubicación como escaneada
-                    });
-                  },
-                  items: listaUbicaciones,
-                  selectedItem: ubicacionOrigen.almacenId == 0 ? null : ubicacionOrigen,
-                ),
+              UbicacionDropdown(
+                listaUbicaciones: listaUbicaciones,
+                selectedItem: ubicacionOrigen.almacenId == 0 ? null : ubicacionOrigen,
+                onChanged: (value) {
+                  setState(() {
+                    ubicacionOrigen = value!;
+                    ubicacionEscaneada = true;
+                  });
+                },
+                enabled: productosEscaneados.isNotEmpty ? false : true,
+                hintText: 'Seleccione ubicación de origen',
               ),
               // Escaneo de productos (solo si la ubicación ya fue escaneada)
               const SizedBox(height: 20),
