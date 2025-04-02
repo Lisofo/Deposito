@@ -3,7 +3,6 @@ import 'package:deposito/models/menu.dart';
 import 'package:deposito/provider/product_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-// import 'package:provider/provider.dart';
 import '../provider/menu_provider.dart';
 import 'icon_string.dart';
 
@@ -60,20 +59,23 @@ List<Widget> _filaBotones2(List<Opcion> opciones, BuildContext context) {
   for (var opt in opciones) {
     final widgetTemp = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: Row(
-        children: [
-          getIcon(opt.icon, context),
-          TextButton(
-            onPressed: () {
-              // Provider.of<OrdenProvider>(context, listen: false).setPageName(opt.texto);
-              appRouter.push(opt.ruta);
-            },
-            child: Text(
-              opt.texto,
-              style: const TextStyle(color: Colors.black),
+      child: InkWell(
+        onTap: () {
+          appRouter.push(opt.ruta);
+        },
+        child: Row(
+          children: [
+            getIcon(opt.icon, context),
+            const SizedBox(width: 8), // Espacio entre el icono y el texto
+            TextButton(
+              onPressed: null,
+              child: Text(
+                opt.texto,
+                style: const TextStyle(color: Colors.black),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
     opcionesRet.add(widgetTemp);

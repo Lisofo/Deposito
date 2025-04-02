@@ -9,6 +9,9 @@ import 'package:deposito/pages/login&menu/login.dart';
 import 'package:deposito/pages/login&menu/menu.dart';
 import 'package:deposito/pages/Productos/product_page.dart';
 import 'package:deposito/pages/Inventario/revisar_inventario.dart';
+import 'package:deposito/pages/picking/pedido_interno.dart';
+import 'package:deposito/pages/picking/pedidos.dart';
+import 'package:deposito/pages/picking/picking.dart';
 import 'package:deposito/pages/resumenInventario/resumen_general_inventario.dart';
 import 'package:deposito/pages/resumenInventario/resumen_inventario.dart';
 import 'package:deposito/pages/seleccion_almacen.dart';
@@ -60,6 +63,9 @@ class AppRouter {
           },
         ),
         GoRoute(path: '/consultaUbicaciones', builder: (context, state) => const ConsultaUbicacionesPage()),
+        GoRoute(path: '/picking', builder: (context, state) => const ListaPedidos()),
+        GoRoute(path: '/pickingInterno', builder: (context, state) => const PedidoInterno()),
+        GoRoute(path: '/pickingProductos', builder: (context, state) => const PickingPage()),
       ],
     );
   }

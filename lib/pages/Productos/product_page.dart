@@ -44,6 +44,7 @@ class _ProductPageState extends State<ProductPage> {
   late List<String> permisos = [];
   late bool editUbi = false;
   late bool editCodBarras = false;
+  late Almacene almacenCargado = Almacene.empty();
 
   @override
   void initState() {
@@ -83,7 +84,9 @@ class _ProductPageState extends State<ProductPage> {
     productoNuevo = await ProductServices().getProductoDeposito(context, raiz, token);
     codigos = await QrServices().getCodBarras(context, productoNuevo.variantes[0].codItem, token);
     _variantes = productoNuevo.variantes;
-
+    almacenCargado = _variantes![0].almacenes.firstWhere((e) => e.descAlmacen == almacen.descripcion);
+    seleccionarAlmacen(almacenCargado);
+    Provider.of<UbicacionProvider>(context, listen: false).setUbicaciones(almacenCargado.ubicaciones);
     setState(() {
       buscando = false;
     });
@@ -221,7 +224,7 @@ class _ProductPageState extends State<ProductPage> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 10),
                     Text(
                       'Ubicaciones del almacen ${almacenSeleccionado!.descAlmacen}:',
                       style: const TextStyle(
@@ -337,13 +340,15 @@ class _ProductPageState extends State<ProductPage> {
               CustomTextFormField(
                 controller: codBarrasController,
                 hint: 'Ingrese codigo',
+                maxLines: 1,
               )
             ],
           ),
           actions: <Widget>[
             TextButton(
               onPressed: () async {
-                await _qrServices.postCB(context, productoNuevo.variantes[0].codItem, codBarrasController.text, token);
+                var trimmed = codBarrasController.text.trim();
+                await _qrServices.postCB(context, productoNuevo.variantes[0].codItem, trimmed, token);
                 statusCode = await _qrServices.getStatusCode();
                 await _qrServices.resetStatusCode();
                 if(statusCode == 1) {

@@ -33,6 +33,11 @@
                     "ruta": "/consultaUbicaciones",
                     "icon": "calendar_month",
                     "texto": "Consulta Ubicaciones"
+                },
+                {
+                    "ruta": "/picking",
+                    "icon": "calendar_month",
+                    "texto": "Picking"
                 }
             ]
         }

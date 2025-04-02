@@ -294,11 +294,12 @@ class _TransferenciaAlmacenPageState extends State<TransferenciaAlmacenPage> {
 
   Future<void> _editarCantidad(BuildContext context, ProductoAAgregar productoAAgregar) async {
     final cantidadController = TextEditingController(text: productoAAgregar.cantidad.toString());
+    var product = productoAAgregar.productoAgregado;
     await showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text("Editar cantidad"),
+          title: Text("Editar cantidad ${product.raiz} - ${product.descripcion}"),
           content: TextField(
             controller: cantidadController,
             keyboardType: TextInputType.number,

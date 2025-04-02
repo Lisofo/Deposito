@@ -90,6 +90,7 @@ class _RevisarInventarioState extends State<RevisarInventario> {
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          Text('Código; ${item.codItem}'),
                           Text('Cantidad contada: ${item.conteo}'),
                           Text('Ubicacion: ${item.codUbicacion}'),
                         ],

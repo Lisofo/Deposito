@@ -88,26 +88,6 @@ class _TransferenciaUbicacionDestinoState extends State<TransferenciaUbicacionDe
                 },
                 hintText: 'Seleccione ubicación de destino',
               ),
-              VisibilityDetector(
-                key: const Key('scanner-field-visibility'),
-                onVisibilityChanged: (info) {
-                  if (info.visibleFraction > 0) {
-                    focoDeScanner.requestFocus();
-                  }
-                },
-                child: TextFormField(
-                  focusNode: focoDeScanner,
-                  cursorColor: Colors.transparent,
-                  decoration: const InputDecoration(
-                    border: UnderlineInputBorder(borderSide: BorderSide.none),
-                  ),
-                  style: const TextStyle(color: Colors.transparent),
-                  autofocus: true,
-                  keyboardType: TextInputType.none,
-                  controller: textController,
-                  onFieldSubmitted: procesarEscaneo,
-                ),
-              ),
               const SizedBox(height: 20),
               // Lista de productos a transferir
               Expanded(
@@ -126,6 +106,26 @@ class _TransferenciaUbicacionDestinoState extends State<TransferenciaUbicacionDe
                       subtitle: Text('Cantidad: ${productoAAgregar.cantidad}'),
                     );
                   },
+                ),
+              ),
+              VisibilityDetector(
+                key: const Key('scanner-field-visibility'),
+                onVisibilityChanged: (info) {
+                  if (info.visibleFraction > 0) {
+                    focoDeScanner.requestFocus();
+                  }
+                },
+                child: TextFormField(
+                  focusNode: focoDeScanner,
+                  cursorColor: Colors.transparent,
+                  decoration: const InputDecoration(
+                    border: UnderlineInputBorder(borderSide: BorderSide.none),
+                  ),
+                  style: const TextStyle(color: Colors.transparent),
+                  autofocus: true,
+                  keyboardType: TextInputType.none,
+                  controller: textController,
+                  onFieldSubmitted: procesarEscaneo,
                 ),
               ),
               // Botón de transferir

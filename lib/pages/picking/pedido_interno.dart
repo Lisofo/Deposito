@@ -28,42 +28,6 @@ class _PedidoInternoState extends State<PedidoInterno> {
     // token = context.read<OrdenProvider>().token;
   }
 
-  void _mostrarDialogoConfirmacion(String accion) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          surfaceTintColor: Colors.white,
-          title: const Text('Confirmación'),
-          content: Text('¿Estás seguro que deseas $accion el picking?'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('Cancelar'),
-            ),
-            TextButton(
-              onPressed: () {
-                setState(() {
-                  if (accion == 'iniciar') {
-                    //cambiarEstado('EN PROCESO');
-                    Navigator.of(context).pop();
-                    appRouter.go('/pickingOrders/pickingInterno/picking');
-                  } else {
-                    //cambiarEstado('FINALIZADA');
-                    Navigator.of(context).pop();
-                  }
-                });
-              },
-              child: const Text('Confirmar'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
@@ -221,19 +185,22 @@ class _PedidoInternoState extends State<PedidoInterno> {
                 ),
                 Container(
                   decoration: BoxDecoration(
-                      border: Border.all(
-                          color: colors.primary,
-                          width: 2),
-                      borderRadius: BorderRadius.circular(5)),
+                    border: Border.all(
+                      color: colors.primary,
+                      width: 2
+                    ),
+                    borderRadius: BorderRadius.circular(5)
+                  ),
                   child: TextFormField(
                     enabled: false,
                     minLines: 1,
                     maxLines: 100,
                     initialValue: 'Notas del cliente',//orden.cliente.notas,
                     decoration: const InputDecoration(
-                        border: InputBorder.none,
-                        fillColor: Colors.white,
-                        filled: true),
+                      border: InputBorder.none,
+                      fillColor: Colors.white,
+                      filled: true
+                    ),
                   ),
                 ),
                 const SizedBox(
@@ -245,19 +212,22 @@ class _PedidoInternoState extends State<PedidoInterno> {
                 ),
                 Container(
                   decoration: BoxDecoration(
-                      border: Border.all(
-                          color: colors.primary,
-                          width: 2),
-                      borderRadius: BorderRadius.circular(5)),
+                    border: Border.all(
+                      color: colors.primary,
+                      width: 2
+                    ),
+                    borderRadius: BorderRadius.circular(5)
+                  ),
                   child: TextFormField(
                     enabled: false,
                     minLines: 1,
                     maxLines: 100,
                     initialValue: 'Instrucciones del cliente',//orden.instrucciones,
                     decoration: const InputDecoration(
-                        border: InputBorder.none,
-                        fillColor: Colors.white,
-                        filled: true),
+                      border: InputBorder.none,
+                      fillColor: Colors.white,
+                      filled: true
+                    ),
                   ),
                 ),
                 const SizedBox(
@@ -293,13 +263,51 @@ class _PedidoInternoState extends State<PedidoInterno> {
                 onPressed: () async {
                   await volverAPendiente();
                 },
-                icon: Icon(Icons.backspace,
-                  color: colors.primary)
-                ),
+                icon: Icon(
+                  Icons.backspace,
+                  color: colors.primary
+                )
+              ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  void _mostrarDialogoConfirmacion(String accion) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          surfaceTintColor: Colors.white,
+          title: const Text('Confirmación'),
+          content: Text('¿Estás seguro que deseas $accion el picking?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  if (accion == 'iniciar') {
+                    //cambiarEstado('EN PROCESO');
+                    Navigator.of(context).pop();
+                    appRouter.push('/pickingProductos');
+                  } else {
+                    //cambiarEstado('FINALIZADA');
+                    Navigator.of(context).pop();
+                  }
+                });
+              },
+              child: const Text('Confirmar'),
+            ),
+          ],
+        );
+      },
     );
   }
 

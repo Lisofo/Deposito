@@ -130,7 +130,7 @@ class _ListaPedidosState extends State<ListaPedidos> {
                           // final orden = ordenesFiltradas[i];
                           // context.read<OrdenProvider>().setOrden(orden);
 
-                          appRouter.go('/pickingOrders/pickingInterno');
+                          appRouter.push('/pickingInterno');
                         },
                         child: Padding(
                           padding: const EdgeInsets.all(8.0),
