@@ -1,9 +1,11 @@
-// ignore_for_file: unused_field
-
-import 'package:flutter/material.dart';
 import 'package:deposito/config/router/router.dart';
-import 'package:deposito/widgets/custom_button.dart';
+import 'package:deposito/models/almacen.dart';
+import 'package:deposito/models/orden_picking.dart';
+import 'package:deposito/provider/product_provider.dart';
+import 'package:deposito/services/picking_services.dart';
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 
 class PedidoInterno extends StatefulWidget {
   const PedidoInterno({super.key});
@@ -13,19 +15,26 @@ class PedidoInterno extends StatefulWidget {
 }
 
 class _PedidoInternoState extends State<PedidoInterno> {
-  // late Orden orden;
-  late int marcaId = 0;
-  late final String _currentPosition = '';
-  // late Ubicacion ubicacion = Ubicacion.empty();
+  late OrdenPicking orderProvider = OrdenPicking.empty();
+  late OrdenPicking order = OrdenPicking.empty();
   bool ejecutando = false;
   String token = '';
+  late Almacen almacen = Almacen.empty();
+
 
   @override
   void initState() {
     super.initState();
-    // orden = context.read<OrdenProvider>().orden;
-    // marcaId = context.read<OrdenProvider>().marcaId;
-    // token = context.read<OrdenProvider>().token;
+    cargarData();
+  }
+
+  void cargarData() async {
+    orderProvider = context.read<ProductProvider>().ordenPicking;
+    token = context.read<ProductProvider>().token;
+    almacen = context.read<ProductProvider>().almacen;
+    order = await PickingServices().getLineasOrder(context, orderProvider.pickId, almacen.almacenId, token);
+    print(order);
+    setState(() {});
   }
 
   @override
@@ -35,12 +44,11 @@ class _PedidoInternoState extends State<PedidoInterno> {
       child: Scaffold(
         backgroundColor: Colors.grey.shade200,
         appBar: AppBar(
-          
           iconTheme: const IconThemeData(color: Colors.white),
           backgroundColor: colors.primary,
-          title: const Text(
-            'Pedido 1111', /*${orden.ordenTrabajoId},*/
-            style: TextStyle(color: Colors.white),
+          title: Text(
+            'Orden ${order.numeroDocumento}',
+            style: const TextStyle(color: Colors.white),
           ),
         ),
         body: SingleChildScrollView(
@@ -65,122 +73,92 @@ class _PedidoInternoState extends State<PedidoInterno> {
                     ),
                   ),
                 ),
-                const SizedBox(
-                  height: 20,
-                ),
+                const SizedBox(height: 20),
                 const Text(
-                  'Nombre del cliente: ',
+                  'Cliente/Proveedor: ',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
-                const Text(
-                  'Nombre cliente',
-                  // orden.cliente.nombre,
-                  style: TextStyle(fontSize: 16),
+                Text(
+                  order.nombre,
+                  style: const TextStyle(fontSize: 16),
                 ),
-                const SizedBox(
-                  height: 10,
-                ),
-                const Text(
-                  'Codigo del cliente: ',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                ),
-                const Text(
-                  'Cod cliente',
-                  //orden.cliente.codCliente,
-                  style: TextStyle(fontSize: 16),
-                ),
-                const SizedBox(
-                  height: 10,
-                ),
+                const SizedBox(height: 10),
                 const Text(
                   'Fecha del Pedido: ',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
                 Text(
-                  DateFormat('EEEE d, MMMM yyyy', 'es').format(DateTime.now()/*orden.fechaOrdenTrabajo*/),
+                  DateFormat('EEEE d, MMMM yyyy', 'es').format(order.fechaDate),
                   style: const TextStyle(fontSize: 16),
                 ),
-                const SizedBox(
-                  height: 10,
-                ),
-                const Row(
-                  children: [
-                    Text(
-                      'Direccion de entrega: ',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                    ),
-                    // IconButton(onPressed: (){
-                    //   _launchMaps(orden.cliente.coordenadas);
-                    // }, icon: Icon(Icons.person_pin, color: colors.primary))
-                  ],
-                ),
+                const SizedBox(height: 10),
                 const Text(
-                  //orden.cliente.direccion,
-                  'Direccion',
-                  style: TextStyle(fontSize: 16),
-                ),
-                const SizedBox(
-                  height: 10,
-                ),
-                const Text(
-                  'Prioridad: ',
+                  'Estado: ',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
-                const Text(
-                  'prioridad',
-                  // orden.cliente.telefono1,
-                  style: TextStyle(fontSize: 16),
-                ),
-                const SizedBox(
-                  height: 10,
-                ),
-                const Row(
+                Row(
                   children: [
                     Text(
-                      'Estado: ',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      order.estado,
+                      style: const TextStyle(fontSize: 16),
                     ),
-                    Text(
-                      //orden.estado,
-                      'estado',
-                      style: TextStyle(fontSize: 16),
+                    const SizedBox(width: 8),
+                    Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: _getStatusColor(order.estado),
+                        shape: BoxShape.circle,
+                      ),
                     )
                   ],
                 ),
-                const SizedBox(
-                  height: 10,
+                const SizedBox(height: 10),
+                const Text(
+                  'Tipo de Orden: ',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
-                const Row(
-                  children: [
-                    Text(
-                      'Tipo de Orden: ',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                    ),
-                    Text(
-                      //orden.tipoOrden.descripcion,
-                      'tipo orden',
-                      style: TextStyle(fontSize: 16))
-                  ],
+                Text(
+                  order.tipo == 'inbound' ? 'Entrada' : 'Salida',
+                  style: const TextStyle(fontSize: 16)
                 ),
-                const SizedBox(
-                  height: 10,
-                ),
+                const SizedBox(height: 10),
+                if (order.prioridad != '') ...[
+                  const Text(
+                    'Prioridad: ',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                  Text(
+                    order.prioridad,
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                  const SizedBox(height: 10),
+                ],
                 const Text(
                   'Productos: ',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
-                // for (var i = 0; i < orden.servicio.length; i++) ...[
+                const SizedBox(height: 8),
+                if (order.lineas!.isEmpty)
                   const Text(
-                    'cantidad de productos',
-                    // orden.servicio[i].descripcion,
+                    'No hay productos en esta orden',
                     style: TextStyle(fontSize: 16),
-                  ),
-                // ],
-                const SizedBox(
-                  height: 10,
-                ),
+                  )
+                else
+                  ...order.lineas!.map((item) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Card(
+                      child: ListTile(
+                        leading: const Icon(Icons.inventory),
+                        title: Text(item.descripcion),
+                        subtitle: Text('Código: ${item.codItem}'),
+                        trailing: Text('${item.cantidadPedida} uds'),
+                      ),
+                    ),
+                  )),
+                const SizedBox(height: 10),
                 const Text(
-                  'Notas del cliente: ',
+                  'Comentario: ',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
                 Container(
@@ -195,7 +173,7 @@ class _PedidoInternoState extends State<PedidoInterno> {
                     enabled: false,
                     minLines: 1,
                     maxLines: 100,
-                    initialValue: 'Notas del cliente',//orden.cliente.notas,
+                    initialValue: order.comentario == '' ? 'No hay comentario' : order.comentario,
                     decoration: const InputDecoration(
                       border: InputBorder.none,
                       fillColor: Colors.white,
@@ -203,36 +181,7 @@ class _PedidoInternoState extends State<PedidoInterno> {
                     ),
                   ),
                 ),
-                const SizedBox(
-                  height: 10,
-                ),
-                const Text(
-                  'Instrucciones: ',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                ),
-                Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: colors.primary,
-                      width: 2
-                    ),
-                    borderRadius: BorderRadius.circular(5)
-                  ),
-                  child: TextFormField(
-                    enabled: false,
-                    minLines: 1,
-                    maxLines: 100,
-                    initialValue: 'Instrucciones del cliente',//orden.instrucciones,
-                    decoration: const InputDecoration(
-                      border: InputBorder.none,
-                      fillColor: Colors.white,
-                      filled: true
-                    ),
-                  ),
-                ),
-                const SizedBox(
-                  height: 15,
-                ),
+                const SizedBox(height: 15),
               ],
             ),
           ),
@@ -245,19 +194,27 @@ class _PedidoInternoState extends State<PedidoInterno> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              CustomButton(
-                clip: Clip.antiAlias,
-                onPressed: () => _mostrarDialogoConfirmacion('iniciar'),
-                text: 'Iniciar',   
-                tamano: 16,
-                // disabled: !(marcaId != 0 && orden.estado == 'PENDIENTE'),
+              ElevatedButton(
+                onPressed: () => _mostrarDialogoConfirmacion(order.estado == 'PENDIENTE' ? 'iniciar' : 'continuar'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colors.primary,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                ),
+                child: Text(
+                  order.estado == 'PENDIENTE' ? 'Iniciar' : 'Continuar',
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
+                ),
               ),
-              CustomButton(
-                clip: Clip.antiAlias,
+              ElevatedButton(
                 onPressed: () => _mostrarDialogoConfirmacion('finalizar'),
-                text: 'Finalizar',
-                tamano: 16,
-                //disabled: !(marcaId != 0 && orden.estado == 'EN PROCESO'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colors.primary,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                ),
+                child: const Text(
+                  'Finalizar',
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
               ),
               IconButton(
                 onPressed: () async {
@@ -291,17 +248,24 @@ class _PedidoInternoState extends State<PedidoInterno> {
               child: const Text('Cancelar'),
             ),
             TextButton(
-              onPressed: () {
-                setState(() {
-                  if (accion == 'iniciar') {
-                    //cambiarEstado('EN PROCESO');
-                    Navigator.of(context).pop();
-                    appRouter.push('/pickingProductos');
-                  } else {
-                    //cambiarEstado('FINALIZADA');
-                    Navigator.of(context).pop();
-                  }
-                });
+              onPressed: () async {
+                if (accion == 'iniciar') {
+                  orderProvider = await PickingServices().putOrderPicking(context, order.pickId, 'en proceso', token);
+                  order.estado = orderProvider.estado;
+                  Provider.of<ProductProvider>(context, listen: false).setOrdenPickingInterna(order);
+                  Navigator.of(context).pop();
+                  appRouter.push('/pickingProductos');
+                } else if(accion == 'finalizar') {
+                  orderProvider = await PickingServices().putOrderPicking(context, order.pickId, 'cerrado', token);
+                  order.estado = orderProvider.estado;
+                  Provider.of<ProductProvider>(context, listen: false).setOrdenPickingInterna(OrdenPicking.empty());
+                  Navigator.of(context).pop();
+                } else if(accion == 'continuar') {
+                  Provider.of<ProductProvider>(context, listen: false).setOrdenPickingInterna(order);
+                  Navigator.of(context).pop();
+                  appRouter.push('/pickingProductos');
+                }
+                setState(() {});
               },
               child: const Text('Confirmar'),
             ),
@@ -311,56 +275,7 @@ class _PedidoInternoState extends State<PedidoInterno> {
     );
   }
 
- 
-  // cambiarEstado(String estado) async {
-  //   if (!ejecutando) {
-  //     ejecutando = true;
-
-  //     await obtenerUbicacion();
-  //     int ubicacionId = ubicacion.ubicacionId;
-  //     int uId = context.read<OrdenProvider>().uId;
-
-  //     String token = context.read<OrdenProvider>().token;
-
-  //     await OrdenServices().patchOrden(context, orden, estado, ubicacionId, token);
-  //     if (estado == 'EN PROCESO') {
-  //       await RevisionServices().postRevision(uId, orden, token);
-  //     }
-  //     setState(() {});
-
-  //     print('hola entrada');
-  //     ejecutando = false;
-  //   }
-  // }
-
-  // obtenerUbicacion() async {
-  //   await getLocation();
-  //   int uId = context.read<OrdenProvider>().uId;
-  //   ubicacion.fecha = DateTime.now();
-  //   ubicacion.usuarioId = uId;
-  //   ubicacion.ubicacion = _currentPosition;
-
-  //   String token = context.read<OrdenProvider>().token;
-
-  //   await UbicacionServices().postUbicacion(context, ubicacion, token);
-  // }
-
-  // Future<void> getLocation() async {
-  //   try {
-  //     Position position = await Geolocator.getCurrentPosition(
-  //         desiredAccuracy: LocationAccuracy.high);
-  //     setState(() {
-  //       _currentPosition = '${position.latitude}, ${position.longitude}';
-  //       print('${position.latitude}, ${position.longitude}');
-  //     });
-  //   } catch (e) {
-  //     setState(() {
-  //       _currentPosition = 'Error al obtener la ubicación: $e';
-  //     });
-  //   }
-  // }
-
-  Future<void> volverAPendiente(/*Orden orden*/) async {
+  Future<void> volverAPendiente() async {
     showDialog(
       context: context,
       builder: (context) {
@@ -380,14 +295,12 @@ class _PedidoInternoState extends State<PedidoInterno> {
               onPressed: () async {
                 if (!ejecutando) {
                   ejecutando = true;
-                  //await obtenerUbicacion();
-                  // int ubicacionId = ubicacion.ubicacionId;
-                  //await OrdenServices().patchOrden(context, orden, 'PENDIENTE', ubicacionId, token);
+                  orderProvider = await PickingServices().putOrderPicking(context, order.pickId, 'pendiente', token);
+                  order.estado = orderProvider.estado;
                   Navigator.of(context).pop();
                   setState(() {});
                   ejecutando = false;
                 }
-                // await OrdenServices.showDialogs(context, 'Estado cambiado a Pendiente', true, true);
                 setState(() {});
               },
               child: const Text('Confirmar')
@@ -398,23 +311,18 @@ class _PedidoInternoState extends State<PedidoInterno> {
     );
   }
 
-  //  _launchMaps(String coordenadas) async {
-  //   // Coordenadas a abrir en el mapa
-  //   var coords = coordenadas.split(',');
-  //   String latitude = coords[0]; // Latitud de ejemplo
-  //   String longitude = coords[1]; // Longitud de ejemplo
-
-  //   // URI con las coordenadas
-  //   final Uri toLaunch = Uri(
-  //       scheme: 'https',
-  //       host: 'www.google.com',
-  //       path: 'maps/search/',
-  //       query: 'api=1&query=$latitude,$longitude');
-
-  //   if (await launchUrl(toLaunch)) {
-  //   } else {
-  //     throw 'No se pudo abrir la url';
-  //   }
-  // }
-
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'nueva':
+        return Colors.blue;
+      case 'en progreso':
+        return Colors.orange;
+      case 'pendiente':
+        return Colors.yellow[700]!;
+      case 'completada':
+        return Colors.green;
+      default:
+        return Colors.grey;
+    }
+  }
 }

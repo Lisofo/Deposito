@@ -5,15 +5,22 @@ import 'package:deposito/provider/product_provider.dart';
 import 'package:deposito/provider/theme_provider.dart';
 import 'package:deposito/provider/ubicacion_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart'; // Importa esto para kIsWeb
 import 'package:flutter/services.dart';
-// import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
 Future<void> main() async {
-  
   WidgetsFlutterBinding.ensureInitialized();
-  final initialLocation = await VersionChecker.checkVersion();
+  
+  // Inicializa initialLocation con un valor por defecto
+  String initialLocation = '/login';
+  
+  // Solo verifica la versión si no es web (es decir, es APK/mobile)
+  if (!kIsWeb) {
+    initialLocation = await VersionChecker.checkVersion();
+  }
+  
   appRouter = await AppRouter.createAppRouter(initialLocation);
 
   runApp(
@@ -25,23 +32,21 @@ Future<void> main() async {
       ],
       child: const MyApp(),
     )
-    
   );
-  SystemChrome.setPreferredOrientations(
-    [DeviceOrientation.portraitUp],
-  );
-  // SystemChrome.setEnabledSystemUIMode(
-  //   SystemUiMode.immersiveSticky,
-  // );
-} 
-
+  
+  // También podrías hacer que esto solo se aplique en mobile
+  if (!kIsWeb) {
+    SystemChrome.setPreferredOrientations(
+      [DeviceOrientation.portraitUp],
+    );
+  }
+}
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // final themeProvider = Provider.of<ThemeProvider>(context);
     final appTheme = AppTheme(selectedColor: 0);
     return MaterialApp.router(
       theme: appTheme.getTheme(),

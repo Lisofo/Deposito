@@ -1,3 +1,4 @@
+import 'package:deposito/models/orden_picking.dart';
 import 'package:deposito/pages/Productos/agregar_ubicaciones.dart';
 import 'package:deposito/pages/Productos/buscador_producto.dart';
 import 'package:deposito/pages/Dashboard/dashboard.dart';
@@ -12,6 +13,8 @@ import 'package:deposito/pages/Inventario/revisar_inventario.dart';
 import 'package:deposito/pages/picking/pedido_interno.dart';
 import 'package:deposito/pages/picking/pedidos.dart';
 import 'package:deposito/pages/picking/picking.dart';
+import 'package:deposito/pages/picking/picking_products.dart';
+import 'package:deposito/pages/picking/resumen_picking.dart';
 import 'package:deposito/pages/resumenInventario/resumen_general_inventario.dart';
 import 'package:deposito/pages/resumenInventario/resumen_inventario.dart';
 import 'package:deposito/pages/seleccion_almacen.dart';
@@ -63,9 +66,17 @@ class AppRouter {
           },
         ),
         GoRoute(path: '/consultaUbicaciones', builder: (context, state) => const ConsultaUbicacionesPage()),
-        GoRoute(path: '/picking', builder: (context, state) => const ListaPedidos()),
+        GoRoute(path: '/picking', builder: (context, state) => const ListaPicking()),
         GoRoute(path: '/pickingInterno', builder: (context, state) => const PedidoInterno()),
         GoRoute(path: '/pickingProductos', builder: (context, state) => const PickingPage()),
+        GoRoute(path: '/pickingProductosConteo', builder: (context, state) => const PickingProducts()),
+        GoRoute(
+          path: '/resumenPicking',
+          builder: (context, state) {
+            final args = state.extra as List<PickingLinea>;
+            return SummaryScreen(processedLines: args);
+          },
+        ),
       ],
     );
   }

@@ -1,12 +1,16 @@
 // ignore_for_file: must_be_immutable, use_build_context_synchronously, unused_field
+import 'package:deposito/config/router/router.dart';
+import 'package:deposito/models/almacen.dart';
+import 'package:deposito/models/orden_picking.dart';
+import 'package:deposito/provider/product_provider.dart';
+import 'package:deposito/widgets/carteles.dart';
 import 'package:flutter/material.dart';
-import 'package:deposito/models/product.dart';
-import 'package:deposito/models/product2.dart';
-import 'package:deposito/widgets/custom_button.dart';
+import 'package:flutter_speed_dial/flutter_speed_dial.dart';
+import 'package:provider/provider.dart';
 import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 
 class PickingPage extends StatefulWidget {
-  static const String name = 'agregar_pedido';
   const PickingPage({super.key});
 
   @override
@@ -15,220 +19,182 @@ class PickingPage extends StatefulWidget {
 
 class _PickingPageState extends State<PickingPage> {
 
-  late Product productoSeleccionado = Product.empty();
-  List<Product> historial = [];
-  String ticket = '';
-  List<String> tickets = [];
-  String? _barcode;
-  String result = '';
-  late bool visible;
-  List<Product> product = [];
-  String token = '';
-  final TextEditingController cantidadController = TextEditingController();
-  final TextEditingController ubicacionController = TextEditingController();
-  List<dynamic> productosBuscados = [];
-  bool estoyBuscando = true;
+  List<PickingLinea> lineas = [];
+  OrdenPicking ordenPicking = OrdenPicking.empty();
+  PickingLinea? _selectedLine;
+  bool isLoading = true;
+  String? _error;
+  late Almacen almacen;
+  late String token;
+  FocusNode focoDeScanner = FocusNode();
+  TextEditingController textController = TextEditingController();
 
-  List<Product2> productosMostrar = [
-    Product2(nombre: 'Flores', cantidadPedida: 14, ubicacion: 'Gondola 12', cantidadPickeada: 0),
-    Product2(nombre: 'Colores', cantidadPedida: 52, ubicacion: 'Gondola 2', cantidadPickeada: 0),
-    Product2(nombre: 'Azucar', cantidadPedida: 32, ubicacion: 'Gondola 5', cantidadPickeada: 0),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadLineas();
+  }
+
+  Future<void> _loadLineas() async {
+    final productProvider = context.read<ProductProvider>();
+    almacen = productProvider.almacen;
+    token = productProvider.token;
+    ordenPicking = productProvider.ordenPickingInterna;
+    focoDeScanner.requestFocus();
+    try {
+      setState(() {
+        isLoading = true;
+        _error = null;
+      });
+      
+      final lines = ordenPicking.lineas;
+      
+      setState(() {
+        lineas = lines!;
+        if (lines.isNotEmpty) {
+          _selectedLine = lines.first;
+        }
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    return SafeArea(child: scaffoldScannerSearch(context, colors));
+    return SafeArea(
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: colors.primary,
+          iconTheme: IconThemeData(color: colors.onPrimary),
+          title: Text('Orden ${ordenPicking.numeroDocumento}', style: TextStyle(color: colors.onPrimary),),
+        ),
+        body: _buildBody(),
+        floatingActionButton: _buildFloatingActionButton(colors),
+        bottomNavigationBar: _buildBottomBar(),
+      ),
+    );
   }
 
-  Scaffold  scaffoldScannerSearch(BuildContext context, ColorScheme colors) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Picking',
-          style: TextStyle(color: Colors.white),
+  Widget _buildFloatingActionButton(ColorScheme colors) {
+    return SpeedDial(
+      icon: Icons.add,
+      activeIcon: Icons.close,
+      backgroundColor: colors.primary,
+      foregroundColor: Colors.white,
+      children: [
+        SpeedDialChild(
+          child: const Icon(Icons.qr_code_scanner_outlined),
+          backgroundColor: colors.primary,
+          foregroundColor: Colors.white,
+          label: 'Escanear',
+          onTap: _scanBarcode,
         ),
-        iconTheme: const IconThemeData(color: Colors.white),
-        centerTitle: true,
-        elevation: 0,
-        backgroundColor: colors.primary,
-      ),
-      body: SafeArea(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(
-              flex: 1,
-              child: ListView.separated(
-                itemCount: productosMostrar.length,
-                itemBuilder: (context, i) {
-                  var item = productosMostrar[i];
-                  return ListTile(
-                    title: Text(item.nombre),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Cantidad a agregar: ${item.cantidadPedida} \nUbicacion: ${item.ubicacion}'),
-                        Text('Cantidad Pickeada: ${item.cantidadPickeada}'),
-                      ],
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        IconButton(
-                          onPressed: item.isDisabled ? null : () async {
-                            ubicacionController.text = item.ubicacion;
-                            cantidadController.text = item.cantidadPickeada.toString();
-                            await showDialog(
-                              context: context,
-                              builder: (context) {
-                                return AlertDialog(
-                                  title: const Text('Editar Datos'),
-                                  content: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      TextFormField(
-                                        decoration: const InputDecoration(label: Text('Cantidad pickeada')),
-                                        controller: cantidadController,
-                                      ),
-                                      TextFormField(
-                                        decoration: const InputDecoration(label: Text('Ubicacion')),
-                                        controller: ubicacionController,
-                                      ),
-                                    ],
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () {
-                                        Navigator.of(context).pop();
-                                      },
-                                      child: const Text('Cancelar')
-                                    ),
-                                    TextButton(
-                                      onPressed: () {
-                                        item.cantidadPickeada = int.tryParse(cantidadController.text)!;
-                                        item.ubicacion = ubicacionController.text;
-                                        Navigator.of(context).pop();
-                                        cantidadController.clear();
-                                        ubicacionController.clear();
-                                        setState(() {});
-                                      },
-                                      child: const Text('Confirmar')
-                                    )
-                                  ],
-                                );
-                              }
-                            );
-                          },
-                          icon: const Icon(Icons.edit)
-                        ),
-                        IconButton(
-                          onPressed: item.isDisabled ? null : () {
-                            productosMostrar.removeAt(i);
-                            setState(() {});
-                          },
-                          icon: const Icon(Icons.delete)
-                        ),
-                        IconButton(
-                          onPressed: () {
-                            item.isDisabled = !item.isDisabled;
-                            setState(() {});
-                          },
-                          icon: const Icon(Icons.disabled_by_default)
-                        ),
-                      ],
-                    ),
-                  );
-                }, 
-                separatorBuilder: (BuildContext context, int index) { 
-                  return const Divider(
-                    indent: 16,
-                    endIndent: 16,
-                  ); 
-                },
-              ),
-            ),
-            Stack(
-              children: [
-                Image.asset(
-                  'images/planoDeposito.jpg',
-                  fit: BoxFit.fill,
-                ),
-                // Marcador para "Chatarra" - ajusta las coordenadas left/top según necesites
-                Positioned(
-                  left: 130,  // Ajusta este valor según la posición horizontal
-                  top: 320,   // Ajusta este valor según la posición vertical
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.red.withValues(alpha: 0.7),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Text(
-                      '📍 Chatarra',  // Puedes usar un icono o texto
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
+        SpeedDialChild(
+          child: const Icon(Icons.restore),
+          backgroundColor: colors.primary,
+          foregroundColor: Colors.white,
+          label: 'Reiniciar',
+          onTap: _resetSearch,
         ),
-      ),
-      bottomNavigationBar: Row(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          IconButton(
-            iconSize: 40,
-              onPressed: () async {
-                var res = await SimpleBarcodeScanner.scanBarcode(context, lineColor: '#FFFFFF', cancelButtonText: 'Cancelar', scanType: ScanType.qr, isShowFlashIcon: false);
-                if (res is String) {
-                  result = res;
-                  if (result != '-1') {
-                    var productoAgregado = Product2.empty();
-                    productoAgregado.nombre = result;
-                    List<Product2> existeElProducto = productosMostrar.where((producto) => (producto.nombre == productoAgregado.nombre)).toList();
-                    if (existeElProducto.isEmpty){
-                      productoAgregado.cantidadPedida = 0;
-                      productoAgregado.cantidadPickeada = 1;
-                      productoAgregado.ubicacion = 'Gondola x';
-                      productosMostrar.add(productoAgregado);
-                    } else {
-                      existeElProducto[0].cantidadPickeada++;
-                    }
-                  }
-                }
-                setState(() {});
-              },
-              icon: const Icon(Icons.qr_code_2)
+      ],
+    );
+  }
+
+  Widget _buildBody() {
+    return Column(
+      children: [
+        const Placeholder(),
+        VisibilityDetector(
+          key: const Key('scanner-field-visibility'),
+          onVisibilityChanged: (info) {
+            if (info.visibleFraction > 0) {
+              focoDeScanner.requestFocus();
+            }
+          },
+          child: TextFormField(
+            focusNode: focoDeScanner,
+            cursorColor: Colors.transparent,
+            decoration: const InputDecoration(
+              border: UnderlineInputBorder(borderSide: BorderSide.none),
             ),
-            CustomButton(
-              tamano: 24,
-              text: 'Confirmar', 
-              onPressed: () async {
-                bool hayError = false;
-                for (var producto in productosMostrar){
-                  if (producto.cantidadPedida < producto.cantidadPickeada){
-                    hayError = true;
-                  }
-                }
-                if (hayError){
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Hay más productos pickeados que pedidos, revise el picking.'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              }
-            )
-        ],
+            style: const TextStyle(color: Colors.transparent),
+            autofocus: true,
+            keyboardType: TextInputType.none,
+            controller: textController,
+            onFieldSubmitted: procesarEscaneoUbicacion,
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _resetSearch() {
+    focoDeScanner.requestFocus();
+    setState(() {});
+  }
+
+  Future<void> _scanBarcode() async {
+    //Esto es para la camara del cel
+    final code = await SimpleBarcodeScanner.scanBarcode(
+      context,
+      lineColor: '#FFFFFF',
+      cancelButtonText: 'Cancelar',
+      scanType: ScanType.qr,
+      isShowFlashIcon: false,
+    );
+    if (code == '-1') return;
+    if (code != '-1') {
+      try {
+        // Buscar la ubicación escaneada en la lista de ubicaciones
+
+        textController.clear();
+        await Future.delayed(const Duration(milliseconds: 100));
+        focoDeScanner.requestFocus();
+      } catch (e) {
+        Carteles.showDialogs(context, 'Error al procesar el escaneo', false, false, false);
+      }
+    }
+    
+    setState(() {});
+  }
+
+  Future<void> procesarEscaneoUbicacion(String value) async {
+    if (value.isNotEmpty) {
+      try {
+        
+        textController.clear();
+        await Future.delayed(const Duration(milliseconds: 100));
+        focoDeScanner.requestFocus();
+      } catch (e) {
+        Carteles.showDialogs(context, 'Error al procesar el escaneo', false, false, false);
+      }
+    }  
+  }
+
+  Widget _buildBottomBar() {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.all(16),
+      child: ElevatedButton(
+        // onPressed: _selectedLine == null ? null : () {Navigator.pushNamed(context,'/products',arguments: _selectedLine,);},
+        onPressed: () {
+          appRouter.push('/pickingProductosConteo');
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: colors.primary,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+        ),
+        child: Text(
+          'Siguiente',
+          style: TextStyle(fontSize: 16, color: colors.onPrimary),
+        ),
       ),
     );
   }

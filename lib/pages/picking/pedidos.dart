@@ -1,177 +1,373 @@
+// ignore_for_file: unused_field
+
+import 'package:deposito/config/router/router.dart';
+import 'package:deposito/models/orden_picking.dart';
+import 'package:deposito/provider/product_provider.dart';
+import 'package:deposito/services/picking_services.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:deposito/config/router/router.dart';
+import 'package:provider/provider.dart';
 
-class ListaPedidos extends StatefulWidget {
-  const ListaPedidos({super.key});
+class ListaPicking extends StatefulWidget {
+  const ListaPicking({super.key});
 
   @override
-  State<ListaPedidos> createState() => _ListaPedidosState();
+  State<ListaPicking> createState() => _ListaPickingState();
 }
 
-DateTime fecha = DateTime.now();
-
-String fechaHoy = '${fecha.year}-${fecha.month}-${fecha.day}';
-String fechaManana = '${fecha.year}-${fecha.month}-${fecha.day + 1}';
-List<String> fechas = [fechaHoy, fechaManana, 'Anteriores'];
-
-class _ListaPedidosState extends State<ListaPedidos> {
-  List listPickings = [
-    'Picking 1',
-    'Picking 2',
-    'Picking 3',
-  ];
-
-  String token = '';
-  //List<Orden> ordenes = [];
-  late int tecnicoId = 0;
-  int groupValue = 0;
-  List trabajodres = [];
-  // 1. Agrega una clave global para el RefreshIndicator
+class _ListaPickingState extends State<ListaPicking> {
+  final PickingServices _pickingServices = PickingServices();
+  final TextEditingController _searchController = TextEditingController();
   final GlobalKey<RefreshIndicatorState> _refreshIndicatorKey = GlobalKey<RefreshIndicatorState>();
 
-  // List<Orden> get ordenesFiltradas {
-  //   if (groupValue == 0) {
-  //     return ordenes.where((orden) => orden.estado == 'PENDIENTE').toList();
-  //   } else if (groupValue == 1) {
-  //     return ordenes.where((orden) => orden.estado == 'EN PROCESO').toList();
-  //   } else if (groupValue == 2) {
-  //     return ordenes.where((orden) => orden.estado == 'FINALIZADA').toList();
-  //   }
-  //   return [];
-  // }
+  List<OrdenPicking> _ordenes = [];
+  List<OrdenPicking> _filteredOrdenes = [];
+  bool _isLoading = true;
+
+  // Filtros
+  DateTime? _fechaDesde;
+  DateTime? _fechaHasta;
+  String? _selectedPrioridad;
+  String? _selectedEstado;
+  int _groupValue = -1;
+
+  // Opciones para dropdowns
+  final List<String> _prioridades = ['Alta', 'Media', 'Baja', 'Todas'];
+  final List<String> _estados = ['Pendiente', 'En proceso', 'Completado', 'Cancelado', 'Todos'];
+
+  String token = '';
 
   @override
   void initState() {
     super.initState();
-    cargarDatos();
+    token = context.read<ProductProvider>().token;
+    _loadData();
   }
 
-  // 2. Método para manejar la actualización de datos
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+    try {
+      await _pickingServices.resetStatusCode();
+      final result = await _pickingServices.getOrdenesPicking(context, token);
+      if (result != null && _pickingServices.statusCode == 1) {
+        setState(() {
+          _ordenes = result;
+          _filteredOrdenes = List.from(_ordenes);
+        });
+      }
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
   Future<void> _refreshData() async {
-    await cargarDatos();
+    await _loadData();
   }
 
-  cargarDatos() async {
-    // token = context.read<OrdenProvider>().token;
-    // tecnicoId = context.read<OrdenProvider>().tecnicoId;
-    // ordenes = await ordenServices.getOrden(tecnicoId.toString(), opcionActual, opcionActual, token);
+  void _applyFilters() {
+  List<OrdenPicking> filtered = List.from(_ordenes);
 
-    // Provider.of<OrdenProvider>(context, listen: false).setOrdenes(ordenes);
-
-    setState(() {});
+  // Filtro por texto (búsqueda general) - moverlo al inicio
+  if (_searchController.text.isNotEmpty) {
+    final searchText = _searchController.text.toLowerCase();
+    filtered = filtered.where((orden) =>
+      orden.tipo.toLowerCase().contains(searchText) ||
+      orden.codEntidad.toLowerCase().contains(searchText) ||
+      orden.ruc.toLowerCase().contains(searchText) ||
+      orden.numeroDocumento.toString().contains(searchText) ||
+      (orden.serie?.toLowerCase().contains(searchText) ?? false)
+    ).toList();
   }
-  
-  String opcionActual = fechas[0];
+
+  // Filtro por estado (segmented control) - solo si hay elementos para filtrar
+  if (filtered.isNotEmpty) {
+    switch (_groupValue) {
+      case -1: // Todos
+        break; // No filtrar
+      case 0:
+        filtered = filtered.where((orden) => orden.estado == 'PENDIENTE').toList();
+        break;
+      case 1:
+        filtered = filtered.where((orden) => orden.estado == 'EN PROCESO').toList();
+        break;
+      case 2:
+        filtered = filtered.where((orden) => orden.estado == 'COMPLETADO').toList();
+        break;
+    }
+  }
+
+  if (filtered.isNotEmpty) {
+    if (_fechaDesde != null) {
+      filtered = filtered.where((orden) => 
+        orden.fechaDate.isAfter(_fechaDesde!) || 
+        orden.fechaDate.isAtSameMomentAs(_fechaDesde!)
+      ).toList();
+    }
+
+    if (_fechaHasta != null) {
+      filtered = filtered.where((orden) => 
+        orden.fechaDate.isBefore(_fechaHasta!) || 
+        orden.fechaDate.isAtSameMomentAs(_fechaHasta!)
+      ).toList();
+    }
+  }
+
+  // Filtro por prioridad - solo si hay elementos para filtrar
+  if (filtered.isNotEmpty && _selectedPrioridad != null && _selectedPrioridad!.isNotEmpty && _selectedPrioridad != 'Todas') {
+    filtered = filtered.where((orden) => orden.prioridad == _selectedPrioridad).toList();
+  }
+
+  setState(() => _filteredOrdenes = filtered);
+}
+
+  void _resetFilters() {
+    setState(() {
+      _fechaDesde = null;
+      _fechaHasta = null;
+      _selectedPrioridad = null;
+      _selectedEstado = null;
+      _groupValue = -1; // Cambiado a -1 para indicar "Todos"
+      _searchController.clear();
+      _filteredOrdenes = List.from(_ordenes); // Restaurar lista completa
+    });
+  }
+
+  Future<void> _selectDate(BuildContext context, bool isDesde) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null) {
+      setState(() {
+        if (isDesde) {
+          _fechaDesde = picked;
+        } else {
+          _fechaHasta = picked;
+        }
+        _applyFilters();
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    
     return SafeArea(
       child: Scaffold(
         appBar: AppBar(
-          leading: IconButton.filledTonal(
-            style: ButtonStyle(
-              backgroundColor: WidgetStatePropertyAll(colors.primary)
-            ),
-            onPressed: () async {
-              appRouter.go('/almacen/menu');
-            },
-            icon: const Icon(Icons.arrow_back,),
-          ),
           backgroundColor: colors.primary,
           title: const Text(
-            'Lista de Pedidos',
+            'Lista de Picking',
             style: TextStyle(color: Colors.white),
           ),
           iconTheme: IconThemeData(color: colors.onPrimary),
-          
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.filter_alt_off),
+              onPressed: _resetFilters,
+              tooltip: 'Resetear filtros',
+            ),
+          ],
         ),
         backgroundColor: Colors.grey.shade200,
         body: Column(
           children: [
+            // Filtros superiores
+            Card(
+              margin: const EdgeInsets.all(10),
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
+                  children: [
+                    // Fechas
+                    Row(
+                      children: [
+                        Expanded(
+                          child: InkWell(
+                            onTap: () => _selectDate(context, true),
+                            child: InputDecorator(
+                              decoration: const InputDecoration(
+                                labelText: 'Fecha Desde',
+                                border: OutlineInputBorder(),
+                              ),
+                              child: Text(
+                                _fechaDesde != null 
+                                  ? DateFormat('dd/MM/yyyy').format(_fechaDesde!)
+                                  : 'Seleccionar fecha',
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: InkWell(
+                            onTap: () => _selectDate(context, false),
+                            child: InputDecorator(
+                              decoration: const InputDecoration(
+                                labelText: 'Fecha Hasta',
+                                border: OutlineInputBorder(),
+                              ),
+                              child: Text(
+                                _fechaHasta != null 
+                                  ? DateFormat('dd/MM/yyyy').format(_fechaHasta!)
+                                  : 'Seleccionar fecha',
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    
+                    // Prioridad Dropdown
+                    DropdownButtonFormField<String>(
+                      value: _selectedPrioridad,
+                      decoration: const InputDecoration(
+                        labelText: 'Prioridad',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: _prioridades.map((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(value),
+                        );
+                      }).toList(),
+                      onChanged: (newValue) {
+                        setState(() {
+                          _selectedPrioridad = newValue;
+                          _applyFilters();
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    
+                    // Búsqueda general
+                    TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        labelText: 'Buscar (Tipo, Código, RUC, Documento, Serie)',
+                        border: const OutlineInputBorder(),
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            _searchController.clear();
+                            _applyFilters();
+                          },
+                        ),
+                      ),
+                      onChanged: (value) => _applyFilters(),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            
+            // Segmented Control para estados
             CupertinoSegmentedControl<int>(
               padding: const EdgeInsets.all(10),
-              groupValue: groupValue,
+              groupValue: _groupValue,
               borderColor: Colors.black,
               selectedColor: colors.primary,
               unselectedColor: Colors.white,
               children: {
+                -1: buildSegment('Todos'),
                 0: buildSegment('Pendiente'),
                 1: buildSegment('En Proceso'),
-                2: buildSegment('Finalizado'),
+                2: buildSegment('Completado'),
               },
               onValueChanged: (newValue) {
                 setState(() {
-                  groupValue = newValue;
+                  _groupValue = newValue;
+                  _applyFilters();
                 });
               },
             ),
+            
+            // Lista de resultados
             Expanded(
-              child: RefreshIndicator(
-                key: _refreshIndicatorKey,
-                onRefresh: _refreshData,
-                child: ListView.builder(
-                  itemCount: listPickings.length,
-                  itemBuilder: (context, i) {
-                    return Card(
-                      surfaceTintColor: Colors.white,
-                      color: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(5),
-                        side: const BorderSide(
-                          color: Colors.black,
-                          width: 1,
-                        ),
-                      ),
-                      elevation: 20,
-                      child: InkWell(
-                        onTap: () {
-                          // final orden = ordenesFiltradas[i];
-                          // context.read<OrdenProvider>().setOrden(orden);
-
-                          appRouter.push('/pickingInterno');
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  const Text(
-                                    '1111',//ordenesFiltradas[i].ordenTrabajoId.toString(),
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 20,
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : RefreshIndicator(
+                      key: _refreshIndicatorKey,
+                      onRefresh: _refreshData,
+                      child: _filteredOrdenes.isEmpty
+                          ? const Center(
+                              child: Text(
+                                'No se encontraron órdenes con los filtros aplicados',
+                                style: TextStyle(fontSize: 16),
+                              ),
+                            )
+                          : ListView.builder(
+                              itemCount: _filteredOrdenes.length,
+                              itemBuilder: (context, index) {
+                                final orden = _filteredOrdenes[index];
+                                return Card(
+                                  margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                  surfaceTintColor: Colors.white,
+                                  color: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(5),
+                                    side: const BorderSide(
+                                      color: Colors.black,
+                                      width: 1,
                                     ),
                                   ),
-                                  const SizedBox(
-                                    width: 10,
+                                  elevation: 5,
+                                  child: InkWell(
+                                    onTap: () {
+                                      Provider.of<ProductProvider>(context, listen: false).setOrdenPicking(orden);
+                                      appRouter.push('/pickingInterno');
+                                    },
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(12.0),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Text(
+                                                'Doc: ${orden.numeroDocumento} ${orden.serie ?? ''}',
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 18,
+                                                ),
+                                              ),
+                                              const Spacer(),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                decoration: BoxDecoration(
+                                                  color: _getStatusColor(orden.estado),
+                                                  borderRadius: BorderRadius.circular(12),
+                                                ),
+                                                child: Text(
+                                                  orden.estado,
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 12,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text('Tipo: ${orden.tipo}'),
+                                          Text('Cliente: ${orden.codEntidad} - ${orden.nombre}'),
+                                          Text('RUC: ${orden.ruc}'),
+                                          Text('Prioridad: ${orden.prioridad}'),
+                                          Text('Fecha: ${DateFormat('dd/MM/yyyy').format(orden.fechaDate)}'),
+                                          Text('Líneas: ${orden.cantLineas ?? 0}'),
+                                        ],
+                                      ),
+                                    ),
                                   ),
-                                  Text(
-                                    DateFormat('EEEE d, MMMM yyyy', 'es').format(DateTime.now()/*ordenesFiltradas[i].fechaOrdenTrabajo*/),
-                                  ),
-                                  const Expanded(child: Text('')),
-                                  const Text('Descripcion')//ordenesFiltradas[i].tipoOrden.descripcion),
-                                ],
-                              ),
-                              const Text('Codigo cliente - nombre'),//'${ordenesFiltradas[i].cliente.codCliente} - ${ordenesFiltradas[i].cliente.nombre}',),
-                              const Text('Metodo de entrega'/*ordenesFiltradas[i].cliente.direccion*/),
-                              const Text('Prioridad'),//ordenesFiltradas[i].cliente.telefono1),
-                              const Text('Notas'/*ordenesFiltradas[i].cliente.notas*/),
-                              //for (var j = 0; j < ordenesFiltradas[i].servicio.length; j++) ...[
-                                const Text('Servicios'),//ordenesFiltradas[i].servicio[j].descripcion,)
-                                const Text('Cantidad de productos: 100')//ordenesFiltradas[i].servicio[j].descripcion,)
-                              //],
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
+                                );
+                              },
+                            ),
+                    ),
             ),
           ],
         ),
@@ -179,12 +375,27 @@ class _ListaPedidosState extends State<ListaPedidos> {
     );
   }
 
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'Pendiente':
+        return Colors.orange;
+      case 'En proceso':
+        return Colors.blue;
+      case 'Completado':
+        return Colors.green;
+      case 'Cancelado':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
   Widget buildSegment(String text) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(8),
       child: Text(
         text,
-        style: const TextStyle(fontSize: 15),
+        style: const TextStyle(fontSize: 14),
       ),
     );
   }

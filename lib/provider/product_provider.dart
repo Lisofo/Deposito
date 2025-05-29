@@ -1,6 +1,7 @@
 import 'package:deposito/models/almacen.dart';
 import 'package:deposito/models/client.dart';
 import 'package:deposito/models/linea.dart';
+import 'package:deposito/models/orden_picking.dart';
 import 'package:deposito/models/pedido.dart';
 import 'package:deposito/models/product.dart';
 import 'package:deposito/models/producto_deposito.dart';
@@ -81,7 +82,22 @@ class ProductProvider with ChangeNotifier {
   String _name = '';
   String get name => _name;
 
+  OrdenPicking _ordenPicking = OrdenPicking.empty();
+  OrdenPicking get ordenPicking => _ordenPicking;
+  
+  OrdenPicking _ordenPickingInterna = OrdenPicking.empty();
+  OrdenPicking get ordenPickingInterna => _ordenPickingInterna; 
+
   // Métodos para actualizar las variables y notificar cambios
+
+  void setOrdenPicking(OrdenPicking order) {
+    _ordenPicking = order;
+    notifyListeners();
+  }
+  void setOrdenPickingInterna(OrdenPicking order) {
+    _ordenPickingInterna = order;
+    notifyListeners();
+  }
 
   void setUsuarioConteo(int userId) {
     _usuarioConteo = userId;
