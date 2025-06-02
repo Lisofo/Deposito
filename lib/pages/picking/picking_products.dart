@@ -1,9 +1,10 @@
+import 'package:deposito/config/router/router.dart';
 import 'package:deposito/models/orden_picking.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 import 'package:provider/provider.dart';
 import 'package:deposito/provider/product_provider.dart';
+import 'resumen_picking.dart';
 
 class PickingProducts extends StatefulWidget {
   const PickingProducts({super.key});
@@ -15,17 +16,13 @@ class PickingProducts extends StatefulWidget {
 class PickingProductsState extends State<PickingProducts> {
   bool _isLoading = true;
   String? _error;
-  int _currentLineIndex = 0;
-  final List<PickingLinea> _processedLines = [];
   final Map<int, TextEditingController> _quantityControllers = {};
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   ScaffoldMessengerState? _scaffoldMessenger;
-  late OrdenPicking _ordenPicking;
 
   @override
   void initState() {
     super.initState();
-    _ordenPicking = context.read<ProductProvider>().ordenPickingInterna;
     _loadProductsForCurrentLine();
   }
 
@@ -50,7 +47,10 @@ class PickingProductsState extends State<PickingProducts> {
         _error = null;
       });
 
-      if (_ordenPicking.lineas == null || _ordenPicking.lineas!.isEmpty) {
+      final provider = Provider.of<ProductProvider>(context, listen: false);
+      final ordenPicking = provider.ordenPickingInterna;
+
+      if (ordenPicking.lineas == null || ordenPicking.lineas!.isEmpty) {
         setState(() {
           _error = 'No hay líneas para procesar';
           _isLoading = false;
@@ -58,10 +58,10 @@ class PickingProductsState extends State<PickingProducts> {
         return;
       }
 
-      final currentLine = _ordenPicking.lineas![_currentLineIndex];
+      final currentLineIndex = provider.currentLineIndex;
+      final currentLine = ordenPicking.lineas![currentLineIndex];
 
       setState(() {
-        // Inicializar controladores para cada ubicación del producto
         for (int i = 0; i < currentLine.ubicaciones.length; i++) {
           _quantityControllers[i] = TextEditingController(text: '0');
         }
@@ -87,10 +87,11 @@ class PickingProductsState extends State<PickingProducts> {
 
       if (barcodeScanRes == '-1') return;
 
-      final currentLine = _ordenPicking.lineas![_currentLineIndex];
+      final provider = Provider.of<ProductProvider>(context, listen: false);
+      final currentLine = provider.ordenPickingInterna.lineas![provider.currentLineIndex];
       
       if (currentLine.codItem == barcodeScanRes) {
-        _incrementProductQuantity(0); // Incrementa la primera ubicación por defecto
+        _incrementProductQuantity(0);
       } else {
         _showSingleSnackBar(
           'Producto no encontrado: $barcodeScanRes',
@@ -103,7 +104,8 @@ class PickingProductsState extends State<PickingProducts> {
   }
 
   void _incrementProductQuantity(int index) {
-    final currentLine = _ordenPicking.lineas![_currentLineIndex];
+    final provider = Provider.of<ProductProvider>(context, listen: false);
+    final currentLine = provider.ordenPickingInterna.lineas![provider.currentLineIndex];
     final currentLocation = currentLine.ubicaciones[index];
     final currentQuantity = int.tryParse(_quantityControllers[index]?.text ?? '0') ?? 0;
     
@@ -129,7 +131,8 @@ class PickingProductsState extends State<PickingProducts> {
   }
 
   void _updateProductQuantity(int index, String value) {
-    final currentLine = _ordenPicking.lineas![_currentLineIndex];
+    final provider = Provider.of<ProductProvider>(context, listen: false);
+    final currentLine = provider.ordenPickingInterna.lineas![provider.currentLineIndex];
     final newQuantity = int.tryParse(value) ?? 0;
     if (newQuantity >= 0 && newQuantity <= currentLine.cantidadPedida) {
       setState(() {
@@ -152,7 +155,8 @@ class PickingProductsState extends State<PickingProducts> {
   }
 
   bool _allProductsPickeadInLine() {
-    final currentLine = _ordenPicking.lineas![_currentLineIndex];
+    final provider = Provider.of<ProductProvider>(context, listen: false);
+    final currentLine = provider.ordenPickingInterna.lineas![provider.currentLineIndex];
     int totalPicked = 0;
     
     for (int i = 0; i < currentLine.ubicaciones.length; i++) {
@@ -163,41 +167,74 @@ class PickingProductsState extends State<PickingProducts> {
   }
 
   bool _hasMoreLines() {
-    return _currentLineIndex < _ordenPicking.lineas!.length - 1;
+    final provider = Provider.of<ProductProvider>(context, listen: false);
+    return provider.currentLineIndex < provider.ordenPickingInterna.lineas!.length - 1;
   }
 
-  void _moveToNextLine() {
-    _saveProcessedLine();
+  void _moveToNextLine() async {
+    final provider = Provider.of<ProductProvider>(context, listen: false);
+    if (provider.currentLineIndex >= provider.ordenPickingInterna.lineas!.length) return;
+    
+    await _saveProcessedLine();
+    provider.clearUbicacionSeleccionada();
+    
     if (_hasMoreLines()) {
-      setState(() {
-        _currentLineIndex++;
-        _quantityControllers.clear();
-      });
-      _loadProductsForCurrentLine();
+      provider.setCurrentLineIndex(provider.currentLineIndex + 1);
+      appRouter.pushReplacement('/pickingProductos');
     } else {
       _finishProcess();
     }
   }
 
-  void _saveProcessedLine() {
-    final currentLine = _ordenPicking.lineas![_currentLineIndex];
-    // Actualizar las cantidades pickeadas en cada ubicación
+  _saveProcessedLine() {
+    final provider = Provider.of<ProductProvider>(context, listen: false);
+    final currentLine = provider.ordenPickingInterna.lineas![provider.currentLineIndex];
+    int totalPicked = 0;
+    
+    // Primero calculamos el total
     for (int i = 0; i < currentLine.ubicaciones.length; i++) {
-      currentLine.ubicaciones[i].existenciaActual = int.tryParse(_quantityControllers[i]?.text ?? '0') ?? 0;
+      final picked = int.tryParse(_quantityControllers[i]?.text ?? '0') ?? 0;
+      totalPicked += picked;
     }
     
-    _processedLines.add(currentLine);
+    // Luego asignamos el total UNA SOLA VEZ
+    final updatedLine = PickingLinea(
+      pickLineaId: currentLine.pickLineaId,
+      pickId: currentLine.pickId,
+      lineaId: currentLine.lineaId,
+      itemId: currentLine.itemId,
+      cantidadPedida: currentLine.cantidadPedida,
+      cantidadPickeada: totalPicked,
+      tipoLineaAdicional: currentLine.tipoLineaAdicional,
+      lineaIdOriginal: currentLine.lineaIdOriginal,
+      codItem: currentLine.codItem,
+      descripcion: currentLine.descripcion,
+      ubicaciones: List.from(currentLine.ubicaciones),
+    );
+    
+    provider.updateLineaPicking(provider.currentLineIndex, updatedLine);
+    provider.ordenPickingInterna.lineas![provider.currentLineIndex] = updatedLine;
   }
 
   void _finishProcess() {
-    if (_ordenPicking.lineas != null && _ordenPicking.lineas!.isNotEmpty) {
-      _saveProcessedLine();
+    final provider = Provider.of<ProductProvider>(context, listen: false);
+    _saveProcessedLine();
+    final ordenPicking = provider.ordenPickingInterna;
+    
+    // Asegurar que todas las líneas estén actualizadas
+    for (int i = 0; i < ordenPicking.lineas!.length; i++) {
+      if (i >= provider.lineasPicking.length) {
+        provider.lineasPicking.add(ordenPicking.lineas![i]);
+      }
     }
     
-    // Navegar al resumen con las líneas procesadas
-    context.push(
-      '/resumenPicking',
-      extra: _processedLines,
+    provider.clearUbicacionSeleccionada();
+    provider.setCurrentLineIndex(0);
+    
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => SummaryScreen(processedLines: provider.lineasPicking),
+      ),
     );
   }
 
@@ -208,7 +245,14 @@ class PickingProductsState extends State<PickingProducts> {
       child: Scaffold(
         key: _scaffoldKey,
         appBar: AppBar(
-          title: Text('Línea ${_currentLineIndex + 1} de ${_ordenPicking.lineas?.length ?? 0}', style: TextStyle(color: colors.onPrimary),),
+          title: Consumer<ProductProvider>(
+            builder: (context, provider, child) {
+              return Text(
+                'Línea ${provider.currentLineIndex + 1} de ${provider.ordenPickingInterna.lineas?.length ?? 0}', 
+                style: TextStyle(color: colors.onPrimary),
+              );
+            },
+          ),
           backgroundColor: colors.primary,
           iconTheme: IconThemeData(color: colors.onPrimary),
         ),
@@ -244,23 +288,28 @@ class PickingProductsState extends State<PickingProducts> {
       );
     }
 
-    if (_ordenPicking.lineas == null || _ordenPicking.lineas!.isEmpty) {
-      return const Center(
-        child: Text('No hay productos para procesar'),
-      );
-    }
+    return Consumer<ProductProvider>(
+      builder: (context, provider, child) {
+        final ordenPicking = provider.ordenPickingInterna;
+        if (ordenPicking.lineas == null || ordenPicking.lineas!.isEmpty) {
+          return const Center(
+            child: Text('No hay productos para procesar'),
+          );
+        }
 
-    final currentLine = _ordenPicking.lineas![_currentLineIndex];
+        final currentLine = ordenPicking.lineas![provider.currentLineIndex];
 
-    return Column(
-      children: [
-        Expanded(
-          child: _buildProductInfo(currentLine),
-        ),
-        Expanded(
-          child: _buildLocationList(currentLine),
-        ),
-      ],
+        return Column(
+          children: [
+            Expanded(
+              child: _buildProductInfo(currentLine),
+            ),
+            Expanded(
+              child: _buildLocationList(currentLine),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -315,33 +364,36 @@ class PickingProductsState extends State<PickingProducts> {
   }
 
   Widget _buildLocationList(PickingLinea line) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Ubicaciones disponibles',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+    return Consumer<ProductProvider>(
+      builder: (context, provider, child) {
+        final ubicacion = provider.ubicacionSeleccionada;
+        
+        if (ubicacion == null) {
+          return const Center(child: Text('No hay ubicación seleccionada'));
+        }
+
+        return Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Ubicación seleccionada',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              _buildLocationListItem(ubicacion, 0),
+            ],
           ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: ListView.builder(
-              itemCount: line.ubicaciones.length,
-              itemBuilder: (context, index) {
-                return _buildLocationListItem(line.ubicaciones[index], index);
-              },
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildLocationListItem(Ubicacione ubicacion, int index) {
+  Widget _buildLocationListItem(UbicacionePicking ubicacion, int index) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 2,
@@ -397,39 +449,44 @@ class PickingProductsState extends State<PickingProducts> {
   }
 
   Widget _buildBottomBar() {
-    final bool isLastLine = !_hasMoreLines();
     final colors = Theme.of(context).colorScheme;
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Expanded(
-            child: ElevatedButton(
-              onPressed: () {
-                if (_allProductsPickeadInLine()) {
-                  isLastLine ? _finishProcess() : _moveToNextLine();
-                } else {
-                  _showMissingProductsDialog(isLastLine);
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: isLastLine ? Colors.green : colors.primary,
+    return Consumer<ProductProvider>(
+      builder: (context, provider, child) {
+        final bool isLastLine = !_hasMoreLines();
+        return Container(
+          color: Colors.white,
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () {
+                    if (_allProductsPickeadInLine()) {
+                      isLastLine ? _finishProcess() : _moveToNextLine();
+                    } else {
+                      _showMissingProductsDialog(isLastLine);
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    backgroundColor: isLastLine ? Colors.green : colors.primary,
+                  ),
+                  child: Text(
+                    isLastLine ? 'Finalizar' : 'Siguiente Línea',
+                    style: TextStyle(fontSize: 16, color: colors.onPrimary),
+                  ),
+                ),
               ),
-              child: Text(
-                isLastLine ? 'Finalizar' : 'Siguiente Línea',
-                style: TextStyle(fontSize: 16, color: colors.onPrimary),
-              ),
-            ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
   void _showMissingProductsDialog(bool isLastLine) {
-    final currentLine = _ordenPicking.lineas![_currentLineIndex];
+    final provider = Provider.of<ProductProvider>(context, listen: false);
+    final currentLine = provider.ordenPickingInterna.lineas![provider.currentLineIndex];
     final totalPicked = _calculateTotalPicked(currentLine);
     final missing = currentLine.cantidadPedida - totalPicked;
 

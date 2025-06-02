@@ -86,14 +86,60 @@ class ProductProvider with ChangeNotifier {
   OrdenPicking get ordenPicking => _ordenPicking;
   
   OrdenPicking _ordenPickingInterna = OrdenPicking.empty();
-  OrdenPicking get ordenPickingInterna => _ordenPickingInterna; 
+  OrdenPicking get ordenPickingInterna => _ordenPickingInterna;
 
-  // Métodos para actualizar las variables y notificar cambios
+  UbicacionePicking? _ubicacionSeleccionada;
+  UbicacionePicking? get ubicacionSeleccionada => _ubicacionSeleccionada;
+
+  int _currentLineIndex = 0;
+  int get currentLineIndex => _currentLineIndex;
+
+  List<PickingLinea> _lineasPicking = [];
+  List<PickingLinea> get lineasPicking => _lineasPicking;
+
+  // Métodos para manejar las líneas de picking
+  void setLineasPicking(List<PickingLinea> lineas) {
+    _lineasPicking = List.from(lineas);
+    notifyListeners();
+  }
+
+  void updateLineaPicking(int index, PickingLinea linea) {
+    if (index >= 0 && index < _lineasPicking.length) {
+      _lineasPicking[index] = linea;
+      notifyListeners();
+    }
+  }
+
+  void resetLineasPicking() {
+    _lineasPicking = [];
+    notifyListeners();
+  }
+
+  void setCurrentLineIndex(int index) {
+    _currentLineIndex = index;
+    notifyListeners();
+  }
+  
+  void resetCurrentLineIndex() {
+    _currentLineIndex = 0;
+    notifyListeners();
+  }
+
+  void setUbicacionSeleccionada(UbicacionePicking ubicacion) {
+    _ubicacionSeleccionada = ubicacion;
+    notifyListeners();
+  }
+
+  void clearUbicacionSeleccionada() {
+    _ubicacionSeleccionada = null;
+    notifyListeners();
+  }
 
   void setOrdenPicking(OrdenPicking order) {
     _ordenPicking = order;
     notifyListeners();
   }
+
   void setOrdenPickingInterna(OrdenPicking order) {
     _ordenPickingInterna = order;
     notifyListeners();
@@ -109,17 +155,17 @@ class ProductProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  void setUbicacion (UbicacionAlmacen ubi) {
+  void setUbicacion(UbicacionAlmacen ubi) {
     _ubicacion = ubi;
     notifyListeners();
   }
 
-  void setRptId(int rptGenId){
+  void setRptId(int rptGenId) {
     _rptGenId = rptGenId;
     notifyListeners();
   }
 
-  void setFotos(List urls){
+  void setFotos(List urls) {
     _fotos = urls;
     notifyListeners();
   }
@@ -134,12 +180,12 @@ class ProductProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  void addLinea(Linea line){
+  void addLinea(Linea line) {
     _lineasGenericas.add(line);
     notifyListeners();
   }
   
-  void removeLinea(Linea line){
+  void removeLinea(Linea line) {
     _lineasGenericas.remove(line);
     notifyListeners();
   }

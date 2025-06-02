@@ -18,10 +18,6 @@ class PickingPage extends StatefulWidget {
 }
 
 class _PickingPageState extends State<PickingPage> {
-
-  List<PickingLinea> lineas = [];
-  OrdenPicking ordenPicking = OrdenPicking.empty();
-  PickingLinea? _selectedLine;
   bool isLoading = true;
   String? _error;
   late Almacen almacen;
@@ -39,7 +35,6 @@ class _PickingPageState extends State<PickingPage> {
     final productProvider = context.read<ProductProvider>();
     almacen = productProvider.almacen;
     token = productProvider.token;
-    ordenPicking = productProvider.ordenPickingInterna;
     focoDeScanner.requestFocus();
     try {
       setState(() {
@@ -47,13 +42,10 @@ class _PickingPageState extends State<PickingPage> {
         _error = null;
       });
       
-      final lines = ordenPicking.lineas;
+      // final ordenPicking = productProvider.ordenPickingInterna;
+      // final lines = ordenPicking.lineas;
       
       setState(() {
-        lineas = lines!;
-        if (lines.isNotEmpty) {
-          _selectedLine = lines.first;
-        }
         isLoading = false;
       });
     } catch (e) {
@@ -72,7 +64,16 @@ class _PickingPageState extends State<PickingPage> {
         appBar: AppBar(
           backgroundColor: colors.primary,
           iconTheme: IconThemeData(color: colors.onPrimary),
-          title: Text('Orden ${ordenPicking.numeroDocumento}', style: TextStyle(color: colors.onPrimary),),
+          title: Consumer<ProductProvider>(
+            builder: (context, provider, child) {
+              final ordenPicking = provider.ordenPickingInterna;
+              final lineas = ordenPicking.lineas ?? [];
+              return Text(
+                'Orden ${ordenPicking.numeroDocumento} - Línea ${provider.currentLineIndex + 1}/${lineas.length}', 
+                style: TextStyle(color: colors.onPrimary),
+              );
+            },
+          ),
         ),
         body: _buildBody(),
         floatingActionButton: _buildFloatingActionButton(colors),
@@ -107,30 +108,95 @@ class _PickingPageState extends State<PickingPage> {
   }
 
   Widget _buildBody() {
-    return Column(
-      children: [
-        const Placeholder(),
-        VisibilityDetector(
-          key: const Key('scanner-field-visibility'),
-          onVisibilityChanged: (info) {
-            if (info.visibleFraction > 0) {
-              focoDeScanner.requestFocus();
-            }
-          },
-          child: TextFormField(
-            focusNode: focoDeScanner,
-            cursorColor: Colors.transparent,
-            decoration: const InputDecoration(
-              border: UnderlineInputBorder(borderSide: BorderSide.none),
+    return Consumer<ProductProvider>(
+      builder: (context, provider, child) {
+        final ordenPicking = provider.ordenPickingInterna;
+        final lineas = ordenPicking.lineas ?? [];
+        final currentLineIndex = provider.currentLineIndex;
+        final selectedLine = currentLineIndex < lineas.length ? lineas[currentLineIndex] : null;
+
+        return Column(
+          children: [
+            if (lineas.isNotEmpty && selectedLine != null)
+              _buildLineInfo(selectedLine),
+            const SizedBox(height: 20),
+            if (lineas.isNotEmpty && selectedLine != null)
+              _buildUbicacionSelector(selectedLine),
+            VisibilityDetector(
+              key: const Key('scanner-field-visibility'),
+              onVisibilityChanged: (info) {
+                if (info.visibleFraction > 0) {
+                  focoDeScanner.requestFocus();
+                }
+              },
+              child: TextFormField(
+                focusNode: focoDeScanner,
+                cursorColor: Colors.transparent,
+                decoration: const InputDecoration(
+                  border: UnderlineInputBorder(borderSide: BorderSide.none),
+                ),
+                style: const TextStyle(color: Colors.transparent),
+                autofocus: true,
+                keyboardType: TextInputType.none,
+                controller: textController,
+                onFieldSubmitted: procesarEscaneoUbicacion,
+              ),
             ),
-            style: const TextStyle(color: Colors.transparent),
-            autofocus: true,
-            keyboardType: TextInputType.none,
-            controller: textController,
-            onFieldSubmitted: procesarEscaneoUbicacion,
-          ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildLineInfo(PickingLinea line) {
+    return Card(
+      margin: const EdgeInsets.all(16),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              line.descripcion,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text('Código: ${line.codItem}'),
+            Text('Cantidad: ${line.cantidadPedida}'),
+          ],
         ),
-      ],
+      ),
+    );
+  }
+
+  Widget _buildUbicacionSelector(PickingLinea line) {
+    return Consumer<ProductProvider>(
+      builder: (context, provider, child) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: DropdownButtonFormField<UbicacionePicking>(
+            value: provider.ubicacionSeleccionada,
+            decoration: const InputDecoration(
+              labelText: 'Seleccionar Ubicación',
+              border: OutlineInputBorder(),
+            ),
+            items: line.ubicaciones.map((ubicacion) {
+              return DropdownMenuItem<UbicacionePicking>(
+                value: ubicacion,
+                child: Text('Ubicación ${ubicacion.almacenUbicacionId}'),
+              );
+            }).toList(),
+            onChanged: (ubicacion) {
+              if (ubicacion != null) {
+                provider.setUbicacionSeleccionada(ubicacion);
+              }
+            },
+          ),
+        );
+      },
     );
   }
 
@@ -140,7 +206,6 @@ class _PickingPageState extends State<PickingPage> {
   }
 
   Future<void> _scanBarcode() async {
-    //Esto es para la camara del cel
     final code = await SimpleBarcodeScanner.scanBarcode(
       context,
       lineColor: '#FFFFFF',
@@ -151,8 +216,6 @@ class _PickingPageState extends State<PickingPage> {
     if (code == '-1') return;
     if (code != '-1') {
       try {
-        // Buscar la ubicación escaneada en la lista de ubicaciones
-
         textController.clear();
         await Future.delayed(const Duration(milliseconds: 100));
         focoDeScanner.requestFocus();
@@ -165,37 +228,67 @@ class _PickingPageState extends State<PickingPage> {
   }
 
   Future<void> procesarEscaneoUbicacion(String value) async {
-    if (value.isNotEmpty) {
-      try {
-        
-        textController.clear();
-        await Future.delayed(const Duration(milliseconds: 100));
-        focoDeScanner.requestFocus();
-      } catch (e) {
-        Carteles.showDialogs(context, 'Error al procesar el escaneo', false, false, false);
+    if (value.isEmpty) return;
+    
+    final provider = Provider.of<ProductProvider>(context, listen: false);
+    final ordenPicking = provider.ordenPickingInterna;
+    final lineas = ordenPicking.lineas ?? [];
+    final currentLineIndex = provider.currentLineIndex;
+    
+    if (currentLineIndex >= lineas.length) return;
+    
+    try {
+      final selectedLine = lineas[currentLineIndex];
+      final ubicacion = selectedLine.ubicaciones.firstWhere(
+        (u) => u.codUbicacion == value,
+        orElse: () => UbicacionePicking.empty(),
+      );
+      
+      if (ubicacion.almacenUbicacionId != 0) {
+        provider.setUbicacionSeleccionada(ubicacion);
+        provider.setCurrentLineIndex(currentLineIndex);
+        appRouter.push('/pickingProductosConteo');
+      } else {
+        Carteles.showDialogs(context, 'Ubicación no encontrada', false, false, false);
       }
-    }  
+      
+      textController.clear();
+      await Future.delayed(const Duration(milliseconds: 100));
+      focoDeScanner.requestFocus();
+    } catch (e) {
+      Carteles.showDialogs(context, 'Error al procesar el escaneo', false, false, false);
+    }
   }
 
   Widget _buildBottomBar() {
     final colors = Theme.of(context).colorScheme;
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.all(16),
-      child: ElevatedButton(
-        // onPressed: _selectedLine == null ? null : () {Navigator.pushNamed(context,'/products',arguments: _selectedLine,);},
-        onPressed: () {
-          appRouter.push('/pickingProductosConteo');
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: colors.primary,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-        ),
-        child: Text(
-          'Siguiente',
-          style: TextStyle(fontSize: 16, color: colors.onPrimary),
-        ),
-      ),
+    return Consumer<ProductProvider>(
+      builder: (context, provider, child) {
+        return Container(
+          color: Colors.white,
+          padding: const EdgeInsets.all(16),
+          child: ElevatedButton(
+            onPressed: () {
+              if (provider.ubicacionSeleccionada != null) {
+                provider.setCurrentLineIndex(provider.currentLineIndex);
+                appRouter.push('/pickingProductosConteo');
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Debe seleccionar o escanear una ubicación')),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: colors.primary,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+            ),
+            child: Text(
+              'Siguiente',
+              style: TextStyle(fontSize: 16, color: colors.onPrimary),
+            ),
+          ),
+        );
+      },
     );
   }
 }

@@ -149,7 +149,7 @@ class PickingLinea {
   late int lineaIdOriginal;
   late String codItem;
   late String descripcion;
-  late List<Ubicacione> ubicaciones;
+  late List<UbicacionePicking> ubicaciones;
 
   PickingLinea({
     required this.pickLineaId,
@@ -176,7 +176,7 @@ class PickingLinea {
     lineaIdOriginal: json["lineaIdOriginal"] as int? ?? 0,
     codItem: json["codItem"] as String? ?? '',
     descripcion: json["descripcion"] as String? ?? '',
-    ubicaciones: List<Ubicacione>.from(json["ubicaciones"].map((x) => Ubicacione.fromJson(x))),
+    ubicaciones: List<UbicacionePicking>.from(json["ubicaciones"].map((x) => UbicacionePicking.fromJson(x))),
   );
 
   Map<String, dynamic> toJson() => {
@@ -208,7 +208,7 @@ class PickingLinea {
   }
 }
 
-class Ubicacione {
+class UbicacionePicking {
   late int itemAlmacenUbicacionId;
   late int itemId;
   late int almacenUbicacionId;
@@ -216,8 +216,9 @@ class Ubicacione {
   late int? existenciaMaxima;
   late int? existenciaMinima;
   late DateTime fechaBaja;
+  late String codUbicacion;
 
-  Ubicacione({
+  UbicacionePicking({
     required this.itemAlmacenUbicacionId,
     required this.itemId,
     required this.almacenUbicacionId,
@@ -225,9 +226,10 @@ class Ubicacione {
     required this.existenciaMaxima,
     required this.existenciaMinima,
     required this.fechaBaja,
+    required this.codUbicacion,
   });
 
-  factory Ubicacione.fromJson(Map<String, dynamic> json) => Ubicacione(
+  factory UbicacionePicking.fromJson(Map<String, dynamic> json) => UbicacionePicking(
     itemAlmacenUbicacionId: json["ItemAlmacenUbicacionId"] as int? ?? 0,
     itemId: json["ItemId"] as int? ?? 0,
     almacenUbicacionId: json["AlmacenUbicacionId"] as int? ?? 0,
@@ -235,6 +237,7 @@ class Ubicacione {
     existenciaMaxima: json["ExistenciaMaxima"] as int? ?? 0,
     existenciaMinima: json["ExistenciaMinima"] as int? ?? 0,
     fechaBaja: json["fechaBaja"] != null ? DateTime.parse(json["fechaBaja"]) : DateTime.now(),
+    codUbicacion: json["codUbicacion"] as String? ?? '',
   );
 
   Map<String, dynamic> toJson() => {
@@ -245,9 +248,10 @@ class Ubicacione {
     "ExistenciaMaxima": existenciaMaxima,
     "ExistenciaMinima": existenciaMinima,
     "fechaBaja": fechaBaja,
+    "codUbicacion": codUbicacion,
   };
 
-  Ubicacione.empty() {
+  UbicacionePicking.empty() {
     itemAlmacenUbicacionId = 0;
     itemId = 0;
     almacenUbicacionId = 0;
@@ -255,5 +259,6 @@ class Ubicacione {
     existenciaMaxima = 0;
     existenciaMinima = 0;
     fechaBaja = DateTime.now();
+    codUbicacion = '';
   }
 }

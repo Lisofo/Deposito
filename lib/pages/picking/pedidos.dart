@@ -66,60 +66,57 @@ class _ListaPickingState extends State<ListaPicking> {
   }
 
   void _applyFilters() {
-  List<OrdenPicking> filtered = List.from(_ordenes);
+    List<OrdenPicking> filtered = List.from(_ordenes);
 
-  // Filtro por texto (búsqueda general) - moverlo al inicio
-  if (_searchController.text.isNotEmpty) {
-    final searchText = _searchController.text.toLowerCase();
-    filtered = filtered.where((orden) =>
-      orden.tipo.toLowerCase().contains(searchText) ||
-      orden.codEntidad.toLowerCase().contains(searchText) ||
-      orden.ruc.toLowerCase().contains(searchText) ||
-      orden.numeroDocumento.toString().contains(searchText) ||
-      (orden.serie?.toLowerCase().contains(searchText) ?? false)
-    ).toList();
-  }
-
-  // Filtro por estado (segmented control) - solo si hay elementos para filtrar
-  if (filtered.isNotEmpty) {
-    switch (_groupValue) {
-      case -1: // Todos
-        break; // No filtrar
-      case 0:
-        filtered = filtered.where((orden) => orden.estado == 'PENDIENTE').toList();
-        break;
-      case 1:
-        filtered = filtered.where((orden) => orden.estado == 'EN PROCESO').toList();
-        break;
-      case 2:
-        filtered = filtered.where((orden) => orden.estado == 'COMPLETADO').toList();
-        break;
-    }
-  }
-
-  if (filtered.isNotEmpty) {
-    if (_fechaDesde != null) {
-      filtered = filtered.where((orden) => 
-        orden.fechaDate.isAfter(_fechaDesde!) || 
-        orden.fechaDate.isAtSameMomentAs(_fechaDesde!)
+    if (_searchController.text.isNotEmpty) {
+      final searchText = _searchController.text.toLowerCase();
+      filtered = filtered.where((orden) =>
+        orden.tipo.toLowerCase().contains(searchText) ||
+        orden.codEntidad.toLowerCase().contains(searchText) ||
+        orden.ruc.toLowerCase().contains(searchText) ||
+        orden.numeroDocumento.toString().contains(searchText) ||
+        (orden.serie?.toLowerCase().contains(searchText) ?? false)
       ).toList();
     }
 
-    if (_fechaHasta != null) {
-      filtered = filtered.where((orden) => 
-        orden.fechaDate.isBefore(_fechaHasta!) || 
-        orden.fechaDate.isAtSameMomentAs(_fechaHasta!)
-      ).toList();
+    if (filtered.isNotEmpty) {
+      switch (_groupValue) {
+        case -1: // Todos
+          break; // No filtrar
+        case 0:
+          filtered = filtered.where((orden) => orden.estado == 'PENDIENTE').toList();
+          break;
+        case 1:
+          filtered = filtered.where((orden) => orden.estado == 'EN PROCESO').toList();
+          break;
+        case 2:
+          filtered = filtered.where((orden) => orden.estado == 'COMPLETADO').toList();
+          break;
+      }
     }
-  }
 
-  // Filtro por prioridad - solo si hay elementos para filtrar
-  if (filtered.isNotEmpty && _selectedPrioridad != null && _selectedPrioridad!.isNotEmpty && _selectedPrioridad != 'Todas') {
-    filtered = filtered.where((orden) => orden.prioridad == _selectedPrioridad).toList();
-  }
+    if (filtered.isNotEmpty) {
+      if (_fechaDesde != null) {
+        filtered = filtered.where((orden) => 
+          orden.fechaDate.isAfter(_fechaDesde!) || 
+          orden.fechaDate.isAtSameMomentAs(_fechaDesde!)
+        ).toList();
+      }
 
-  setState(() => _filteredOrdenes = filtered);
-}
+      if (_fechaHasta != null) {
+        filtered = filtered.where((orden) => 
+          orden.fechaDate.isBefore(_fechaHasta!) || 
+          orden.fechaDate.isAtSameMomentAs(_fechaHasta!)
+        ).toList();
+      }
+    }
+
+    if (filtered.isNotEmpty && _selectedPrioridad != null && _selectedPrioridad!.isNotEmpty && _selectedPrioridad != 'Todas') {
+      filtered = filtered.where((orden) => orden.prioridad == _selectedPrioridad).toList();
+    }
+
+    setState(() => _filteredOrdenes = filtered);
+  }
 
   void _resetFilters() {
     setState(() {
@@ -127,9 +124,9 @@ class _ListaPickingState extends State<ListaPicking> {
       _fechaHasta = null;
       _selectedPrioridad = null;
       _selectedEstado = null;
-      _groupValue = -1; // Cambiado a -1 para indicar "Todos"
+      _groupValue = -1;
       _searchController.clear();
-      _filteredOrdenes = List.from(_ordenes); // Restaurar lista completa
+      _filteredOrdenes = List.from(_ordenes);
     });
   }
 

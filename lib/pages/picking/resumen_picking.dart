@@ -1,19 +1,27 @@
 import 'package:deposito/models/orden_picking.dart';
+import 'package:deposito/provider/product_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 // ignore: must_be_immutable
 class SummaryScreen extends StatelessWidget {
   List<PickingLinea> processedLines = [];
-
   SummaryScreen({super.key, required this.processedLines});
 
   @override
   Widget build(BuildContext context) {
+    final provider = Provider.of<ProductProvider>(context);
+    processedLines = provider.lineasPicking;
     final colors = Theme.of(context).colorScheme;
+
+    for(var line in processedLines) {
+      print('${line.descripcion} total pickeado: ${line.cantidadPickeada}');
+    }
+
     return SafeArea(
       child: Scaffold(
         appBar: AppBar(
-          title: Text('Resumen de Picking', style: TextStyle(color: colors.onPrimary),),
+          title: Text('Resumen de Picking', style: TextStyle(color: colors.onPrimary)),
           automaticallyImplyLeading: false,
           backgroundColor: colors.primary,
         ),
@@ -25,10 +33,9 @@ class SummaryScreen extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           child: ElevatedButton(
             onPressed: () {
-              // Volver al menú principal
-              Navigator.pushNamedAndRemoveUntil(
-                context, 
-                '/pickingInterno', 
+              provider.resetLineasPicking();
+              Navigator.of(context).pushNamedAndRemoveUntil(
+                '/pedidos', 
                 (route) => false
               );
             },
@@ -108,7 +115,7 @@ class SummaryScreen extends StatelessWidget {
               itemCount: lines.length,
               itemBuilder: (context, index) {
                 final line = lines[index];
-                final isComplete = (line.cantidadPickeada) >= line.cantidadPedida;
+                final isComplete = line.cantidadPickeada >= line.cantidadPedida;
                 
                 return Card(
                   margin: const EdgeInsets.only(bottom: 16),

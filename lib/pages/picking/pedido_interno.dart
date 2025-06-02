@@ -32,8 +32,7 @@ class _PedidoInternoState extends State<PedidoInterno> {
     orderProvider = context.read<ProductProvider>().ordenPicking;
     token = context.read<ProductProvider>().token;
     almacen = context.read<ProductProvider>().almacen;
-    order = await PickingServices().getLineasOrder(context, orderProvider.pickId, almacen.almacenId, token);
-    print(order);
+    order = await PickingServices().getLineasOrder(context, orderProvider.pickId, almacen.almacenId, token);    
     setState(() {});
   }
 
@@ -253,6 +252,7 @@ class _PedidoInternoState extends State<PedidoInterno> {
                   orderProvider = await PickingServices().putOrderPicking(context, order.pickId, 'en proceso', token);
                   order.estado = orderProvider.estado;
                   Provider.of<ProductProvider>(context, listen: false).setOrdenPickingInterna(order);
+                  Provider.of<ProductProvider>(context, listen: false).setLineasPicking(order.lineas ?? []);
                   Navigator.of(context).pop();
                   appRouter.push('/pickingProductos');
                 } else if(accion == 'finalizar') {
@@ -262,6 +262,7 @@ class _PedidoInternoState extends State<PedidoInterno> {
                   Navigator.of(context).pop();
                 } else if(accion == 'continuar') {
                   Provider.of<ProductProvider>(context, listen: false).setOrdenPickingInterna(order);
+                  Provider.of<ProductProvider>(context, listen: false).setLineasPicking(order.lineas ?? []);
                   Navigator.of(context).pop();
                   appRouter.push('/pickingProductos');
                 }
