@@ -24,6 +24,7 @@ class _ListaPickingState extends State<ListaPicking> {
   List<OrdenPicking> _ordenes = [];
   List<OrdenPicking> _filteredOrdenes = [];
   bool _isLoading = true;
+  bool _isFilterExpanded = false; // Nuevo: controla si los filtros están expandidos
 
   // Filtros
   DateTime? _fechaDesde;
@@ -68,6 +69,7 @@ class _ListaPickingState extends State<ListaPicking> {
   void _applyFilters() {
     List<OrdenPicking> filtered = List.from(_ordenes);
 
+    // Filtro de búsqueda de texto
     if (_searchController.text.isNotEmpty) {
       final searchText = _searchController.text.toLowerCase();
       filtered = filtered.where((orden) =>
@@ -79,39 +81,39 @@ class _ListaPickingState extends State<ListaPicking> {
       ).toList();
     }
 
-    if (filtered.isNotEmpty) {
+    // Filtro por estado (segmented control)
+    if (_groupValue != -1) {
       switch (_groupValue) {
-        case -1: // Todos
-          break; // No filtrar
         case 0:
-          filtered = filtered.where((orden) => orden.estado == 'PENDIENTE').toList();
+          filtered = filtered.where((orden) => orden.estado.toUpperCase() == 'PENDIENTE').toList();
           break;
         case 1:
-          filtered = filtered.where((orden) => orden.estado == 'EN PROCESO').toList();
+          filtered = filtered.where((orden) => orden.estado.toUpperCase() == 'EN PROCESO').toList();
           break;
         case 2:
-          filtered = filtered.where((orden) => orden.estado == 'COMPLETADO').toList();
+          filtered = filtered.where((orden) => orden.estado.toUpperCase() == 'COMPLETADO').toList();
           break;
       }
     }
 
-    if (filtered.isNotEmpty) {
-      if (_fechaDesde != null) {
-        filtered = filtered.where((orden) => 
-          orden.fechaDate.isAfter(_fechaDesde!) || 
-          orden.fechaDate.isAtSameMomentAs(_fechaDesde!)
-        ).toList();
-      }
-
-      if (_fechaHasta != null) {
-        filtered = filtered.where((orden) => 
-          orden.fechaDate.isBefore(_fechaHasta!) || 
-          orden.fechaDate.isAtSameMomentAs(_fechaHasta!)
-        ).toList();
-      }
+    // Filtro por fecha desde
+    if (_fechaDesde != null) {
+      filtered = filtered.where((orden) => 
+        orden.fechaDate.isAfter(_fechaDesde!) || 
+        orden.fechaDate.isAtSameMomentAs(_fechaDesde!)
+      ).toList();
     }
 
-    if (filtered.isNotEmpty && _selectedPrioridad != null && _selectedPrioridad!.isNotEmpty && _selectedPrioridad != 'Todas') {
+    // Filtro por fecha hasta
+    if (_fechaHasta != null) {
+      filtered = filtered.where((orden) => 
+        orden.fechaDate.isBefore(_fechaHasta!) || 
+        orden.fechaDate.isAtSameMomentAs(_fechaHasta!)
+      ).toList();
+    }
+
+    // Filtro por prioridad
+    if (_selectedPrioridad != null && _selectedPrioridad!.isNotEmpty && _selectedPrioridad != 'Todas') {
       filtered = filtered.where((orden) => orden.prioridad == _selectedPrioridad).toList();
     }
 
@@ -149,6 +151,15 @@ class _ListaPickingState extends State<ListaPicking> {
     }
   }
 
+  // Método para verificar si hay filtros activos
+  bool _hasActiveFilters() {
+    return _fechaDesde != null ||
+           _fechaHasta != null ||
+           (_selectedPrioridad != null && _selectedPrioridad != 'Todas') ||
+           _searchController.text.isNotEmpty ||
+           _groupValue != -1;
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
@@ -163,6 +174,21 @@ class _ListaPickingState extends State<ListaPicking> {
           ),
           iconTheme: IconThemeData(color: colors.onPrimary),
           actions: [
+            // Indicador de filtros activos
+            if (_hasActiveFilters())
+              Container(
+                margin: const EdgeInsets.only(right: 8),
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.orange,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.filter_alt,
+                  size: 16,
+                  color: Colors.white,
+                ),
+              ),
             IconButton(
               icon: const Icon(Icons.filter_alt_off),
               onPressed: _resetFilters,
@@ -173,101 +199,210 @@ class _ListaPickingState extends State<ListaPicking> {
         backgroundColor: Colors.grey.shade200,
         body: Column(
           children: [
-            // Filtros superiores
+            // Encabezado de filtros colapsable
             Card(
               margin: const EdgeInsets.all(10),
-              child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Column(
-                  children: [
-                    // Fechas
-                    Row(
-                      children: [
-                        Expanded(
-                          child: InkWell(
-                            onTap: () => _selectDate(context, true),
-                            child: InputDecorator(
-                              decoration: const InputDecoration(
-                                labelText: 'Fecha Desde',
-                                border: OutlineInputBorder(),
-                              ),
-                              child: Text(
-                                _fechaDesde != null 
-                                  ? DateFormat('dd/MM/yyyy').format(_fechaDesde!)
-                                  : 'Seleccionar fecha',
-                              ),
+              child: Column(
+                children: [
+                  // Header clickeable para expandir/colapsar
+                  InkWell(
+                    onTap: () {
+                      setState(() {
+                        _isFilterExpanded = !_isFilterExpanded;
+                      });
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.filter_list),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Filtros',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: InkWell(
-                            onTap: () => _selectDate(context, false),
-                            child: InputDecorator(
-                              decoration: const InputDecoration(
-                                labelText: 'Fecha Hasta',
-                                border: OutlineInputBorder(),
+                          const Spacer(),
+                          // Mostrar conteo de filtros activos
+                          if (_hasActiveFilters())
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: colors.primary,
+                                borderRadius: BorderRadius.circular(10),
                               ),
                               child: Text(
-                                _fechaHasta != null 
-                                  ? DateFormat('dd/MM/yyyy').format(_fechaHasta!)
-                                  : 'Seleccionar fecha',
+                                '${_filteredOrdenes.length}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                ),
                               ),
                             ),
+                          const SizedBox(width: 8),
+                          Icon(
+                            _isFilterExpanded 
+                              ? Icons.keyboard_arrow_up 
+                              : Icons.keyboard_arrow_down,
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    
-                    // Prioridad Dropdown
-                    DropdownButtonFormField<String>(
-                      value: _selectedPrioridad,
-                      decoration: const InputDecoration(
-                        labelText: 'Prioridad',
-                        border: OutlineInputBorder(),
+                        ],
                       ),
-                      items: _prioridades.map((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Text(value),
-                        );
-                      }).toList(),
-                      onChanged: (newValue) {
-                        setState(() {
-                          _selectedPrioridad = newValue;
-                          _applyFilters();
-                        });
-                      },
                     ),
-                    const SizedBox(height: 10),
-                    
-                    // Búsqueda general
-                    TextField(
-                      controller: _searchController,
-                      decoration: InputDecoration(
-                        labelText: 'Buscar (Tipo, Código, RUC, Documento, Serie)',
-                        border: const OutlineInputBorder(),
-                        suffixIcon: IconButton(
-                          icon: const Icon(Icons.clear),
-                          onPressed: () {
-                            _searchController.clear();
-                            _applyFilters();
-                          },
-                        ),
-                      ),
-                      onChanged: (value) => _applyFilters(),
+                  ),
+                  
+                  // Contenido de filtros (colapsable)
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    height: _isFilterExpanded ? null : 0,
+                    child: AnimatedOpacity(
+                      duration: const Duration(milliseconds: 300),
+                      opacity: _isFilterExpanded ? 1.0 : 0.0,
+                      child: _isFilterExpanded
+                        ? Padding(
+                            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                            child: Column(
+                              children: [
+                                const Divider(),
+                                // Búsqueda general
+                                TextField(
+                                  controller: _searchController,
+                                  decoration: InputDecoration(
+                                    labelText: 'Buscar (Tipo, Código, RUC, Documento, Serie)',
+                                    border: const OutlineInputBorder(),
+                                    suffixIcon: _searchController.text.isNotEmpty
+                                      ? IconButton(
+                                          icon: const Icon(Icons.clear),
+                                          onPressed: () {
+                                            _searchController.clear();
+                                            _applyFilters();
+                                          },
+                                        )
+                                      : const Icon(Icons.search),
+                                  ),
+                                  onChanged: (value) => _applyFilters(),
+                                ),
+                                const SizedBox(height: 15),
+                                
+                                // Fechas
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: InkWell(
+                                        onTap: () => _selectDate(context, true),
+                                        child: InputDecorator(
+                                          decoration: InputDecoration(
+                                            labelText: 'Fecha Desde',
+                                            border: const OutlineInputBorder(),
+                                            suffixIcon: _fechaDesde != null
+                                              ? IconButton(
+                                                  icon: const Icon(Icons.clear, size: 18),
+                                                  onPressed: () {
+                                                    setState(() {
+                                                      _fechaDesde = null;
+                                                      _applyFilters();
+                                                    });
+                                                  },
+                                                )
+                                              : const Icon(Icons.calendar_today, size: 18),
+                                          ),
+                                          child: Text(
+                                            _fechaDesde != null 
+                                              ? DateFormat('dd/MM/yyyy').format(_fechaDesde!)
+                                              : 'Seleccionar fecha',
+                                            style: TextStyle(
+                                              color: _fechaDesde != null 
+                                                ? Colors.black 
+                                                : Colors.grey[600],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: InkWell(
+                                        onTap: () => _selectDate(context, false),
+                                        child: InputDecorator(
+                                          decoration: InputDecoration(
+                                            labelText: 'Fecha Hasta',
+                                            border: const OutlineInputBorder(),
+                                            suffixIcon: _fechaHasta != null
+                                              ? IconButton(
+                                                  icon: const Icon(Icons.clear, size: 18),
+                                                  onPressed: () {
+                                                    setState(() {
+                                                      _fechaHasta = null;
+                                                      _applyFilters();
+                                                    });
+                                                  },
+                                                )
+                                              : const Icon(Icons.calendar_today, size: 18),
+                                          ),
+                                          child: Text(
+                                            _fechaHasta != null 
+                                              ? DateFormat('dd/MM/yyyy').format(_fechaHasta!)
+                                              : 'Seleccionar fecha',
+                                            style: TextStyle(
+                                              color: _fechaHasta != null 
+                                                ? Colors.black 
+                                                : Colors.grey[600],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 15),
+                                
+                                // Prioridad Dropdown
+                                DropdownButtonFormField<String>(
+                                  value: _selectedPrioridad,
+                                  decoration: InputDecoration(
+                                    labelText: 'Prioridad',
+                                    border: const OutlineInputBorder(),
+                                    suffixIcon: _selectedPrioridad != null && _selectedPrioridad != 'Todas'
+                                      ? IconButton(
+                                          icon: const Icon(Icons.clear, size: 18),
+                                          onPressed: () {
+                                            setState(() {
+                                              _selectedPrioridad = 'Todas';
+                                              _applyFilters();
+                                            });
+                                          },
+                                        )
+                                      : null,
+                                  ),
+                                  items: _prioridades.map((String value) {
+                                    return DropdownMenuItem<String>(
+                                      value: value,
+                                      child: Text(value),
+                                    );
+                                  }).toList(),
+                                  onChanged: (newValue) {
+                                    setState(() {
+                                      _selectedPrioridad = newValue;
+                                      _applyFilters();
+                                    });
+                                  },
+                                ),
+                              ],
+                            ),
+                          )
+                        : Container(),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
             
-            // Segmented Control para estados
+            // Segmented Control para estados (siempre visible)
             CupertinoSegmentedControl<int>(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.symmetric(horizontal: 10),
               groupValue: _groupValue,
-              borderColor: Colors.black,
+              borderColor: colors.primary,
               selectedColor: colors.primary,
               unselectedColor: Colors.white,
               children: {
@@ -284,6 +419,8 @@ class _ListaPickingState extends State<ListaPicking> {
               },
             ),
             
+            const SizedBox(height: 10),
+            
             // Lista de resultados
             Expanded(
               child: _isLoading
@@ -292,11 +429,38 @@ class _ListaPickingState extends State<ListaPicking> {
                       key: _refreshIndicatorKey,
                       onRefresh: _refreshData,
                       child: _filteredOrdenes.isEmpty
-                          ? const Center(
-                              child: Text(
-                                'No se encontraron órdenes con los filtros aplicados',
-                                style: TextStyle(fontSize: 16),
-                              ),
+                          ? ListView(
+                              children: [
+                                SizedBox(height: MediaQuery.of(context).size.height * 0.3),
+                                const Center(
+                                  child: Column(
+                                    children: [
+                                      Icon(
+                                        Icons.search_off,
+                                        size: 64,
+                                        color: Colors.grey,
+                                      ),
+                                      SizedBox(height: 16),
+                                      Text(
+                                        'No se encontraron órdenes',
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                      SizedBox(height: 8),
+                                      Text(
+                                        'Intenta ajustar los filtros de búsqueda',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             )
                           : ListView.builder(
                               itemCount: _filteredOrdenes.length,
@@ -307,18 +471,19 @@ class _ListaPickingState extends State<ListaPicking> {
                                   surfaceTintColor: Colors.white,
                                   color: Colors.white,
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(5),
-                                    side: const BorderSide(
-                                      color: Colors.black,
+                                    borderRadius: BorderRadius.circular(8),
+                                    side: BorderSide(
+                                      color: Colors.grey.shade300,
                                       width: 1,
                                     ),
                                   ),
-                                  elevation: 5,
+                                  elevation: 2,
                                   child: InkWell(
                                     onTap: () {
                                       Provider.of<ProductProvider>(context, listen: false).setOrdenPicking(orden);
                                       appRouter.push('/pickingInterno');
                                     },
+                                    borderRadius: BorderRadius.circular(8),
                                     child: Padding(
                                       padding: const EdgeInsets.all(12.0),
                                       child: Column(
@@ -326,14 +491,15 @@ class _ListaPickingState extends State<ListaPicking> {
                                         children: [
                                           Row(
                                             children: [
-                                              Text(
-                                                'Doc: ${orden.numeroDocumento} ${orden.serie ?? ''}',
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 18,
+                                              Expanded(
+                                                child: Text(
+                                                  'Doc: ${orden.numeroDocumento} ${orden.serie ?? ''}',
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 18,
+                                                  ),
                                                 ),
                                               ),
-                                              const Spacer(),
                                               Container(
                                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                                 decoration: BoxDecoration(
@@ -345,6 +511,7 @@ class _ListaPickingState extends State<ListaPicking> {
                                                   style: const TextStyle(
                                                     color: Colors.white,
                                                     fontSize: 12,
+                                                    fontWeight: FontWeight.bold,
                                                   ),
                                                 ),
                                               ),
@@ -354,9 +521,14 @@ class _ListaPickingState extends State<ListaPicking> {
                                           Text('Tipo: ${orden.tipo}'),
                                           Text('Cliente: ${orden.codEntidad} - ${orden.nombre}'),
                                           Text('RUC: ${orden.ruc}'),
-                                          Text('Prioridad: ${orden.prioridad}'),
+                                          Row(
+                                            children: [
+                                              Text('Prioridad: ${orden.prioridad}'),
+                                              const Spacer(),
+                                              Text('Líneas: ${orden.cantLineas ?? 0}'),
+                                            ],
+                                          ),
                                           Text('Fecha: ${DateFormat('dd/MM/yyyy').format(orden.fechaDate)}'),
-                                          Text('Líneas: ${orden.cantLineas ?? 0}'),
                                         ],
                                       ),
                                     ),
@@ -373,14 +545,14 @@ class _ListaPickingState extends State<ListaPicking> {
   }
 
   Color _getStatusColor(String status) {
-    switch (status) {
-      case 'Pendiente':
+    switch (status.toUpperCase()) {
+      case 'PENDIENTE':
         return Colors.orange;
-      case 'En proceso':
+      case 'EN PROCESO':
         return Colors.blue;
-      case 'Completado':
+      case 'COMPLETADO':
         return Colors.green;
-      case 'Cancelado':
+      case 'CANCELADO':
         return Colors.red;
       default:
         return Colors.grey;

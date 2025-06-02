@@ -1,5 +1,6 @@
 import 'package:deposito/models/orden_picking.dart';
 import 'package:deposito/provider/product_provider.dart';
+import 'package:deposito/services/picking_services.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -32,12 +33,8 @@ class SummaryScreen extends StatelessWidget {
           color: Colors.white,
           padding: const EdgeInsets.all(16),
           child: ElevatedButton(
-            onPressed: () {
-              provider.resetLineasPicking();
-              Navigator.of(context).pushNamedAndRemoveUntil(
-                '/pedidos', 
-                (route) => false
-              );
+            onPressed: () async {
+              await _completarPicking(context, provider);
             },
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
@@ -53,6 +50,69 @@ class SummaryScreen extends StatelessWidget {
     );
   }
 
+  // Agregar este método a la clase SummaryScreen:
+  Future<void> _completarPicking(BuildContext context, ProductProvider provider) async {
+    final pickingServices = PickingServices();
+    final String token = context.read<ProductProvider>().token; // Ajusta según cómo obtienes el token
+    
+    // Mostrar indicador de carga
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const Center(
+          child: CircularProgressIndicator(),
+        );
+      },
+    );
+
+    try {
+      // Hacer patchPicking por cada línea procesada
+      for (var line in processedLines) {
+        // Hacer patch por cada ubicación (incluso si existenciaActual es 0)
+        for (var ubicacion in line.ubicaciones) {
+          await pickingServices.patchPicking(
+            context,
+            line.pickId, // ID del picking
+            line.codItem, // Código del item
+            ubicacion.almacenUbicacionId, // ID de la ubicación
+            line.cantidadPickeada, // Cantidad pickeada (puede ser 0)
+            token
+          );
+          
+          // Verificar si el patch fue exitoso
+          int? statusCode = await pickingServices.getStatusCode();
+          if (statusCode != 1) {
+            // Si hay error, salir del bucle
+            Navigator.of(context).pop(); // Cerrar loading
+            return;
+          }
+        }
+      }
+
+      // Cerrar loading
+      Navigator.of(context).pop();
+      
+      // Reset y navegación
+      provider.resetLineasPicking();
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        '/pickingInterno', 
+        (route) => false
+      );
+      
+    } catch (e) {
+      // Cerrar loading en caso de error
+      Navigator.of(context).pop();
+      
+      // Mostrar error
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al completar picking: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
   Widget _buildSummaryList(List<PickingLinea> lines) {
     // Calcular totales generales
     int totalPedido = 0;
