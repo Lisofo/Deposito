@@ -114,7 +114,7 @@ class _PickingPageState extends State<PickingPage> {
         final lineas = ordenPicking.lineas ?? [];
         final currentLineIndex = provider.currentLineIndex;
         final selectedLine = currentLineIndex < lineas.length ? lineas[currentLineIndex] : null;
-
+        provider.setUbicacionSeleccionada(selectedLine!.ubicaciones[0]);
         return Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
