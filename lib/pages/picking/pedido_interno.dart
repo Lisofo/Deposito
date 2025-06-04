@@ -21,7 +21,6 @@ class _PedidoInternoState extends State<PedidoInterno> {
   String token = '';
   late Almacen almacen = Almacen.empty();
 
-
   @override
   void initState() {
     super.initState();
@@ -50,183 +49,168 @@ class _PedidoInternoState extends State<PedidoInterno> {
             style: const TextStyle(color: Colors.white),
           ),
         ),
-        body: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  decoration: BoxDecoration(
-                    color: colors.primary,
-                    borderRadius: BorderRadius.circular(5)),
-                  height: 30,
-                  child: const Center(
-                    child: Text(
-                      'Detalle',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                const Text(
-                  'Cliente/Proveedor: ',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                ),
-                Text(
-                  order.nombre,
-                  style: const TextStyle(fontSize: 16),
-                ),
-                const SizedBox(height: 10),
-                const Text(
-                  'Fecha del Pedido: ',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                ),
-                Text(
-                  DateFormat('EEEE d, MMMM yyyy', 'es').format(order.fechaDate),
-                  style: const TextStyle(fontSize: 16),
-                ),
-                const SizedBox(height: 10),
-                const Text(
-                  'Estado: ',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                ),
-                Row(
-                  children: [
-                    Text(
-                      order.estado,
-                      style: const TextStyle(fontSize: 16),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: _getStatusColor(order.estado),
-                        shape: BoxShape.circle,
-                      ),
-                    )
-                  ],
-                ),
-                const SizedBox(height: 10),
-                const Text(
-                  'Tipo de Orden: ',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                ),
-                Text(
-                  order.tipo == 'inbound' ? 'Entrada' : 'Salida',
-                  style: const TextStyle(fontSize: 16)
-                ),
-                const SizedBox(height: 10),
-                if (order.prioridad != '') ...[
-                  const Text(
-                    'Prioridad: ',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                  ),
-                  Text(
-                    order.prioridad,
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                  const SizedBox(height: 10),
-                ],
-                const Text(
-                  'Productos: ',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 8),
-                if (order.lineas!.isEmpty)
-                  const Text(
-                    'No hay productos en esta orden',
-                    style: TextStyle(fontSize: 16),
-                  )
-                else
-                  ...order.lineas!.map((item) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Card(
-                      child: ListTile(
-                        leading: const Icon(Icons.inventory),
-                        title: Text(item.descripcion),
-                        subtitle: Text('Código: ${item.codItem}'),
-                        trailing: Text('${item.cantidadPedida} uds'),
-                      ),
-                    ),
-                  )),
-                const SizedBox(height: 10),
-                const Text(
-                  'Comentario: ',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                ),
-                Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: colors.primary,
-                      width: 2
-                    ),
-                    borderRadius: BorderRadius.circular(5)
-                  ),
-                  child: TextFormField(
-                    enabled: false,
-                    minLines: 1,
-                    maxLines: 100,
-                    initialValue: order.comentario == '' ? 'No hay comentario' : order.comentario,
-                    decoration: const InputDecoration(
-                      border: InputBorder.none,
-                      fillColor: Colors.white,
-                      filled: true
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 15),
-              ],
-            ),
-          ),
-        ),
-        bottomNavigationBar: BottomAppBar(
-          notchMargin: 10,
-          elevation: 0,
-          shape: const CircularNotchedRectangle(),
-          color: Colors.grey.shade200,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        body: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              ElevatedButton(
-                onPressed: () => _mostrarDialogoConfirmacion(order.estado == 'PENDIENTE' ? 'iniciar' : 'continuar'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: colors.primary,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                ),
-                child: Text(
-                  order.estado == 'PENDIENTE' ? 'Iniciar' : 'Continuar',
-                  style: const TextStyle(color: Colors.white, fontSize: 16),
-                ),
+              _buildOrderHeader(order, colors),
+              const SizedBox(height: 16),
+              Text(
+                'Productos a ${order.tipo == 'inbound' ? 'recibir' : 'preparar'}:',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
-              ElevatedButton(
-                onPressed: () => _mostrarDialogoConfirmacion('finalizar'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: colors.primary,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                ),
-                child: const Text(
-                  'Finalizar',
-                  style: TextStyle(color: Colors.white, fontSize: 16),
-                ),
+              const SizedBox(height: 8),
+              Expanded(
+                child: _buildProductList(order),
               ),
-              IconButton(
-                onPressed: () async {
-                  await volverAPendiente();
-                },
-                icon: Icon(
-                  Icons.backspace,
-                  color: colors.primary
-                )
-              ),
+              const SizedBox(height: 16),
+              _buildCommentSection(order, colors),
             ],
           ),
         ),
+        bottomNavigationBar: _buildBottomBar(context, order, colors),
+      ),
+    );
+  }
+
+  Widget _buildOrderHeader(OrdenPicking order, ColorScheme colors) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '${order.numeroDocumento}',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Chip(
+                  label: Text(
+                    order.estado,
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                  backgroundColor: _getStatusColor(order.estado),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text('Cliente/Proveedor: ${order.nombre}'),
+            const SizedBox(height: 8),
+            Text('Fecha: ${_formatDate(order.fechaDate)}'),
+            const SizedBox(height: 8),
+            Text('Tipo: ${order.tipo == 'inbound' ? 'Entrada' : 'Salida'}'),
+            const SizedBox(height: 8),
+            if (order.prioridad != '')
+              Text('Prioridad: ${order.prioridad}'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProductList(OrdenPicking order) {
+    if (order.lineas!.isEmpty) {
+      return const Center(child: Text('No hay productos en esta orden'));
+    }
+
+    return ListView.builder(
+      itemCount: order.lineas!.length,
+      itemBuilder: (context, index) {
+        final item = order.lineas![index];
+        return Card(
+          margin: const EdgeInsets.only(bottom: 8),
+          child: ListTile(
+            leading: const Icon(Icons.inventory),
+            title: Text(item.descripcion),
+            subtitle: Text('Código: ${item.codItem}'),
+            trailing: Text('${item.cantidadPedida} uds'),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCommentSection(OrdenPicking order, ColorScheme colors) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Comentario:',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: colors.primary,
+              width: 2
+            ),
+            borderRadius: BorderRadius.circular(5)
+          ),
+          child: TextFormField(
+            enabled: false,
+            minLines: 1,
+            maxLines: 100,
+            initialValue: order.comentario == '' ? 'No hay comentario' : order.comentario,
+            decoration: const InputDecoration(
+              border: InputBorder.none,
+              fillColor: Colors.white,
+              filled: true
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBottomBar(BuildContext context, OrdenPicking order, ColorScheme colors) {
+    return BottomAppBar(
+      notchMargin: 10,
+      elevation: 0,
+      shape: const CircularNotchedRectangle(),
+      color: Colors.grey.shade200,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          ElevatedButton(
+            onPressed: () => _mostrarDialogoConfirmacion(order.estado == 'PENDIENTE' ? 'iniciar' : 'continuar'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: colors.primary,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            ),
+            child: Text(
+              order.estado == 'PENDIENTE' ? 'Iniciar' : 'Continuar',
+              style: const TextStyle(color: Colors.white, fontSize: 16),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => _mostrarDialogoConfirmacion('finalizar'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: colors.primary,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            ),
+            child: const Text(
+              'Finalizar',
+              style: TextStyle(color: Colors.white, fontSize: 16),
+            ),
+          ),
+          IconButton(
+            onPressed: () async {
+              await volverAPendiente();
+            },
+            icon: Icon(
+              Icons.backspace,
+              color: colors.primary
+            )
+          ),
+        ],
       ),
     );
   }
@@ -313,17 +297,21 @@ class _PedidoInternoState extends State<PedidoInterno> {
   }
 
   Color _getStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'nueva':
-        return Colors.blue;
-      case 'en progreso':
+    switch (status.toUpperCase()) {
+      case 'PENDIENTE':
         return Colors.orange;
-      case 'pendiente':
-        return Colors.yellow[700]!;
-      case 'completada':
+      case 'EN PROCESO':
+        return Colors.blue;
+      case 'COMPLETADO':
         return Colors.green;
+      case 'CANCELADO':
+        return Colors.red;
       default:
         return Colors.grey;
     }
+  }
+
+  String _formatDate(DateTime date) {
+    return DateFormat('dd/MM/yyyy HH:mm').format(date);
   }
 }

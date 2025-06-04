@@ -106,6 +106,7 @@ class PickingProductsState extends State<PickingProducts> {
   void _incrementProductQuantity(int index) {
     final provider = Provider.of<ProductProvider>(context, listen: false);
     final currentLine = provider.ordenPickingInterna.lineas![provider.currentLineIndex];
+    // ignore: unused_local_variable
     final currentLocation = currentLine.ubicaciones[index];
     final currentQuantity = int.tryParse(_quantityControllers[index]?.text ?? '0') ?? 0;
     

@@ -116,12 +116,17 @@ class _PickingPageState extends State<PickingPage> {
         final selectedLine = currentLineIndex < lineas.length ? lineas[currentLineIndex] : null;
 
         return Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            if (lineas.isNotEmpty && selectedLine != null)
-              _buildLineInfo(selectedLine),
+            // if (lineas.isNotEmpty && selectedLine != null)
+            //   _buildLineInfo(selectedLine),
+            Text(
+              'Dirijase a la ubicación ${selectedLine!.ubicaciones[0].codUbicacion}', 
+              style: const TextStyle(fontSize: 18),
+            ),
             const SizedBox(height: 20),
-            if (lineas.isNotEmpty && selectedLine != null)
-              _buildUbicacionSelector(selectedLine),
+            // if (lineas.isNotEmpty && selectedLine != null)
+            //   _buildUbicacionSelector(selectedLine),
             VisibilityDetector(
               key: const Key('scanner-field-visibility'),
               onVisibilityChanged: (info) {
@@ -148,6 +153,7 @@ class _PickingPageState extends State<PickingPage> {
     );
   }
 
+  // ignore: unused_element
   Widget _buildLineInfo(PickingLinea line) {
     return Card(
       margin: const EdgeInsets.all(16),
@@ -172,6 +178,7 @@ class _PickingPageState extends State<PickingPage> {
     );
   }
 
+  // ignore: unused_element
   Widget _buildUbicacionSelector(PickingLinea line) {
     return Consumer<ProductProvider>(
       builder: (context, provider, child) {
