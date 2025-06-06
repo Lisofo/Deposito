@@ -61,6 +61,8 @@ List<Widget> _filaBotones2(List<Opcion> opciones, BuildContext context) {
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: InkWell(
         onTap: () {
+          print(opt.texto);
+          Provider.of<ProductProvider>(context, listen: false).setMenu(opt.ruta);
           appRouter.push(opt.ruta);
         },
         child: Row(

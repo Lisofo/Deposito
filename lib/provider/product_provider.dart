@@ -97,7 +97,16 @@ class ProductProvider with ChangeNotifier {
   List<PickingLinea> _lineasPicking = [];
   List<PickingLinea> get lineasPicking => _lineasPicking;
 
+  String _menu = '';
+  String get menu => _menu;
+
   // Métodos para manejar las líneas de picking
+
+  void setMenu(String menu) {
+    _menu = menu;
+    notifyListeners();
+  }
+
   void setLineasPicking(List<PickingLinea> lineas) {
     _lineasPicking = List.from(lineas);
     notifyListeners();

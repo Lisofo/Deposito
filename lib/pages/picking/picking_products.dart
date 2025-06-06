@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 import 'package:provider/provider.dart';
 import 'package:deposito/provider/product_provider.dart';
+import 'package:deposito/services/picking_services.dart';
 import 'resumen_picking.dart';
 
 class PickingProducts extends StatefulWidget {
@@ -75,6 +76,30 @@ class PickingProductsState extends State<PickingProducts> {
     }
   }
 
+  Future<bool> _patchCurrentLine() async {
+    final provider = Provider.of<ProductProvider>(context, listen: false);
+    final pickingServices = PickingServices();
+    final String token = provider.token;
+    final currentLine = provider.ordenPickingInterna.lineas![provider.currentLineIndex];
+
+    try {
+      await pickingServices.patchPicking(
+        context,
+        currentLine.pickId,
+        currentLine.codItem,
+        provider.ubicacionSeleccionada!.almacenUbicacionId,
+        currentLine.cantidadPickeada,
+        token
+      );
+      
+      int? statusCode = await pickingServices.getStatusCode();
+      return statusCode == 1;
+    } catch (e) {
+      print('Error en patchCurrentLine: $e');
+      return false;
+    }
+  }
+
   Future<void> _scanBarcode() async {
     try {
       String? barcodeScanRes = await SimpleBarcodeScanner.scanBarcode(
@@ -106,8 +131,6 @@ class PickingProductsState extends State<PickingProducts> {
   void _incrementProductQuantity(int index) {
     final provider = Provider.of<ProductProvider>(context, listen: false);
     final currentLine = provider.ordenPickingInterna.lineas![provider.currentLineIndex];
-    // ignore: unused_local_variable
-    final currentLocation = currentLine.ubicaciones[index];
     final currentQuantity = int.tryParse(_quantityControllers[index]?.text ?? '0') ?? 0;
     
     if (currentQuantity < currentLine.cantidadPedida) {
@@ -172,19 +195,66 @@ class PickingProductsState extends State<PickingProducts> {
     return provider.currentLineIndex < provider.ordenPickingInterna.lineas!.length - 1;
   }
 
-  void _moveToNextLine() async {
-    final provider = Provider.of<ProductProvider>(context, listen: false);
-    if (provider.currentLineIndex >= provider.ordenPickingInterna.lineas!.length) return;
-    
-    await _saveProcessedLine();
-    provider.clearUbicacionSeleccionada();
-    
-    if (_hasMoreLines()) {
-      provider.setCurrentLineIndex(provider.currentLineIndex + 1);
-      appRouter.pushReplacement('/pickingProductos');
-    } else {
-      _finishProcess();
+  Future<bool> _completeCurrentLine() async {
+    try {
+      _saveProcessedLine();
+      return await _patchCurrentLine();
+    } catch (e) {
+      print('Error completando línea: $e');
+      return false;
     }
+  }
+
+  Future<void> _processLineCompletion(bool isLastLine) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final success = await _completeCurrentLine();
+      
+      Navigator.of(context).pop();
+      
+      if (!success) {
+        _showSingleSnackBar('Error al actualizar la línea', backgroundColor: Colors.red);
+        return;
+      }
+
+      final provider = Provider.of<ProductProvider>(context, listen: false);
+      provider.clearUbicacionSeleccionada();
+
+      if (isLastLine) {
+        _navigateToSummary();
+      } else {
+        provider.setCurrentLineIndex(provider.currentLineIndex + 1);
+        appRouter.pushReplacement('/pickingProductos');
+      }
+    } catch (e) {
+      Navigator.of(context).pop();
+      _showSingleSnackBar('Error: ${e.toString()}', backgroundColor: Colors.red);
+    }
+  }
+
+  void _navigateToSummary() {
+    final provider = Provider.of<ProductProvider>(context, listen: false);
+    final ordenPicking = provider.ordenPickingInterna;
+    
+    for (int i = 0; i < ordenPicking.lineas!.length; i++) {
+      if (i >= provider.lineasPicking.length) {
+        provider.lineasPicking.add(ordenPicking.lineas![i]);
+      }
+    }
+    
+    provider.clearUbicacionSeleccionada();
+    provider.setCurrentLineIndex(0);
+    
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => SummaryScreen(processedLines: provider.lineasPicking),
+      )
+    );
   }
 
   _saveProcessedLine() {
@@ -192,13 +262,11 @@ class PickingProductsState extends State<PickingProducts> {
     final currentLine = provider.ordenPickingInterna.lineas![provider.currentLineIndex];
     int totalPicked = 0;
     
-    // Primero calculamos el total
     for (int i = 0; i < currentLine.ubicaciones.length; i++) {
       final picked = int.tryParse(_quantityControllers[i]?.text ?? '0') ?? 0;
       totalPicked += picked;
     }
     
-    // Luego asignamos el total UNA SOLA VEZ
     final updatedLine = PickingLinea(
       pickLineaId: currentLine.pickLineaId,
       pickId: currentLine.pickId,
@@ -217,26 +285,47 @@ class PickingProductsState extends State<PickingProducts> {
     provider.ordenPickingInterna.lineas![provider.currentLineIndex] = updatedLine;
   }
 
-  void _finishProcess() {
+  void _showMissingProductsDialog(bool isLastLine) {
     final provider = Provider.of<ProductProvider>(context, listen: false);
-    _saveProcessedLine();
-    final ordenPicking = provider.ordenPickingInterna;
-    
-    // Asegurar que todas las líneas estén actualizadas
-    for (int i = 0; i < ordenPicking.lineas!.length; i++) {
-      if (i >= provider.lineasPicking.length) {
-        provider.lineasPicking.add(ordenPicking.lineas![i]);
-      }
-    }
-    
-    provider.clearUbicacionSeleccionada();
-    provider.setCurrentLineIndex(0);
-    
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => SummaryScreen(processedLines: provider.lineasPicking),
-      ),
+    final currentLine = provider.ordenPickingInterna.lineas![provider.currentLineIndex];
+    final totalPicked = _calculateTotalPicked(currentLine);
+    final missing = currentLine.cantidadPedida - totalPicked;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Productos faltantes'),
+          content: Text('Faltan $missing unidades de ${currentLine.descripcion}'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _processLineCompletion(isLastLine);
+              },
+              child: Text(isLastLine ? 'Finalizar' : 'Siguiente'),
+            ),
+          ],
+        );
+      },
     );
+  }
+
+  double _calculateProgress(PickingLinea line) {
+    int totalPicked = _calculateTotalPicked(line);
+    return totalPicked / line.cantidadPedida;
+  }
+
+  int _calculateTotalPicked(PickingLinea line) {
+    int total = 0;
+    for (int i = 0; i < line.ubicaciones.length; i++) {
+      total += int.tryParse(_quantityControllers[i]?.text ?? '0') ?? 0;
+    }
+    return total;
   }
 
   @override
@@ -351,19 +440,6 @@ class PickingProductsState extends State<PickingProducts> {
     );
   }
 
-  double _calculateProgress(PickingLinea line) {
-    int totalPicked = _calculateTotalPicked(line);
-    return totalPicked / line.cantidadPedida;
-  }
-
-  int _calculateTotalPicked(PickingLinea line) {
-    int total = 0;
-    for (int i = 0; i < line.ubicaciones.length; i++) {
-      total += int.tryParse(_quantityControllers[i]?.text ?? '0') ?? 0;
-    }
-    return total;
-  }
-
   Widget _buildLocationList(PickingLinea line) {
     return Consumer<ProductProvider>(
       builder: (context, provider, child) {
@@ -404,7 +480,7 @@ class PickingProductsState extends State<PickingProducts> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Ubicación ID: ${ubicacion.almacenUbicacionId}',
+              'Ubicación: ${ubicacion.codUbicacion}',
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
@@ -463,7 +539,7 @@ class PickingProductsState extends State<PickingProducts> {
                 child: ElevatedButton(
                   onPressed: () {
                     if (_allProductsPickeadInLine()) {
-                      isLastLine ? _finishProcess() : _moveToNextLine();
+                      _processLineCompletion(isLastLine);
                     } else {
                       _showMissingProductsDialog(isLastLine);
                     }
@@ -484,34 +560,10 @@ class PickingProductsState extends State<PickingProducts> {
       },
     );
   }
-
-  void _showMissingProductsDialog(bool isLastLine) {
-    final provider = Provider.of<ProductProvider>(context, listen: false);
-    final currentLine = provider.ordenPickingInterna.lineas![provider.currentLineIndex];
-    final totalPicked = _calculateTotalPicked(currentLine);
-    final missing = currentLine.cantidadPedida - totalPicked;
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Productos faltantes'),
-          content: Text('Faltan $missing unidades de ${currentLine.descripcion}'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancelar'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                isLastLine ? _finishProcess() : _moveToNextLine();
-              },
-              child: Text(isLastLine ? 'Finalizar' : 'Siguiente'),
-            ),
-          ],
-        );
-      },
-    );
-  }
 }
+
+
+// ordenPicking = await PickingServices().getLineasOrder(context, productProvider.ordenPicking.pickId, almacen.almacenId, token);
+//         final lineas = ordenPicking.lineas;
+// late OrdenPicking ordenPicking = OrdenPicking.empty();
+//     final productProvider = context.read<ProductProvider>();

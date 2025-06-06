@@ -1,3 +1,5 @@
+// ignore_for_file: unused_element
+
 import 'package:deposito/config/router/router.dart';
 import 'package:deposito/models/almacen.dart';
 import 'package:deposito/models/orden_picking.dart';
@@ -31,7 +33,7 @@ class _PedidoInternoState extends State<PedidoInterno> {
     orderProvider = context.read<ProductProvider>().ordenPicking;
     token = context.read<ProductProvider>().token;
     almacen = context.read<ProductProvider>().almacen;
-    order = await PickingServices().getLineasOrder(context, orderProvider.pickId, almacen.almacenId, token);    
+    order = await PickingServices().getLineasOrder(context, orderProvider.pickId, almacen.almacenId, token);
     setState(() {});
   }
 
@@ -52,24 +54,84 @@ class _PedidoInternoState extends State<PedidoInterno> {
         body: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildOrderHeader(order, colors),
-              const SizedBox(height: 16),
-              Text(
-                'Productos a ${order.tipo == 'inbound' ? 'recibir' : 'preparar'}:',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Expanded(
-                child: _buildProductList(order),
-              ),
-              const SizedBox(height: 16),
+              expanded(),
               _buildCommentSection(order, colors),
             ],
           ),
         ),
         bottomNavigationBar: _buildBottomBar(context, order, colors),
+      ),
+    );
+  }
+
+  Expanded expanded() {
+    return Expanded(
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '${order.numeroDocumento}',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Chip(
+                          label: Text(
+                            order.estado,
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                          backgroundColor: _getStatusColor(order.estado),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text('Cliente/Proveedor: ${order.nombre}'),
+                    const SizedBox(height: 8),
+                    Text('Fecha: ${_formatDate(order.fechaDate)}'),
+                    const SizedBox(height: 8),
+                    Text('Tipo: ${order.tipo == 'inbound' ? 'Entrada' : 'Salida'}'),
+                    const SizedBox(height: 8),
+                    if (order.prioridad != '')
+                      Text('Prioridad: ${order.prioridad}'),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Productos a ${order.tipo == 'inbound' ? 'recibir' : 'preparar'}:',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Column(
+              children: [
+                for (final item in order.lineas!)
+                  Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: ListTile(
+                      leading: const Icon(Icons.inventory),
+                      title: Text(item.descripcion),
+                      subtitle: Text('Código: ${item.codItem}'),
+                      trailing: Text('${item.cantidadPedida} unid'),
+                    ),
+                  ),
+              ],
+            ),
+            
+          ],
+        ),
       ),
     );
   }
@@ -180,9 +242,9 @@ class _PedidoInternoState extends State<PedidoInterno> {
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           ElevatedButton(
-            onPressed: () => _mostrarDialogoConfirmacion(order.estado == 'PENDIENTE' ? 'iniciar' : 'continuar'),
+            onPressed: order.estado == 'CERRADO' ? null : () => _mostrarDialogoConfirmacion(order.estado == 'PENDIENTE' ? 'iniciar' : 'continuar'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: colors.primary,
+              backgroundColor: order.estado == 'CERRADO' ? Colors.grey : colors.primary,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             ),
             child: Text(
@@ -191,9 +253,9 @@ class _PedidoInternoState extends State<PedidoInterno> {
             ),
           ),
           ElevatedButton(
-            onPressed: () => _mostrarDialogoConfirmacion('finalizar'),
+            onPressed: order.estado == 'CERRADO' ? null : () => _mostrarDialogoConfirmacion('finalizar'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: colors.primary,
+              backgroundColor: order.estado == 'CERRADO' ? Colors.grey : colors.primary,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             ),
             child: const Text(
@@ -202,12 +264,10 @@ class _PedidoInternoState extends State<PedidoInterno> {
             ),
           ),
           IconButton(
-            onPressed: () async {
-              await volverAPendiente();
-            },
+            onPressed: order.estado == 'CERRADO' ? null : () async => await volverAPendiente(),
             icon: Icon(
               Icons.backspace,
-              color: colors.primary
+              color: order.estado == 'CERRADO' ? Colors.grey : colors.primary
             )
           ),
         ],

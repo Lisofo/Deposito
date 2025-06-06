@@ -35,7 +35,7 @@ class _ListaPickingState extends State<ListaPicking> {
 
   // Opciones para dropdowns
   final List<String> _prioridades = ['Alta', 'Media', 'Baja', 'Todas'];
-  final List<String> _estados = ['Pendiente', 'En proceso', 'Completado', 'Cancelado', 'Todos'];
+  final List<String> _estados = ['Pendiente', 'En proceso', 'Cerrado', 'Cancelado', 'Todos'];
 
   String token = '';
 
@@ -50,7 +50,8 @@ class _ListaPickingState extends State<ListaPicking> {
     setState(() => _isLoading = true);
     try {
       await _pickingServices.resetStatusCode();
-      final result = await _pickingServices.getOrdenesPicking(context, token);
+      String menu = context.read<ProductProvider>().menu;
+      final result = await _pickingServices.getOrdenesPicking(context, menu, token);
       if (result != null && _pickingServices.statusCode == 1) {
         setState(() {
           _ordenes = result;
@@ -91,7 +92,7 @@ class _ListaPickingState extends State<ListaPicking> {
           filtered = filtered.where((orden) => orden.estado.toUpperCase() == 'EN PROCESO').toList();
           break;
         case 2:
-          filtered = filtered.where((orden) => orden.estado.toUpperCase() == 'COMPLETADO').toList();
+          filtered = filtered.where((orden) => orden.estado.toUpperCase() == 'CERRADO').toList();
           break;
       }
     }
@@ -562,9 +563,12 @@ class _ListaPickingState extends State<ListaPicking> {
   Widget buildSegment(String text) {
     return Container(
       padding: const EdgeInsets.all(8),
-      child: Text(
-        text,
-        style: const TextStyle(fontSize: 14),
+      child: FittedBox(
+        fit: BoxFit.contain,
+        child: Text(
+          text,
+          style: const TextStyle(fontSize: 14),
+        ),
       ),
     );
   }

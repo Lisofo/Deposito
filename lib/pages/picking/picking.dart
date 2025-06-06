@@ -114,7 +114,7 @@ class _PickingPageState extends State<PickingPage> {
         final lineas = ordenPicking.lineas ?? [];
         final currentLineIndex = provider.currentLineIndex;
         final selectedLine = currentLineIndex < lineas.length ? lineas[currentLineIndex] : null;
-        provider.setUbicacionSeleccionada(selectedLine!.ubicaciones[0]);
+        // provider.setUbicacionSeleccionada(selectedLine!.ubicaciones[0]);
         return Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -125,8 +125,8 @@ class _PickingPageState extends State<PickingPage> {
               style: const TextStyle(fontSize: 18),
             ),
             const SizedBox(height: 20),
-            // if (lineas.isNotEmpty && selectedLine != null)
-            //   _buildUbicacionSelector(selectedLine),
+            if (lineas.isNotEmpty)
+              _buildUbicacionSelector(selectedLine),
             VisibilityDetector(
               key: const Key('scanner-field-visibility'),
               onVisibilityChanged: (info) {
@@ -193,7 +193,7 @@ class _PickingPageState extends State<PickingPage> {
             items: line.ubicaciones.map((ubicacion) {
               return DropdownMenuItem<UbicacionePicking>(
                 value: ubicacion,
-                child: Text('Ubicación ${ubicacion.almacenUbicacionId}'),
+                child: Text('Ubicación ${ubicacion.codUbicacion}'),
               );
             }).toList(),
             onChanged: (ubicacion) {
@@ -222,7 +222,26 @@ class _PickingPageState extends State<PickingPage> {
     );
     if (code == '-1') return;
     if (code != '-1') {
-      try {
+      final provider = Provider.of<ProductProvider>(context, listen: false);
+      final ordenPicking = provider.ordenPickingInterna;
+      final lineas = ordenPicking.lineas ?? [];
+      final currentLineIndex = provider.currentLineIndex;
+    
+      if (currentLineIndex >= lineas.length) return;
+        try {
+          final selectedLine = lineas[currentLineIndex];
+          final ubicacion = selectedLine.ubicaciones.firstWhere(
+            (u) => u.codUbicacion == code,
+            orElse: () => UbicacionePicking.empty(),
+          );
+        
+          if (ubicacion.almacenUbicacionId != 0) {
+            provider.setUbicacionSeleccionada(ubicacion);
+            provider.setCurrentLineIndex(currentLineIndex);
+            appRouter.push('/pickingProductosConteo');
+          } else {
+            Carteles.showDialogs(context, 'Ubicación no encontrada', false, false, false);
+          }
         textController.clear();
         await Future.delayed(const Duration(milliseconds: 100));
         focoDeScanner.requestFocus();

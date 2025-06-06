@@ -17,8 +17,11 @@ class PickingServices {
     statusCode = null;
   }
 
-  Future getOrdenesPicking (BuildContext context, String token) async {
-    String link = '$apirUrl/api/v1/ordenpicking';
+  Future getOrdenesPicking (BuildContext context, String tipo, String token) async {
+    var ruta = tipo.split('-');
+    var rutaSplitted = ruta[1];
+
+    String link = '$apirUrl/api/v1/ordenpicking?tipo=$rutaSplitted';
 
     try {
       var headers = {'Authorization': token};
@@ -147,7 +150,7 @@ class PickingServices {
   }
 
   Future patchPicking (BuildContext context, int pickId, String codItem, int almacenUbicacionId, int conteo, String token) async {
-    String link = '$apirUrl/api/v1/ordenpicking/$pickId';
+    String link = '$apirUrl/api/v1/ordenpicking/$pickId/items';
     var data = {
       "codItem": codItem,
       "almacenUbicacionId": almacenUbicacionId,

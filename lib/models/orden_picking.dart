@@ -176,7 +176,7 @@ class PickingLinea {
     lineaIdOriginal: json["lineaIdOriginal"] as int? ?? 0,
     codItem: json["codItem"] as String? ?? '',
     descripcion: json["descripcion"] as String? ?? '',
-    ubicaciones: List<UbicacionePicking>.from(json["ubicaciones"].map((x) => UbicacionePicking.fromJson(x))),
+    ubicaciones: json["ubicaciones"] != null ? List<UbicacionePicking>.from(json["ubicaciones"].map((x) => UbicacionePicking.fromJson(x))) : [],
   );
 
   Map<String, dynamic> toJson() => {
