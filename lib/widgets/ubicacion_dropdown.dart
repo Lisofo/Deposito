@@ -8,6 +8,7 @@ class UbicacionDropdown extends StatelessWidget {
   final ValueChanged<UbicacionAlmacen?> onChanged;
   final bool enabled;
   final String hintText;
+  final VoidCallback? onPopupDismissed; // NUEVO
 
   const UbicacionDropdown({
     super.key,
@@ -16,6 +17,7 @@ class UbicacionDropdown extends StatelessWidget {
     required this.onChanged,
     this.enabled = true,
     this.hintText = 'Seleccione ubicación',
+    this.onPopupDismissed, // NUEVO
   });
 
   @override
@@ -47,6 +49,7 @@ class UbicacionDropdown extends StatelessWidget {
                   : null,
             );
           },
+          onDismissed: onPopupDismissed, // NUEVO
         ),
         onChanged: onChanged,
         items: listaUbicaciones,

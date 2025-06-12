@@ -106,7 +106,7 @@ class _PedidoInternoState extends State<PedidoInterno> {
                     const SizedBox(height: 8),
                     Text('Fecha: ${_formatDate(order.fechaDate)}'),
                     const SizedBox(height: 8),
-                    Text('Tipo: ${order.tipo == 'inbound' ? 'Entrada' : 'Salida'}'),
+                    Text('Tipo: ${(order.tipo == 'C' || order.tipo == 'TE') ? 'Entrada' : 'Salida'}'),
                     const SizedBox(height: 8),
                     if (order.prioridad != '')
                       Text('Prioridad: ${order.prioridad}'),
@@ -116,7 +116,7 @@ class _PedidoInternoState extends State<PedidoInterno> {
             ),
             const SizedBox(height: 16),
             Text(
-              'Productos a ${order.tipo == 'inbound' ? 'recibir' : 'preparar'}:',
+              'Productos a ${(order.tipo == 'C' || order.tipo == 'TE') ? 'recibir' : 'preparar'}:',
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
@@ -214,16 +214,18 @@ class _PedidoInternoState extends State<PedidoInterno> {
                 color: order.estado == 'CERRADO' ? Colors.grey : colors.primary
               )
             ),
-            Icon(Icons.handyman, color: !valorSwitch ? colors.secondary : colors.onSurface,),
-            Switch(
-              value: valorSwitch,
-              onChanged: (value) {
-                valorSwitch = value;
-                context.read<ProductProvider>().setModoSeleccionUbicacion(value);
-                setState(() {});
-              },
-            ),
-            Icon(Icons.smart_toy_outlined, color: valorSwitch ? colors.secondary : colors.onSurface,)
+            if(order.tipo != 'C' && order.tipo != 'TE') ...[
+              Icon(Icons.handyman, color: !valorSwitch ? colors.secondary : colors.onSurface,),
+              Switch(
+                value: valorSwitch,
+                onChanged: (value) {
+                  valorSwitch = value;
+                  context.read<ProductProvider>().setModoSeleccionUbicacion(value);
+                  setState(() {});
+                },
+              ),
+              Icon(Icons.smart_toy_outlined, color: valorSwitch ? colors.secondary : colors.onSurface,)
+            ]
           ],
         ),
       ),
@@ -253,7 +255,11 @@ class _PedidoInternoState extends State<PedidoInterno> {
                   Provider.of<ProductProvider>(context, listen: false).setOrdenPickingInterna(order);
                   Provider.of<ProductProvider>(context, listen: false).setLineasPicking(order.lineas ?? []);
                   Navigator.of(context).pop();
-                  appRouter.push('/pickingProductos');
+                  if(order.tipo == 'C' || order.tipo == 'TE') {
+                    appRouter.push('/pickingCompra');
+                  } else {
+                    appRouter.push('/pickingProductos');
+                  }
                 } else if(accion == 'finalizar') {
                   // Guardamos los datos en el provider
                   final provider = Provider.of<ProductProvider>(context, listen: false);
@@ -266,7 +272,11 @@ class _PedidoInternoState extends State<PedidoInterno> {
                   Provider.of<ProductProvider>(context, listen: false).setOrdenPickingInterna(order);
                   Provider.of<ProductProvider>(context, listen: false).setLineasPicking(order.lineas ?? []);
                   Navigator.of(context).pop();
-                  appRouter.push('/pickingProductos');
+                  if(order.tipo == 'C' || order.tipo == 'TE') {
+                    appRouter.push('/pickingCompra');
+                  } else {
+                    appRouter.push('/pickingProductos');
+                  }
                 }
                 setState(() {});
               },
