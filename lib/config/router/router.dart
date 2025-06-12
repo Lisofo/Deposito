@@ -14,6 +14,7 @@ import 'package:deposito/pages/picking/pedidos.dart';
 import 'package:deposito/pages/picking/picking.dart';
 import 'package:deposito/pages/picking/picking_compra.dart';
 import 'package:deposito/pages/picking/picking_products.dart';
+import 'package:deposito/pages/picking/picking_products_compra.dart';
 import 'package:deposito/pages/picking/resumen_picking.dart';
 import 'package:deposito/pages/resumenInventario/resumen_general_inventario.dart';
 import 'package:deposito/pages/resumenInventario/resumen_inventario.dart';
@@ -84,7 +85,8 @@ class AppRouter {
             return SummaryScreen(processedLines: lines);
           },
         ),
-        GoRoute(path: '/pickingCompra', builder: (context, state) => const PickingCompra(),)
+        GoRoute(path: '/pickingCompra', builder: (context, state) => const PickingCompra(),),
+        GoRoute(path: '/pickingProductosCompra', builder: (context, state) => const PickingProductsEntrada()),
       ],
     );
   }

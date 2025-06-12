@@ -101,9 +101,14 @@ class SummaryScreen extends StatelessWidget {
         provider.resetLineasPicking();
         provider.resetCurrentLineIndex();
         
-        // Usar GoRouter para navegación
-        final router = GoRouter.of(context);
-        router.go('/pickingInterno');
+        // Usar popUntil para volver a pedido_interno eliminando resumen_picking del stack
+        Navigator.of(context).popUntil((route) => route.settings.name == '/pickingInterno');
+        
+        // Si no existe en el stack, entonces navegamos normalmente
+        if (!Navigator.of(context).canPop()) {
+          final router = GoRouter.of(context);
+          router.go('/pickingInterno');
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Error al completar el picking')),

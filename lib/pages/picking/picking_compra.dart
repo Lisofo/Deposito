@@ -3,6 +3,7 @@
 import 'package:deposito/config/router/router.dart';
 import 'package:deposito/models/almacen.dart';
 import 'package:deposito/models/ubicacion_almacen.dart';
+import 'package:deposito/pages/picking/picking_products_compra.dart';
 import 'package:deposito/provider/product_provider.dart';
 import 'package:deposito/services/almacen_services.dart';
 import 'package:deposito/widgets/ubicacion_dropdown.dart';
@@ -72,9 +73,9 @@ class _PickingCompraState extends State<PickingCompra> {
           title: Consumer<ProductProvider>(
             builder: (context, provider, child) {
               final ordenPicking = provider.ordenPickingInterna;
-              final lineas = ordenPicking.lineas ?? [];
+              // final lineas = ordenPicking.lineas ?? [];
               return Text(
-                'Orden ${ordenPicking.numeroDocumento} - Línea ${provider.currentLineIndex + 1}/${lineas.length}', 
+                'Orden ${ordenPicking.numeroDocumento}', //- Línea ${provider.currentLineIndex + 1}/${lineas.length}', 
                 style: TextStyle(color: colors.onPrimary),
               );
             },
@@ -90,10 +91,10 @@ class _PickingCompraState extends State<PickingCompra> {
   Widget _buildBody() {
     return Consumer<ProductProvider>(
       builder: (context, provider, child) {
-        final ordenPicking = provider.ordenPickingInterna;
-        final lineas = ordenPicking.lineas ?? [];
-        final currentLineIndex = provider.currentLineIndex;
-        final selectedLine = currentLineIndex < lineas.length ? lineas[currentLineIndex] : null;
+        // final ordenPicking = provider.ordenPickingInterna;
+        // final lineas = ordenPicking.lineas ?? [];
+        // final currentLineIndex = provider.currentLineIndex;
+        // final selectedLine = currentLineIndex < lineas.length ? lineas[currentLineIndex] : null;
         
         return Padding(
           padding: const EdgeInsets.only(top: 8.0),
@@ -129,11 +130,11 @@ class _PickingCompraState extends State<PickingCompra> {
                 },
                 child: TextFormField(
                   focusNode: focoDeScanner,
-                  cursorColor: Colors.red,
+                  cursorColor: Colors.transparent,
                   decoration: const InputDecoration(
                     border: UnderlineInputBorder(borderSide: BorderSide.none),
                   ),
-                  style: const TextStyle(color: Colors.black),
+                  style: const TextStyle(color: Colors.transparent),
                   autofocus: true,
                   keyboardType: TextInputType.none,
                   controller: textController,
@@ -156,9 +157,9 @@ class _PickingCompraState extends State<PickingCompra> {
           padding: const EdgeInsets.all(16),
           child: ElevatedButton(
             onPressed: () {
-              if (provider.ubicacionSeleccionada != null) {
-                provider.setCurrentLineIndex(provider.currentLineIndex);
-                
+              if (ubicacionSeleccionada.almacenId != 0) {
+                provider.setUbicacion(ubicacionSeleccionada);
+                appRouter.push('/pickingProductosCompra');
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Debe seleccionar o escanear una ubicación')),
@@ -246,7 +247,11 @@ class _PickingCompraState extends State<PickingCompra> {
         setState(() {
           ubicacionSeleccionada = ubicacionEncontrada;
         });
-        // appRouter.push('/editarInventario');
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => const PickingProductsEntrada(),
+          )
+        );
         // print('Ubicación seleccionada: ${ubicacionEncontrada.descripcion}');
       } catch (e) {
         await error(value);
