@@ -474,7 +474,7 @@ class AlmacenServices {
 
   Future postInventarioGeneral(BuildContext context, int almacenId, int usuarioId, String token) async {
     String link = '$apirUrl/api/v1/inventario/$almacenId/general?usuarioId=$usuarioId';
-
+    print(link);
     try {
       var headers = {'Authorization': token};
       var resp = await _dio.request(

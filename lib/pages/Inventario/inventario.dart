@@ -80,9 +80,9 @@ class _InventarioPageState extends State<InventarioPage> {
   Scaffold  scaffoldScannerSearch(BuildContext context, ColorScheme colors) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Inventario',
-          style: TextStyle(color: Colors.white),
+        title: Text(
+          context.read<ProductProvider>().menuTitle,
+          style: const TextStyle(color: Colors.white),
         ),
         leading: IconButton.filledTonal(
           style: ButtonStyle(

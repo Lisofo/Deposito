@@ -1,7 +1,9 @@
 import 'package:deposito/config/router/router.dart';
+import 'package:deposito/provider/product_provider.dart';
 import 'package:deposito/widgets/indicator.dart';
 import 'package:flutter/material.dart';
 import 'package:graphic/graphic.dart';
+import 'package:provider/provider.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -68,7 +70,7 @@ class _DashboardPageState extends State<DashboardPage> {
             icon: const Icon(Icons.arrow_back),
           ),
           title: Text(
-            'Dashboard',
+            context.read<ProductProvider>().menuTitle,
             style: TextStyle(fontSize: 24, color: colors.onPrimary),
           ),
           elevation: 0,

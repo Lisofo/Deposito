@@ -10,6 +10,8 @@ import 'package:provider/provider.dart';
 import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
+import 'picking_products.dart';
+
 class PickingPage extends StatefulWidget {
   const PickingPage({super.key});
 
@@ -114,18 +116,16 @@ class _PickingPageState extends State<PickingPage> {
         final lineas = ordenPicking.lineas ?? [];
         final currentLineIndex = provider.currentLineIndex;
         final selectedLine = currentLineIndex < lineas.length ? lineas[currentLineIndex] : null;
-        // provider.setUbicacionSeleccionada(selectedLine!.ubicaciones[0]);
+        
         return Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // if (lineas.isNotEmpty && selectedLine != null)
-            //   _buildLineInfo(selectedLine),
             Text(
               'Dirijase a la ubicación ${selectedLine!.ubicaciones[0].codUbicacion}', 
               style: const TextStyle(fontSize: 18),
             ),
             const SizedBox(height: 20),
-            if (lineas.isNotEmpty)
+            if (provider.modoSeleccionUbicacion == false && lineas.isNotEmpty)
               _buildUbicacionSelector(selectedLine),
             VisibilityDetector(
               key: const Key('scanner-field-visibility'),
@@ -153,32 +153,6 @@ class _PickingPageState extends State<PickingPage> {
     );
   }
 
-  // ignore: unused_element
-  Widget _buildLineInfo(PickingLinea line) {
-    return Card(
-      margin: const EdgeInsets.all(16),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              line.descripcion,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text('Código: ${line.codItem}'),
-            Text('Cantidad: ${line.cantidadPedida}'),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ignore: unused_element
   Widget _buildUbicacionSelector(PickingLinea line) {
     return Consumer<ProductProvider>(
       builder: (context, provider, child) {
@@ -238,7 +212,11 @@ class _PickingPageState extends State<PickingPage> {
           if (ubicacion.almacenUbicacionId != 0) {
             provider.setUbicacionSeleccionada(ubicacion);
             provider.setCurrentLineIndex(currentLineIndex);
-            appRouter.push('/pickingProductosConteo');
+            Navigator.of(context).push(
+            MaterialPageRoute(
+                builder: (context) => const PickingProducts(),
+              ),
+            );
           } else {
             Carteles.showDialogs(context, 'Ubicación no encontrada', false, false, false);
           }
@@ -273,7 +251,9 @@ class _PickingPageState extends State<PickingPage> {
       if (ubicacion.almacenUbicacionId != 0) {
         provider.setUbicacionSeleccionada(ubicacion);
         provider.setCurrentLineIndex(currentLineIndex);
-        appRouter.push('/pickingProductosConteo');
+        MaterialPageRoute(
+          builder: (context) => const PickingProducts(),
+        );
       } else {
         Carteles.showDialogs(context, 'Ubicación no encontrada', false, false, false);
       }
@@ -297,7 +277,12 @@ class _PickingPageState extends State<PickingPage> {
             onPressed: () {
               if (provider.ubicacionSeleccionada != null) {
                 provider.setCurrentLineIndex(provider.currentLineIndex);
-                appRouter.push('/pickingProductosConteo');
+                if (provider.modoSeleccionUbicacion) {
+                  // En modo selección, ir directamente a pickingProducts
+                  appRouter.push('/pickingProductos');
+                } else {
+                  appRouter.push('/pickingProductosConteo');
+                }
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Debe seleccionar o escanear una ubicación')),

@@ -1,3 +1,5 @@
+// product_provider.dart (cambios completos)
+
 import 'package:deposito/models/almacen.dart';
 import 'package:deposito/models/client.dart';
 import 'package:deposito/models/linea.dart';
@@ -100,7 +102,21 @@ class ProductProvider with ChangeNotifier {
   String _menu = '';
   String get menu => _menu;
 
-  // Métodos para manejar las líneas de picking
+  bool _modoSeleccionUbicacion = false;
+  bool get modoSeleccionUbicacion => _modoSeleccionUbicacion;
+
+  String _menuTitle = '';
+  String get menuTitle => _menuTitle;
+
+  void setTitle(String title) {
+    _menuTitle = title;
+    notifyListeners();
+  }
+
+  void setModoSeleccionUbicacion(bool modo) {
+    _modoSeleccionUbicacion = modo;
+    notifyListeners();
+  }
 
   void setMenu(String menu) {
     _menu = menu;

@@ -47,65 +47,67 @@ class _ResumenGeneralInventarioPageState extends State<ResumenGeneralInventarioP
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Confirmar conteo',
-          style: TextStyle(color: Colors.white),
-        ),
-        leading: IconButton.filledTonal(
-          style: ButtonStyle(
-            backgroundColor: WidgetStatePropertyAll(colors.primary)
+    return SafeArea(
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text(
+            'Confirmar conteo',
+            style: TextStyle(color: Colors.white),
           ),
-          onPressed: () async {
-            appRouter.pop();
-          },
-          icon: const Icon(Icons.arrow_back,),
+          leading: IconButton.filledTonal(
+            style: ButtonStyle(
+              backgroundColor: WidgetStatePropertyAll(colors.primary)
+            ),
+            onPressed: () async {
+              appRouter.pop();
+            },
+            icon: const Icon(Icons.arrow_back,),
+          ),
+          iconTheme: const IconThemeData(color: Colors.white),
+          elevation: 0,
+          backgroundColor: colors.primary,
         ),
-        iconTheme: const IconThemeData(color: Colors.white),
-        elevation: 0,
-        backgroundColor: colors.primary,
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView.builder(
-              itemCount: listaConteo.length,
-              itemBuilder: (context, i) {
-                var item = listaConteo[i];
-                return ListTile(
-                  title: Text(item.descripcion),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Código: ${item.codItem}'),
-                      Text('Cantidad contada: ${item.conteo}'),
-                      Text('Ubicacion: ${item.codUbicacion}'),
-                    ],
-                  ),
-                );
-              }
+        body: Column(
+          children: [
+            Expanded(
+              child: ListView.builder(
+                itemCount: listaConteo.length,
+                itemBuilder: (context, i) {
+                  var item = listaConteo[i];
+                  return ListTile(
+                    title: Text(item.descripcion),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Código: ${item.codItem}'),
+                        Text('Cantidad contada: ${item.conteo}'),
+                        Text('Ubicacion: ${item.codUbicacion}'),
+                      ],
+                    ),
+                  );
+                }
+              )
+            ),
+          ],
+        ),
+        bottomNavigationBar: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            CustomButton(
+              text: 'Borrar conteo del usuario',
+              tamano: 16,
+              disabled: !borrarConteo,
+              onPressed: borrarConteo ? _mostrarDialogoBorrarConteo : null
+            ),
+            CustomButton(
+              tamano: 18,
+              text: 'Finalizar',
+              disabled: !confirmarConteo,
+              onPressed: confirmarConteo ? _mostrarDialogoConfirmarConteo : null
             )
-          ),
-        ],
-      ),
-      bottomNavigationBar: Row(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          CustomButton(
-            text: 'Borrar conteo del usuario',
-            tamano: 16,
-            disabled: !borrarConteo,
-            onPressed: borrarConteo ? _mostrarDialogoBorrarConteo : null
-          ),
-          CustomButton(
-            tamano: 18,
-            text: 'Finalizar',
-            disabled: !confirmarConteo,
-            onPressed: confirmarConteo ? _mostrarDialogoConfirmarConteo : null
-          )
-        ],
+          ],
+        ),
       ),
     );
   }

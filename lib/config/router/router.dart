@@ -1,4 +1,3 @@
-import 'package:deposito/models/orden_picking.dart';
 import 'package:deposito/pages/Productos/agregar_ubicaciones.dart';
 import 'package:deposito/pages/Productos/buscador_producto.dart';
 import 'package:deposito/pages/Dashboard/dashboard.dart';
@@ -13,6 +12,7 @@ import 'package:deposito/pages/Inventario/revisar_inventario.dart';
 import 'package:deposito/pages/picking/pedido_interno.dart';
 import 'package:deposito/pages/picking/pedidos.dart';
 import 'package:deposito/pages/picking/picking.dart';
+import 'package:deposito/pages/picking/picking_compra.dart';
 import 'package:deposito/pages/picking/picking_products.dart';
 import 'package:deposito/pages/picking/resumen_picking.dart';
 import 'package:deposito/pages/resumenInventario/resumen_general_inventario.dart';
@@ -22,7 +22,9 @@ import 'package:deposito/pages/simple_product_page.dart';
 import 'package:deposito/pages/Transferencia/transferencia_almacen.dart';
 import 'package:deposito/pages/Transferencia/transferencia_ubicacion_destino.dart'; // Importa la nueva pantalla
 import 'package:deposito/pages/version_check_page.dart';
+import 'package:deposito/provider/product_provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 class AppRouter {
   static Future<GoRouter> createAppRouter(String initialLocation) async {
@@ -77,10 +79,12 @@ class AppRouter {
         GoRoute(
           path: '/resumenPicking',
           builder: (context, state) {
-            final args = state.extra as List<PickingLinea>;
-            return SummaryScreen(processedLines: args);
+            final provider = Provider.of<ProductProvider>(context, listen: false);
+            final lines = provider.lineasPicking;
+            return SummaryScreen(processedLines: lines);
           },
         ),
+        GoRoute(path: '/pickingCompra', builder: (context, state) => const PickingCompra(),)
       ],
     );
   }

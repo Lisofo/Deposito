@@ -55,7 +55,8 @@ class _ListaPickingState extends State<ListaPicking> {
       if (result != null && _pickingServices.statusCode == 1) {
         setState(() {
           _ordenes = result;
-          _filteredOrdenes = List.from(_ordenes);
+          _filteredOrdenes = List.from(_ordenes); // Primero carga todos los datos sin filtros
+          _applyFilters(); // Luego aplica los filtros si los hay
         });
       }
     } finally {
@@ -64,7 +65,20 @@ class _ListaPickingState extends State<ListaPicking> {
   }
 
   Future<void> _refreshData() async {
-    await _loadData();
+    setState(() => _isLoading = true);
+    try {
+      await _pickingServices.resetStatusCode();
+      String menu = context.read<ProductProvider>().menu;
+      final result = await _pickingServices.getOrdenesPicking(context, menu, token);
+      if (result != null && _pickingServices.statusCode == 1) {
+        setState(() {
+          _ordenes = result;
+          _applyFilters(); // Aplica los filtros activos (incluyendo el estado del segmented control)
+        });
+      }
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 
   void _applyFilters() {
@@ -169,9 +183,9 @@ class _ListaPickingState extends State<ListaPicking> {
       child: Scaffold(
         appBar: AppBar(
           backgroundColor: colors.primary,
-          title: const Text(
-            'Lista de Picking',
-            style: TextStyle(color: Colors.white),
+          title: Text(
+            context.read<ProductProvider>().menuTitle,
+            style: const TextStyle(color: Colors.white),
           ),
           iconTheme: IconThemeData(color: colors.onPrimary),
           actions: [

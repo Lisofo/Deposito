@@ -40,9 +40,9 @@ class _ResumenInventarioPageState extends State<ResumenInventarioPage> {
     final colors = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Revisar inventario',
-          style: TextStyle(color: Colors.white),
+        title: Text(
+          context.read<ProductProvider>().menuTitle,
+          style: const TextStyle(color: Colors.white),
         ),
         leading: IconButton.filledTonal(
           style: ButtonStyle(

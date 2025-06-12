@@ -1,10 +1,16 @@
+// picking_products.dart (cambios completos)
+
 import 'package:deposito/config/router/router.dart';
 import 'package:deposito/models/orden_picking.dart';
+import 'package:deposito/models/product.dart';
+import 'package:deposito/services/product_services.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 import 'package:provider/provider.dart';
 import 'package:deposito/provider/product_provider.dart';
 import 'package:deposito/services/picking_services.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 import 'resumen_picking.dart';
 
 class PickingProducts extends StatefulWidget {
@@ -20,6 +26,8 @@ class PickingProductsState extends State<PickingProducts> {
   final Map<int, TextEditingController> _quantityControllers = {};
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   ScaffoldMessengerState? _scaffoldMessenger;
+  FocusNode focoDeScanner = FocusNode();
+  TextEditingController textController = TextEditingController();
 
   @override
   void initState() {
@@ -44,6 +52,7 @@ class PickingProductsState extends State<PickingProducts> {
   Future<void> _loadProductsForCurrentLine() async {
     try {
       setState(() {
+        focoDeScanner.requestFocus();
         _isLoading = true;
         _error = null;
       });
@@ -97,34 +106,6 @@ class PickingProductsState extends State<PickingProducts> {
     } catch (e) {
       print('Error en patchCurrentLine: $e');
       return false;
-    }
-  }
-
-  Future<void> _scanBarcode() async {
-    try {
-      String? barcodeScanRes = await SimpleBarcodeScanner.scanBarcode(
-        context,
-        lineColor: '#ff6666',
-        cancelButtonText: 'Cancelar',
-        isShowFlashIcon: true,
-        scanType: ScanType.barcode,
-      );
-
-      if (barcodeScanRes == '-1') return;
-
-      final provider = Provider.of<ProductProvider>(context, listen: false);
-      final currentLine = provider.ordenPickingInterna.lineas![provider.currentLineIndex];
-      
-      if (currentLine.codItem == barcodeScanRes) {
-        _incrementProductQuantity(0);
-      } else {
-        _showSingleSnackBar(
-          'Producto no encontrado: $barcodeScanRes',
-          backgroundColor: Colors.red
-        );
-      }
-    } catch (e) {
-      print('Error al escanear: $e');
     }
   }
 
@@ -218,6 +199,7 @@ class PickingProductsState extends State<PickingProducts> {
       Navigator.of(context).pop();
       
       if (!success) {
+        Navigator.of(context).pop();
         _showSingleSnackBar('Error al actualizar la línea', backgroundColor: Colors.red);
         return;
       }
@@ -225,7 +207,7 @@ class PickingProductsState extends State<PickingProducts> {
       final provider = Provider.of<ProductProvider>(context, listen: false);
       provider.clearUbicacionSeleccionada();
 
-      if (isLastLine) {
+      if (isLastLine || provider.modoSeleccionUbicacion) {
         _navigateToSummary();
       } else {
         provider.setCurrentLineIndex(provider.currentLineIndex + 1);
@@ -305,9 +287,9 @@ class PickingProductsState extends State<PickingProducts> {
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(context);
-                _processLineCompletion(isLastLine);
+                _processLineCompletion(isLastLine || provider.modoSeleccionUbicacion);
               },
-              child: Text(isLastLine ? 'Finalizar' : 'Siguiente'),
+              child: const Text('Aceptar'),
             ),
           ],
         );
@@ -348,11 +330,7 @@ class PickingProductsState extends State<PickingProducts> {
         ),
         body: _buildBody(),
         bottomNavigationBar: _buildBottomBar(),
-        floatingActionButton: FloatingActionButton(
-          onPressed: _scanBarcode,
-          tooltip: 'Escanear producto',
-          child: const Icon(Icons.qr_code_scanner),
-        ),
+        floatingActionButton: _buildFloatingActionButton(colors)
       ),
     );
   }
@@ -397,6 +375,26 @@ class PickingProductsState extends State<PickingProducts> {
             Expanded(
               child: _buildLocationList(currentLine),
             ),
+            VisibilityDetector(
+              key: const Key('scanner-field-visibility'),
+              onVisibilityChanged: (info) {
+                if (info.visibleFraction > 0) {
+                  focoDeScanner.requestFocus();
+                }
+              },
+              child: TextFormField(
+                focusNode: focoDeScanner,
+                cursorColor: Colors.transparent,
+                decoration: const InputDecoration(
+                  border: UnderlineInputBorder(borderSide: BorderSide.none),
+                ),
+                style: const TextStyle(color: Colors.transparent),
+                autofocus: true,
+                keyboardType: TextInputType.none,
+                controller: textController,
+                onFieldSubmitted: procesarEscaneoUbicacion,
+              ),
+            ),
           ],
         );
       },
@@ -438,6 +436,82 @@ class PickingProductsState extends State<PickingProducts> {
         ),
       ),
     );
+  }
+
+  Future<void> procesarEscaneoUbicacion(String value) async {
+    if (value.isEmpty) return;
+    late List<Product> productos = [];
+    final provider = Provider.of<ProductProvider>(context, listen: false);
+    final ordenPicking = provider.ordenPickingInterna;
+    final lineas = ordenPicking.lineas ?? [];
+    final currentLineIndex = provider.currentLineIndex;
+    
+    if (currentLineIndex >= lineas.length) return;
+    try {
+      String? barcodeScanRes = await SimpleBarcodeScanner.scanBarcode(
+        context,
+        lineColor: '#ff6666',
+        cancelButtonText: 'Cancelar',
+        isShowFlashIcon: true,
+        scanType: ScanType.barcode,
+      );
+
+      if (barcodeScanRes == '-1') return;
+
+      final currentLine = provider.ordenPickingInterna.lineas![provider.currentLineIndex];
+      productos = await ProductServices().getProductByName(context, '', '2', provider.almacen.almacenId.toString(), value, '0', provider.token);
+      final producto = productos[0];
+      bool mismoProducto = producto.raiz == currentLine.codItem;
+      
+      if (mismoProducto) {
+        _incrementProductQuantity(0);
+        
+      } else {
+        _showSingleSnackBar(
+          'Producto no encontrado: $barcodeScanRes',
+          backgroundColor: Colors.red
+        );
+      }
+      focoDeScanner.requestFocus();
+    } catch (e) {
+      print('Error al escanear: $e');
+      focoDeScanner.requestFocus();
+    }
+  }
+
+  Future<void> _scanBarcode() async {
+    late List<Product> productos = [];
+    final provider = Provider.of<ProductProvider>(context, listen: false);
+    try {
+      String? barcodeScanRes = await SimpleBarcodeScanner.scanBarcode(
+        context,
+        lineColor: '#ff6666',
+        cancelButtonText: 'Cancelar',
+        isShowFlashIcon: true,
+        scanType: ScanType.barcode,
+      );
+
+      if (barcodeScanRes == '-1') return;
+
+      final currentLine = provider.ordenPickingInterna.lineas![provider.currentLineIndex];
+      productos = await ProductServices().getProductByName(context, '', '2', provider.almacen.almacenId.toString(), barcodeScanRes.toString(), '0', provider.token);
+      final producto = productos[0];
+      bool mismoProducto = producto.raiz == currentLine.codItem;
+
+      if (mismoProducto) {
+        _incrementProductQuantity(0);
+        
+      } else {
+        _showSingleSnackBar(
+          'Producto no encontrado: $barcodeScanRes',
+          backgroundColor: Colors.red
+        );
+      }
+      focoDeScanner.requestFocus();
+    } catch (e) {
+      print('Error al escanear: $e');
+      focoDeScanner.requestFocus();
+    }
   }
 
   Widget _buildLocationList(PickingLinea line) {
@@ -530,6 +604,8 @@ class PickingProductsState extends State<PickingProducts> {
     return Consumer<ProductProvider>(
       builder: (context, provider, child) {
         final bool isLastLine = !_hasMoreLines();
+        final bool mostrarFinalizar = provider.modoSeleccionUbicacion || isLastLine;
+        
         return Container(
           color: Colors.white,
           padding: const EdgeInsets.all(16),
@@ -539,17 +615,17 @@ class PickingProductsState extends State<PickingProducts> {
                 child: ElevatedButton(
                   onPressed: () {
                     if (_allProductsPickeadInLine()) {
-                      _processLineCompletion(isLastLine);
+                      _processLineCompletion(mostrarFinalizar);
                     } else {
-                      _showMissingProductsDialog(isLastLine);
+                      _showMissingProductsDialog(mostrarFinalizar);
                     }
                   },
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: isLastLine ? Colors.green : colors.primary,
+                    backgroundColor: mostrarFinalizar ? Colors.green : colors.primary,
                   ),
                   child: Text(
-                    isLastLine ? 'Finalizar' : 'Siguiente Línea',
+                    mostrarFinalizar ? 'Finalizar' : 'Siguiente Línea',
                     style: TextStyle(fontSize: 16, color: colors.onPrimary),
                   ),
                 ),
@@ -560,10 +636,34 @@ class PickingProductsState extends State<PickingProducts> {
       },
     );
   }
+
+  Widget _buildFloatingActionButton(ColorScheme colors) {
+    return SpeedDial(
+      icon: Icons.add,
+      activeIcon: Icons.close,
+      backgroundColor: colors.primary,
+      foregroundColor: Colors.white,
+      children: [
+        SpeedDialChild(
+          child: const Icon(Icons.qr_code_scanner_outlined),
+          backgroundColor: colors.primary,
+          foregroundColor: Colors.white,
+          label: 'Escanear',
+          onTap: _scanBarcode,
+        ),
+        SpeedDialChild(
+          child: const Icon(Icons.restore),
+          backgroundColor: colors.primary,
+          foregroundColor: Colors.white,
+          label: 'Reiniciar',
+          onTap: _resetSearch,
+        ),
+      ],
+    );
+  }
+
+  void _resetSearch() {
+    focoDeScanner.requestFocus();
+    setState(() {});
+  }
 }
-
-
-// ordenPicking = await PickingServices().getLineasOrder(context, productProvider.ordenPicking.pickId, almacen.almacenId, token);
-//         final lineas = ordenPicking.lineas;
-// late OrdenPicking ordenPicking = OrdenPicking.empty();
-//     final productProvider = context.read<ProductProvider>();

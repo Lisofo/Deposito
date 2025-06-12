@@ -56,9 +56,9 @@ class _TransferenciaAlmacenPageState extends State<TransferenciaAlmacenPage> {
     return SafeArea(
       child: Scaffold(
         appBar: AppBar(
-          title: const Text(
-            'Transferencia - Origen',
-            style: TextStyle(color: Colors.white),
+          title: Text(
+            context.read<ProductProvider>().menuTitle,
+            style: const TextStyle(color: Colors.white),
           ),
           leading: IconButton.filledTonal(
             style: ButtonStyle(

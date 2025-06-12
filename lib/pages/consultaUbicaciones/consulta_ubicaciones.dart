@@ -51,9 +51,9 @@ class _ConsultaUbicacionesPageState extends State<ConsultaUbicacionesPage> {
     final colors = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Consulta',
-          style: TextStyle(color: Colors.white),
+        title: Text(
+          context.read<ProductProvider>().menuTitle,
+          style: const TextStyle(color: Colors.white),
         ),
         leading: IconButton.filledTonal(
           style: ButtonStyle(

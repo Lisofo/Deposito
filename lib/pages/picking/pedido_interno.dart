@@ -22,6 +22,7 @@ class _PedidoInternoState extends State<PedidoInterno> {
   bool ejecutando = false;
   String token = '';
   late Almacen almacen = Almacen.empty();
+  bool valorSwitch = true; // Cambiado a false por defecto
 
   @override
   void initState() {
@@ -34,6 +35,10 @@ class _PedidoInternoState extends State<PedidoInterno> {
     token = context.read<ProductProvider>().token;
     almacen = context.read<ProductProvider>().almacen;
     order = await PickingServices().getLineasOrder(context, orderProvider.pickId, almacen.almacenId, token);
+    
+    // Inicializar el modo en el provider
+    context.read<ProductProvider>().setModoSeleccionUbicacion(valorSwitch);
+    
     setState(() {});
   }
 
@@ -65,7 +70,7 @@ class _PedidoInternoState extends State<PedidoInterno> {
     );
   }
 
-  Expanded expanded() {
+  Widget expanded() {
     return Expanded(
       child: SingleChildScrollView(
         child: Column(
@@ -136,69 +141,6 @@ class _PedidoInternoState extends State<PedidoInterno> {
     );
   }
 
-  Widget _buildOrderHeader(OrdenPicking order, ColorScheme colors) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '${order.numeroDocumento}',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Chip(
-                  label: Text(
-                    order.estado,
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                  backgroundColor: _getStatusColor(order.estado),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text('Cliente/Proveedor: ${order.nombre}'),
-            const SizedBox(height: 8),
-            Text('Fecha: ${_formatDate(order.fechaDate)}'),
-            const SizedBox(height: 8),
-            Text('Tipo: ${order.tipo == 'inbound' ? 'Entrada' : 'Salida'}'),
-            const SizedBox(height: 8),
-            if (order.prioridad != '')
-              Text('Prioridad: ${order.prioridad}'),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProductList(OrdenPicking order) {
-    if (order.lineas!.isEmpty) {
-      return const Center(child: Text('No hay productos en esta orden'));
-    }
-
-    return ListView.builder(
-      itemCount: order.lineas!.length,
-      itemBuilder: (context, index) {
-        final item = order.lineas![index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 8),
-          child: ListTile(
-            leading: const Icon(Icons.inventory),
-            title: Text(item.descripcion),
-            subtitle: Text('Código: ${item.codItem}'),
-            trailing: Text('${item.cantidadPedida} uds'),
-          ),
-        );
-      },
-    );
-  }
-
   Widget _buildCommentSection(OrdenPicking order, ColorScheme colors) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -238,39 +180,52 @@ class _PedidoInternoState extends State<PedidoInterno> {
       elevation: 0,
       shape: const CircularNotchedRectangle(),
       color: Colors.grey.shade200,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          ElevatedButton(
-            onPressed: order.estado == 'CERRADO' ? null : () => _mostrarDialogoConfirmacion(order.estado == 'PENDIENTE' ? 'iniciar' : 'continuar'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: order.estado == 'CERRADO' ? Colors.grey : colors.primary,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      child: FittedBox(
+        fit: BoxFit.contain,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            ElevatedButton(
+              onPressed: order.estado == 'CERRADO' ? null : () => _mostrarDialogoConfirmacion(order.estado == 'PENDIENTE' ? 'iniciar' : 'continuar'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: order.estado == 'CERRADO' ? Colors.grey : colors.primary,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              ),
+              child: Text(
+                order.estado == 'PENDIENTE' ? 'Iniciar' : 'Continuar',
+                style: const TextStyle(color: Colors.white, fontSize: 16),
+              ),
             ),
-            child: Text(
-              order.estado == 'PENDIENTE' ? 'Iniciar' : 'Continuar',
-              style: const TextStyle(color: Colors.white, fontSize: 16),
+            ElevatedButton(
+              onPressed: order.estado == 'CERRADO' ? null : () => _mostrarDialogoConfirmacion('finalizar'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: order.estado == 'CERRADO' ? Colors.grey : colors.primary,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              ),
+              child: const Text(
+                'Finalizar',
+                style: TextStyle(color: Colors.white, fontSize: 16),
+              ),
             ),
-          ),
-          ElevatedButton(
-            onPressed: order.estado == 'CERRADO' ? null : () => _mostrarDialogoConfirmacion('finalizar'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: order.estado == 'CERRADO' ? Colors.grey : colors.primary,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            IconButton(
+              onPressed: order.estado == 'CERRADO' ? null : () async => await volverAPendiente(),
+              icon: Icon(
+                Icons.backspace,
+                color: order.estado == 'CERRADO' ? Colors.grey : colors.primary
+              )
             ),
-            child: const Text(
-              'Finalizar',
-              style: TextStyle(color: Colors.white, fontSize: 16),
+            Icon(Icons.handyman, color: !valorSwitch ? colors.secondary : colors.onSurface,),
+            Switch(
+              value: valorSwitch,
+              onChanged: (value) {
+                valorSwitch = value;
+                context.read<ProductProvider>().setModoSeleccionUbicacion(value);
+                setState(() {});
+              },
             ),
-          ),
-          IconButton(
-            onPressed: order.estado == 'CERRADO' ? null : () async => await volverAPendiente(),
-            icon: Icon(
-              Icons.backspace,
-              color: order.estado == 'CERRADO' ? Colors.grey : colors.primary
-            )
-          ),
-        ],
+            Icon(Icons.smart_toy_outlined, color: valorSwitch ? colors.secondary : colors.onSurface,)
+          ],
+        ),
       ),
     );
   }
@@ -300,10 +255,13 @@ class _PedidoInternoState extends State<PedidoInterno> {
                   Navigator.of(context).pop();
                   appRouter.push('/pickingProductos');
                 } else if(accion == 'finalizar') {
-                  orderProvider = await PickingServices().putOrderPicking(context, order.pickId, 'cerrado', token);
-                  order.estado = orderProvider.estado;
-                  Provider.of<ProductProvider>(context, listen: false).setOrdenPickingInterna(OrdenPicking.empty());
+                  // Guardamos los datos en el provider
+                  final provider = Provider.of<ProductProvider>(context, listen: false);
+                  provider.setOrdenPickingInterna(order);
+                  provider.setLineasPicking(order.lineas ?? []);
                   Navigator.of(context).pop();
+                  // Navegamos sin parámetros
+                  appRouter.push('/resumenPicking');
                 } else if(accion == 'continuar') {
                   Provider.of<ProductProvider>(context, listen: false).setOrdenPickingInterna(order);
                   Provider.of<ProductProvider>(context, listen: false).setLineasPicking(order.lineas ?? []);

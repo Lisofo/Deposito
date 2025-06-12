@@ -63,6 +63,7 @@ List<Widget> _filaBotones2(List<Opcion> opciones, BuildContext context) {
         onTap: () {
           print(opt.texto);
           Provider.of<ProductProvider>(context, listen: false).setMenu(opt.ruta);
+          Provider.of<ProductProvider>(context, listen: false).setTitle(opt.texto);
           appRouter.push(opt.ruta);
         },
         child: Row(
