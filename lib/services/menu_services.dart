@@ -1,4 +1,4 @@
-import 'package:deposito/config/config.dart';
+import 'package:deposito/config/config_env.dart';
 import 'package:deposito/models/menu.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 class MenuServices{
   int? statusCode;
   final _dio = Dio();
-  String apiUrl = Config.APIURL;
+  String apiUrl = ConfigEnv.APIURL;
   late String apiLink = '$apiUrl/api/v1/appMenu/';
 
   static void showErrorDialog(BuildContext context, String errorMessage) {

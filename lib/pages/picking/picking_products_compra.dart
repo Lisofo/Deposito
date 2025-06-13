@@ -407,20 +407,12 @@ class PickingProductsEntradaState extends State<PickingProductsEntrada> {
     final provider = Provider.of<ProductProvider>(context, listen: false);
     
     try {
-      String? barcodeScanRes = await SimpleBarcodeScanner.scanBarcode(
-        context,
-        lineColor: '#ff6666',
-        cancelButtonText: 'Cancelar',
-        isShowFlashIcon: true,
-        scanType: ScanType.barcode,
-      );
-
-      if (barcodeScanRes == '-1') return;
 
       productos = await ProductServices().getProductByName(
         context, '', '2', 
         provider.almacen.almacenId.toString(), 
-        barcodeScanRes.toString(), '0', 
+        value,
+        '0', 
         provider.token
       );
       
@@ -443,19 +435,21 @@ class PickingProductsEntradaState extends State<PickingProductsEntrada> {
         
         if (!productoEncontrado) {
           _showSingleSnackBar(
-            'Producto no encontrado en la orden: $barcodeScanRes',
+            'Producto no encontrado en la orden: $value',
             backgroundColor: Colors.red
           );
         }
       } else {
         _showSingleSnackBar(
-          'Producto no encontrado: $barcodeScanRes',
+          'Producto no encontrado: $value',
           backgroundColor: Colors.red
         );
       }
+      textController.clear();
       focoDeScanner.requestFocus();
     } catch (e) {
       print('Error al escanear: $e');
+      textController.clear();
       focoDeScanner.requestFocus();
     }
   }
@@ -629,6 +623,7 @@ class PickingProductsEntradaState extends State<PickingProductsEntrada> {
   }
 
   void _resetSearch() {
+    textController.clear();
     focoDeScanner.requestFocus();
     setState(() {});
   }

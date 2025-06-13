@@ -61,6 +61,12 @@ class _SeleccionAlmacenState extends State<SeleccionAlmacen> {
             title: Text('Seleccione almacén', style: TextStyle(color: colors.onPrimary)),
             backgroundColor: colors.primary,
             iconTheme: IconThemeData(color: colors.onPrimary),
+            actions: [
+              IconButton(
+                onPressed: () {},
+                icon: Icon(Icons.settings, color: colors.onPrimary,)
+              )
+            ],
           ),
           body: Center(
             child: ListView.separated(

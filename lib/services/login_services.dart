@@ -4,12 +4,12 @@ import 'package:deposito/widgets/carteles.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:deposito/config/config.dart';
+import 'package:deposito/config/config_env.dart';
 
 
 class LoginServices {
   int? statusCode;
-  late String apiUrl = Config.APIURL;
+  late String apiUrl = ConfigEnv.APIURL;
   late String apiLink = '$apiUrl/api/auth/login-pin';
   var dio = Dio();
 

@@ -1,4 +1,4 @@
-import 'package:deposito/config/config.dart';
+import 'package:deposito/config/config_env.dart';
 import 'package:deposito/models/client.dart';
 import 'package:deposito/widgets/carteles.dart';
 import 'package:dio/dio.dart';
@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 
 class ClientServices {
   final _dio = Dio();
-  late String apirUrl = Config.APIURL;
+  late String apirUrl = ConfigEnv.APIURL;
   late int? statusCode;
 
   Future getClientes (BuildContext context, String nombre, String ruc, String codCliente, String almacen, String token) async {

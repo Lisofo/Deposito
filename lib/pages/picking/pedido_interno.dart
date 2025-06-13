@@ -22,7 +22,8 @@ class _PedidoInternoState extends State<PedidoInterno> {
   bool ejecutando = false;
   String token = '';
   late Almacen almacen = Almacen.empty();
-  bool valorSwitch = true; // Cambiado a false por defecto
+  bool valorSwitch = true;
+  bool seleccionado = false;
 
   @override
   void initState() {
@@ -52,7 +53,7 @@ class _PedidoInternoState extends State<PedidoInterno> {
           iconTheme: const IconThemeData(color: Colors.white),
           backgroundColor: colors.primary,
           title: Text(
-            'Orden ${order.numeroDocumento}',
+            'Orden ${orderProvider.numeroDocumento}',
             style: const TextStyle(color: Colors.white),
           ),
         ),
@@ -60,17 +61,17 @@ class _PedidoInternoState extends State<PedidoInterno> {
           padding: const EdgeInsets.all(16.0),
           child: Column(
             children: [
-              expanded(),
-              _buildCommentSection(order, colors),
+              _expanded(),
+              _buildCommentSection(orderProvider, colors),
             ],
           ),
         ),
-        bottomNavigationBar: _buildBottomBar(context, order, colors),
+        bottomNavigationBar: _buildBottomBar(context, orderProvider, colors),
       ),
     );
   }
 
-  Widget expanded() {
+  Widget _expanded() {
     return Expanded(
       child: SingleChildScrollView(
         child: Column(
@@ -86,7 +87,7 @@ class _PedidoInternoState extends State<PedidoInterno> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          '${order.numeroDocumento}',
+                          '${orderProvider.numeroDocumento} - ${orderProvider.serie}',
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -94,29 +95,31 @@ class _PedidoInternoState extends State<PedidoInterno> {
                         ),
                         Chip(
                           label: Text(
-                            order.estado,
+                            orderProvider.estado,
                             style: const TextStyle(color: Colors.white),
                           ),
-                          backgroundColor: _getStatusColor(order.estado),
+                          backgroundColor: _getStatusColor(orderProvider.estado),
                         ),
                       ],
                     ),
                     const SizedBox(height: 8),
-                    Text('Cliente/Proveedor: ${order.nombre}'),
+                    Text('Cliente/Proveedor: ${orderProvider.nombre}'),
                     const SizedBox(height: 8),
-                    Text('Fecha: ${_formatDate(order.fechaDate)}'),
+                    Text('Fecha: ${_formatDate(orderProvider.fechaDate)}'),
                     const SizedBox(height: 8),
-                    Text('Tipo: ${(order.tipo == 'C' || order.tipo == 'TE') ? 'Entrada' : 'Salida'}'),
+                    Text('Tipo: ${(orderProvider.tipo == 'C' || orderProvider.tipo == 'TE') ? 'Entrada' : 'Salida'}'),
                     const SizedBox(height: 8),
-                    if (order.prioridad != '')
-                      Text('Prioridad: ${order.prioridad}'),
+                    if (orderProvider.prioridad != '')
+                      Text('Prioridad: ${orderProvider.prioridad}'),
+                    const SizedBox(height: 8,),
+                    Text(orderProvider.transaccion)
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 16),
             Text(
-              'Productos a ${(order.tipo == 'C' || order.tipo == 'TE') ? 'recibir' : 'preparar'}:',
+              'Productos a ${(orderProvider.tipo == 'C' || orderProvider.tipo == 'TE') ? 'recibir' : 'preparar'}:',
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
@@ -130,6 +133,17 @@ class _PedidoInternoState extends State<PedidoInterno> {
                       title: Text(item.descripcion),
                       subtitle: Text('Código: ${item.codItem}'),
                       trailing: Text('${item.cantidadPedida} unid'),
+                      onTap: valorSwitch ? null : () {
+                        if(seleccionado == false) {
+                          setState(() {
+                            seleccionado = true;
+                          });
+                          _seleccionarLineaManual(item);
+                          setState(() {
+                            seleccionado = false;
+                          });
+                        }
+                      } ,
                     ),
                   ),
               ],
@@ -139,6 +153,15 @@ class _PedidoInternoState extends State<PedidoInterno> {
         ),
       ),
     );
+  }
+
+  void _seleccionarLineaManual(PickingLinea linea) {
+    final provider = Provider.of<ProductProvider>(context, listen: false);
+    provider.setCurrentLineIndex(order.lineas!.indexOf(linea));
+    provider.setOrdenPickingInterna(order);
+    provider.setLineasPicking(order.lineas ?? []);
+    
+    appRouter.push('/pickingProductos');
   }
 
   Widget _buildCommentSection(OrdenPicking order, ColorScheme colors) {
@@ -197,9 +220,9 @@ class _PedidoInternoState extends State<PedidoInterno> {
               ),
             ),
             ElevatedButton(
-              onPressed: order.estado == 'CERRADO' ? null : () => _mostrarDialogoConfirmacion('finalizar'),
+              onPressed: (order.estado == 'CERRADO' || order.estado == 'PENDIENTE') ? null : () => _mostrarDialogoConfirmacion('finalizar'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: order.estado == 'CERRADO' ? Colors.grey : colors.primary,
+                backgroundColor: (order.estado == 'CERRADO' || order.estado == 'PENDIENTE') ? Colors.grey : colors.primary,
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               ),
               child: const Text(
@@ -208,10 +231,10 @@ class _PedidoInternoState extends State<PedidoInterno> {
               ),
             ),
             IconButton(
-              onPressed: order.estado == 'CERRADO' ? null : () async => await volverAPendiente(),
+              onPressed: (order.estado == 'CERRADO' || order.estado == 'PENDIENTE') ? null : () async => await volverAPendiente(),
               icon: Icon(
                 Icons.backspace,
-                color: order.estado == 'CERRADO' ? Colors.grey : colors.primary
+                color: (order.estado == 'CERRADO' || order.estado == 'PENDIENTE') ? Colors.grey : colors.primary
               )
             ),
             if(order.tipo != 'C' && order.tipo != 'TE') ...[

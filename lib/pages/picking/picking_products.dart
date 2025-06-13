@@ -207,11 +207,17 @@ class PickingProductsState extends State<PickingProducts> {
       final provider = Provider.of<ProductProvider>(context, listen: false);
       provider.clearUbicacionSeleccionada();
 
-      if (isLastLine || provider.modoSeleccionUbicacion) {
+      if (isLastLine) {
         _navigateToSummary();
       } else {
-        provider.setCurrentLineIndex(provider.currentLineIndex + 1);
-        appRouter.pushReplacement('/pickingProductos');
+        if (provider.modoSeleccionUbicacion) {
+          // Modo automático - volver a picking para escanear siguiente ubicación
+          provider.setCurrentLineIndex(provider.currentLineIndex + 1);
+          appRouter.pushReplacement('/pickingProductos');
+        } else {
+          // Modo manual - volver a pedido_interno
+          Navigator.of(context).popUntil((route) => route.settings.name == '/pickingInterno');
+        }
       }
     } catch (e) {
       Navigator.of(context).pop();
@@ -287,7 +293,7 @@ class PickingProductsState extends State<PickingProducts> {
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(context);
-                _processLineCompletion(isLastLine || provider.modoSeleccionUbicacion);
+                _processLineCompletion(isLastLine && provider.modoSeleccionUbicacion);
               },
               child: const Text('Aceptar'),
             ),
@@ -448,18 +454,9 @@ class PickingProductsState extends State<PickingProducts> {
     
     if (currentLineIndex >= lineas.length) return;
     try {
-      String? barcodeScanRes = await SimpleBarcodeScanner.scanBarcode(
-        context,
-        lineColor: '#ff6666',
-        cancelButtonText: 'Cancelar',
-        isShowFlashIcon: true,
-        scanType: ScanType.barcode,
-      );
-
-      if (barcodeScanRes == '-1') return;
-
+      var trimmedValue = value.trim();
       final currentLine = provider.ordenPickingInterna.lineas![provider.currentLineIndex];
-      productos = await ProductServices().getProductByName(context, '', '2', provider.almacen.almacenId.toString(), value, '0', provider.token);
+      productos = await ProductServices().getProductByName(context, '', '2', provider.almacen.almacenId.toString(), trimmedValue, '0', provider.token);
       final producto = productos[0];
       bool mismoProducto = producto.raiz == currentLine.codItem;
       
@@ -468,13 +465,15 @@ class PickingProductsState extends State<PickingProducts> {
         
       } else {
         _showSingleSnackBar(
-          'Producto no encontrado: $barcodeScanRes',
+          'Producto no encontrado: $value',
           backgroundColor: Colors.red
         );
       }
+      textController.clear();
       focoDeScanner.requestFocus();
     } catch (e) {
       print('Error al escanear: $e');
+      textController.clear();
       focoDeScanner.requestFocus();
     }
   }
@@ -546,7 +545,7 @@ class PickingProductsState extends State<PickingProducts> {
 
   Widget _buildLocationListItem(UbicacionePicking ubicacion, int index) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      // margin: const EdgeInsets.only(bottom: 12),
       elevation: 2,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -604,7 +603,7 @@ class PickingProductsState extends State<PickingProducts> {
     return Consumer<ProductProvider>(
       builder: (context, provider, child) {
         final bool isLastLine = !_hasMoreLines();
-        final bool mostrarFinalizar = provider.modoSeleccionUbicacion || isLastLine;
+        final bool mostrarFinalizar = isLastLine && provider.modoSeleccionUbicacion;
         
         return Container(
           color: Colors.white,
@@ -663,6 +662,7 @@ class PickingProductsState extends State<PickingProducts> {
   }
 
   void _resetSearch() {
+    textController.clear();
     focoDeScanner.requestFocus();
     setState(() {});
   }

@@ -1,4 +1,4 @@
-import 'package:deposito/config/config.dart';
+import 'package:deposito/config/config_env.dart';
 import 'package:deposito/models/almacen.dart';
 import 'package:deposito/models/conteo.dart';
 import 'package:deposito/models/item_consulta.dart';
@@ -11,7 +11,7 @@ import 'package:flutter/material.dart';
 
 class AlmacenServices {
   final _dio = Dio();
-  late String apirUrl = Config.APIURL;
+  late String apirUrl = ConfigEnv.APIURL;
   late int? statusCode;
 
   Future<int?> getStatusCode () async {

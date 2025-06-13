@@ -13,6 +13,7 @@ class OrdenPicking {
   late int numeroDocumento;
   late String? serie;
   late int transaccionId;
+  late String transaccion;
   late String tipo;
   late int movimientoId;
   late DateTime fechaDate;
@@ -38,6 +39,7 @@ class OrdenPicking {
     required this.numeroDocumento,
     required this.serie,
     required this.transaccionId,
+    required this.transaccion,
     required this.tipo,
     required this.movimientoId,
     required this.fechaDate,
@@ -64,6 +66,7 @@ class OrdenPicking {
     numeroDocumento: json["numeroDocumento"] as int? ?? 0,
     serie: json["serie"] as String? ?? '',
     transaccionId: json["transaccionId"] as int? ?? 0,
+    transaccion: json["transaccion"] as String? ?? '',
     tipo: json["tipo"] as String? ?? '',
     movimientoId: json["movimientoId"] as int? ?? 0,
     fechaDate: DateTime.parse(json["fechaDate"]),
@@ -90,6 +93,7 @@ class OrdenPicking {
     "numeroDocumento": numeroDocumento,
     "serie": serie,
     "transaccionId": transaccionId,
+    "transaccion": transaccion,
     "tipo": tipo,
     "movimientoId": movimientoId,
     "fechaDate": fechaDate.toIso8601String(),
@@ -116,6 +120,7 @@ class OrdenPicking {
     numeroDocumento = 0;
     serie = '';
     transaccionId = 0;
+    transaccion = '';
     tipo = '';
     movimientoId = 0;
     fechaDate = DateTime.now();

@@ -1,3 +1,4 @@
+import 'package:deposito/config/config.dart';
 import 'package:deposito/pages/Productos/agregar_ubicaciones.dart';
 import 'package:deposito/pages/Productos/buscador_producto.dart';
 import 'package:deposito/pages/Dashboard/dashboard.dart';
@@ -36,6 +37,7 @@ class AppRouter {
         GoRoute(path: '/login', builder: (context, state) => const Login()),
         GoRoute(path: '/almacen', builder: (context, state) => const SeleccionAlmacen()),
         GoRoute(path: '/menu', builder: (context, state) => const MenuPage()),
+        GoRoute(path: '/config', builder: (context, state) => const ConfigPage()),
         // GoRoute(
         //   path: '/buscadorProducto',
         //   builder: (context, state) {

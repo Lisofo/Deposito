@@ -34,7 +34,7 @@ class _ListaPickingState extends State<ListaPicking> {
   int _groupValue = -1;
 
   // Opciones para dropdowns
-  final List<String> _prioridades = ['Alta', 'Media', 'Baja', 'Todas'];
+  final List<String> _prioridades = ['ALTA', 'NORMAL', 'BAJA', 'TODAS'];
   final List<String> _estados = ['Pendiente', 'En proceso', 'Cerrado', 'Cancelado', 'Todos'];
 
   String token = '';
@@ -128,10 +128,9 @@ class _ListaPickingState extends State<ListaPicking> {
     }
 
     // Filtro por prioridad
-    if (_selectedPrioridad != null && _selectedPrioridad!.isNotEmpty && _selectedPrioridad != 'Todas') {
+    if (_selectedPrioridad != null && _selectedPrioridad!.isNotEmpty && _selectedPrioridad != 'TODAS') {
       filtered = filtered.where((orden) => orden.prioridad == _selectedPrioridad).toList();
-    }
-
+    }    
     setState(() => _filteredOrdenes = filtered);
   }
 
@@ -170,7 +169,7 @@ class _ListaPickingState extends State<ListaPicking> {
   bool _hasActiveFilters() {
     return _fechaDesde != null ||
            _fechaHasta != null ||
-           (_selectedPrioridad != null && _selectedPrioridad != 'Todas') ||
+           (_selectedPrioridad != null && _selectedPrioridad != 'TODAS') ||
            _searchController.text.isNotEmpty ||
            _groupValue != -1;
   }
@@ -214,12 +213,10 @@ class _ListaPickingState extends State<ListaPicking> {
         backgroundColor: Colors.grey.shade200,
         body: Column(
           children: [
-            // Encabezado de filtros colapsable
             Card(
               margin: const EdgeInsets.all(10),
               child: Column(
                 children: [
-                  // Header clickeable para expandir/colapsar
                   InkWell(
                     onTap: () {
                       setState(() {
@@ -266,7 +263,6 @@ class _ListaPickingState extends State<ListaPicking> {
                       ),
                     ),
                   ),
-                  
                   // Contenido de filtros (colapsable)
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 300),
@@ -299,8 +295,6 @@ class _ListaPickingState extends State<ListaPicking> {
                                   onChanged: (value) => _applyFilters(),
                                 ),
                                 const SizedBox(height: 15),
-                                
-                                // Fechas
                                 Row(
                                   children: [
                                     Expanded(
@@ -371,19 +365,18 @@ class _ListaPickingState extends State<ListaPicking> {
                                   ],
                                 ),
                                 const SizedBox(height: 15),
-                                
                                 // Prioridad Dropdown
                                 DropdownButtonFormField<String>(
                                   value: _selectedPrioridad,
                                   decoration: InputDecoration(
                                     labelText: 'Prioridad',
                                     border: const OutlineInputBorder(),
-                                    suffixIcon: _selectedPrioridad != null && _selectedPrioridad != 'Todas'
+                                    suffixIcon: _selectedPrioridad != null && _selectedPrioridad != 'TODAS'
                                       ? IconButton(
                                           icon: const Icon(Icons.clear, size: 18),
                                           onPressed: () {
                                             setState(() {
-                                              _selectedPrioridad = 'Todas';
+                                              _selectedPrioridad = 'TODAS';
                                               _applyFilters();
                                             });
                                           },
@@ -412,7 +405,6 @@ class _ListaPickingState extends State<ListaPicking> {
                 ],
               ),
             ),
-            
             // Segmented Control para estados (siempre visible)
             CupertinoSegmentedControl<int>(
               padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -433,9 +425,7 @@ class _ListaPickingState extends State<ListaPicking> {
                 });
               },
             ),
-            
             const SizedBox(height: 10),
-            
             // Lista de resultados
             Expanded(
               child: _isLoading
@@ -543,6 +533,7 @@ class _ListaPickingState extends State<ListaPicking> {
                                               Text('Líneas: ${orden.cantLineas ?? 0}'),
                                             ],
                                           ),
+                                          Text(orden.transaccion),
                                           Text('Fecha: ${DateFormat('dd/MM/yyyy').format(orden.fechaDate)}'),
                                         ],
                                       ),

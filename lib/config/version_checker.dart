@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:deposito/config/config.dart';
+import 'package:deposito/config/config_env.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:http/http.dart' as http;
 
@@ -40,7 +40,7 @@ class VersionChecker {
     late String latestVersion = '';
     late List<int> currentVersionParts = [];
     late List<int> latestVersionParts = [];
-    String apiUrl = Config.APIURL;
+    String apiUrl = ConfigEnv.APIURL;
 
     try {
       packageInfo = await PackageInfo.fromPlatform();

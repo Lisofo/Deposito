@@ -1,4 +1,4 @@
-import 'package:deposito/config/config.dart';
+import 'package:deposito/config/config_env.dart';
 import 'package:deposito/models/orden_picking.dart';
 import 'package:deposito/widgets/carteles.dart';
 import 'package:dio/dio.dart';
@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 
 class PickingServices {
   final _dio = Dio();
-  late String apirUrl = Config.APIURL;
+  late String apirUrl = ConfigEnv.APIURL;
   late int? statusCode;
 
   Future<int?> getStatusCode () async {

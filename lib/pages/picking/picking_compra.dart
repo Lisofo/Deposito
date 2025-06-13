@@ -254,6 +254,9 @@ class _PickingCompraState extends State<PickingCompra> {
         );
         // print('Ubicación seleccionada: ${ubicacionEncontrada.descripcion}');
       } catch (e) {
+        textController.clear();
+        await Future.delayed(const Duration(milliseconds: 100)); // Breve pausa para evitar conflictos de enfoque
+        focoDeScanner.requestFocus();
         await error(value);
         print('Ubicación no encontrada: $value');
       } finally {

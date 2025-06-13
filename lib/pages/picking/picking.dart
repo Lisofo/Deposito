@@ -26,6 +26,7 @@ class _PickingPageState extends State<PickingPage> {
   late String token;
   FocusNode focoDeScanner = FocusNode();
   TextEditingController textController = TextEditingController();
+  late UbicacionePicking ubiSeleccionada = UbicacionePicking.empty();
 
   @override
   void initState() {
@@ -117,15 +118,21 @@ class _PickingPageState extends State<PickingPage> {
         final currentLineIndex = provider.currentLineIndex;
         final selectedLine = currentLineIndex < lineas.length ? lineas[currentLineIndex] : null;
         
+        // Si no hay línea seleccionada o no hay ubicaciones, muestra un mensaje alternativo
+        final ubicacionTexto = selectedLine?.ubicaciones.isNotEmpty == true 
+            ? selectedLine!.ubicaciones[0].codUbicacion 
+            : 'Ubicación no disponible';
+
         return Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
-              'Dirijase a la ubicación ${selectedLine!.ubicaciones[0].codUbicacion}', 
-              style: const TextStyle(fontSize: 18),
-            ),
+            if (provider.modoSeleccionUbicacion && lineas.isNotEmpty && selectedLine != null)
+              Text(
+                'Dirijase a la ubicación $ubicacionTexto', 
+                style: const TextStyle(fontSize: 18),
+              ),
             const SizedBox(height: 20),
-            if (provider.modoSeleccionUbicacion == false && lineas.isNotEmpty)
+            if (provider.modoSeleccionUbicacion == false && lineas.isNotEmpty && selectedLine != null)
               _buildUbicacionSelector(selectedLine),
             VisibilityDetector(
               key: const Key('scanner-field-visibility'),
@@ -156,10 +163,26 @@ class _PickingPageState extends State<PickingPage> {
   Widget _buildUbicacionSelector(PickingLinea line) {
     return Consumer<ProductProvider>(
       builder: (context, provider, child) {
+        // Get the currently selected ubicacion
+        final selectedUbicacion = ubiSeleccionada;
+        
+        // Find if the selected ubicacion exists in the current line's ubicaciones
+        final validSelectedUbicacion = selectedUbicacion.almacenUbicacionId != 0 
+            ? line.ubicaciones.firstWhere(
+                (u) => u.almacenUbicacionId == selectedUbicacion.almacenUbicacionId,
+                orElse: () => UbicacionePicking.empty(),
+              )
+            : null;
+
+        // Use null if the selected ubicacion is not in the current line's ubicaciones
+        final initialValue = validSelectedUbicacion?.almacenUbicacionId != 0 
+            ? null
+            : null;
+
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: DropdownButtonFormField<UbicacionePicking>(
-            value: provider.ubicacionSeleccionada,
+            value: initialValue,
             decoration: const InputDecoration(
               labelText: 'Seleccionar Ubicación',
               border: OutlineInputBorder(),
@@ -167,12 +190,13 @@ class _PickingPageState extends State<PickingPage> {
             items: line.ubicaciones.map((ubicacion) {
               return DropdownMenuItem<UbicacionePicking>(
                 value: ubicacion,
-                child: Text('Ubicación ${ubicacion.codUbicacion}'),
+                child: Text('Ubicación ${ubicacion.codUbicacion} - Stock: ${ubicacion.existenciaActual}'),
               );
             }).toList(),
             onChanged: (ubicacion) {
               if (ubicacion != null) {
-                provider.setUbicacionSeleccionada(ubicacion);
+                ubiSeleccionada = ubicacion;
+                setState(() {});
               }
             },
           ),
@@ -251,16 +275,18 @@ class _PickingPageState extends State<PickingPage> {
       if (ubicacion.almacenUbicacionId != 0) {
         provider.setUbicacionSeleccionada(ubicacion);
         provider.setCurrentLineIndex(currentLineIndex);
-        MaterialPageRoute(
-          builder: (context) => const PickingProducts(),
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => const PickingProducts(),
+          )
         );
       } else {
         Carteles.showDialogs(context, 'Ubicación no encontrada', false, false, false);
       }
       
       textController.clear();
-      await Future.delayed(const Duration(milliseconds: 100));
-      focoDeScanner.requestFocus();
+      
+      
     } catch (e) {
       Carteles.showDialogs(context, 'Error al procesar el escaneo', false, false, false);
     }
@@ -272,13 +298,13 @@ class _PickingPageState extends State<PickingPage> {
       builder: (context, provider, child) {
         return Container(
           color: Colors.white,
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(8),
           child: ElevatedButton(
-            onPressed: () {
-              if (provider.ubicacionSeleccionada != null) {
+            onPressed: ubiSeleccionada.almacenUbicacionId == 0 ? null : () {
+              if (ubiSeleccionada.almacenUbicacionId != 0) {
+                provider.setUbicacionSeleccionada(ubiSeleccionada);
                 provider.setCurrentLineIndex(provider.currentLineIndex);
                 if (provider.modoSeleccionUbicacion) {
-                  // En modo selección, ir directamente a pickingProducts
                   appRouter.push('/pickingProductos');
                 } else {
                   appRouter.push('/pickingProductosConteo');

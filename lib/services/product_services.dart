@@ -1,4 +1,4 @@
-import 'package:deposito/config/config.dart';
+import 'package:deposito/config/config_env.dart';
 import 'package:deposito/models/producto_deposito.dart';
 import 'package:deposito/models/producto_variante.dart';
 import 'package:deposito/widgets/carteles.dart';
@@ -11,7 +11,7 @@ import '../models/product.dart';
 
 class ProductServices {
   final _dio = Dio();
-  late String apirUrl = Config.APIURL;
+  late String apirUrl = ConfigEnv.APIURL;
   
   Future<List<Product>> getProductByName(BuildContext context, String condicion, String codTipoLista, String almacenId, String codBarra, String offset, String token) async {
     String link = apirUrl += '/api/v1/itemsRaiz/?limit=20&offset=$offset&almacenId=$almacenId&codTipoLista=$codTipoLista';

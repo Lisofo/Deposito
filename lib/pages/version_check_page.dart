@@ -1,7 +1,7 @@
 // ignore_for_file: avoid_print, use_build_context_synchronously
 
 import 'dart:convert';
-import 'package:deposito/config/config.dart';
+import 'package:deposito/config/config_env.dart';
 import 'package:deposito/config/router/router.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -71,7 +71,7 @@ class _VersionCheckPageState extends State<VersionCheckPage> {
   late List<int> currentVersionParts = [];
   late List<int> minVersionParts= [];
   late List<int> latestVersionParts = [];
-  String apiUrl = Config.APIURL;
+  String apiUrl = ConfigEnv.APIURL;
   
   @override
   void initState() {

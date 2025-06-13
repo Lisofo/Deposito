@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:deposito/config/config.dart';
+import 'package:deposito/config/config_env.dart';
 import 'package:deposito/models/linea.dart';
 import 'package:deposito/models/moneda.dart';
 import 'package:deposito/models/pedido.dart';
@@ -14,7 +14,7 @@ import 'package:provider/provider.dart';
 
 class PedidosServices {
   final _dio = Dio();
-  late String apirUrl = Config.APIURL;
+  late String apirUrl = ConfigEnv.APIURL;
   late int? statusCode;
 
   Future getPedidosCliente (BuildContext context, int clienteId, String almacen, String token) async {
@@ -276,15 +276,15 @@ class PedidosServices {
     int informeId = 0;
     if(conFoto){
       if(almacenId == '1'){
-        informeId = Config.NYPCONFOTO;
+        informeId = ConfigEnv.NYPCONFOTO;
       } else {
-        informeId = Config.UFOCONFOTO;
+        informeId = ConfigEnv.UFOCONFOTO;
       }
     } else {
       if(almacenId == '1'){
-        informeId = Config.NYPSINFOTO;
+        informeId = ConfigEnv.NYPSINFOTO;
       } else {
-        informeId = Config.UFOSINFOTO;
+        informeId = ConfigEnv.UFOSINFOTO;
       }
     }
     var data = ({

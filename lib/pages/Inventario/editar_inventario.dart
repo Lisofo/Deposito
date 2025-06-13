@@ -11,6 +11,7 @@ import 'package:deposito/widgets/carteles.dart';
 import 'package:deposito/widgets/custom_button.dart';
 import 'package:deposito/widgets/custom_form_field.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:provider/provider.dart';
 import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
@@ -357,31 +358,66 @@ class _EditarInventarioState extends State<EditarInventario> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text('Desea contabilizar más productos ${product.descripcion}?'),
-              const SizedBox(
-                height: 10,
-              ),
+              const SizedBox(height: 10),
               CustomTextFormField(
+                minLines: 1,
+                maxLines: 1,
                 controller: conteoController,
-                keyboard: const TextInputType.numberWithOptions(),
+                keyboard: const TextInputType.numberWithOptions(signed: false), // Solo números positivos
                 focusNode: _focusNode,
+                mascara: [
+                  FilteringTextInputFormatter.digitsOnly // Solo permite dígitos
+                ],
               )
             ],
           ),
           actions: [
             TextButton(
-              onPressed: () async {
-                appRouter.pop();
-              },
+              onPressed: () => appRouter.pop(),
               child: const Text('Cancelar'),
             ),
             TextButton(
               onPressed: () async {
-                late int conteo = int.parse(conteoController.text);
+                final text = conteoController.text.trim();
+                
+                // Validación
+                if (text.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Por favor ingrese un valor')),
+                  );
+                  return;
+                }
+                
+                final conteo = int.tryParse(text);
+                if (conteo == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Por favor ingrese un número válido')),
+                  );
+                  return;
+                }
+                
+                if (conteo < 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('El número no puede ser negativo')),
+                  );
+                  return;
+                }
+                
                 int? statusCode;
-                await _almacenServices.patchUbicacionItemEnAlmacen(context, product.codItem, almacen.almacenId, product.almacenUbicacionId, true, conteo, token);
+                await _almacenServices.patchUbicacionItemEnAlmacen(
+                  context, 
+                  product.codItem, 
+                  almacen.almacenId, 
+                  product.almacenUbicacionId, 
+                  true, 
+                  conteo, 
+                  token
+                );
+                
                 statusCode = await _almacenServices.getStatusCode();
                 await _almacenServices.resetStatusCode();
-                if(statusCode == 1) {
+                
+                if (statusCode == 1) {
                   product.conteo = conteo;
                   appRouter.pop();
                   setState(() {});
