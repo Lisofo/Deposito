@@ -1,6 +1,7 @@
 // ignore_for_file: unused_field
 
 import 'package:deposito/config/router/router.dart';
+import 'package:deposito/models/almacen.dart';
 import 'package:deposito/models/orden_picking.dart';
 import 'package:deposito/models/usuario.dart';
 import 'package:deposito/provider/product_provider.dart';
@@ -10,6 +11,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter/foundation.dart';
 
 class MonitorPage extends StatefulWidget {
   const MonitorPage({super.key});
@@ -20,8 +22,10 @@ class MonitorPage extends StatefulWidget {
 
 class _MonitorPageState extends State<MonitorPage> {
   final PickingServices _pickingServices = PickingServices();
-  final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _searchControllerNombre = TextEditingController();
+  final TextEditingController _searchControllerNumeroDoc = TextEditingController();
   final GlobalKey<RefreshIndicatorState> _refreshIndicatorKey = GlobalKey<RefreshIndicatorState>();
+  late Almacen almacen = Almacen.empty();
 
   List<OrdenPicking> _ordenes = [];
   List<OrdenPicking> _filteredOrdenes = [];
@@ -34,9 +38,6 @@ class _MonitorPageState extends State<MonitorPage> {
   DateTime? _fechaHasta;
   String? _selectedPrioridad;
   List<Map<String, String>> _selectedTipos = [];
-  String? _selectedLocalidad;
-  String? _selectedAlmacenOrigen;
-  String? _selectedAlmacenDestino;
   Usuario? _selectedUsuarioMod;
   Usuario? _selectedUsuarioCreado;
   int _groupValue = -1;
@@ -70,19 +71,15 @@ class _MonitorPageState extends State<MonitorPage> {
       usuarios = await _pickingServices.getUsuarios(context, token);
       final result = await _pickingServices.getOrdenesPicking(
         context,
+        almacen.almacenId,
         token,
         tipo: _selectedTipos.isNotEmpty ? _selectedTipos.map((t) => t['value']!).join(',') : null,
         prioridad: _selectedPrioridad != 'TODAS' ? _selectedPrioridad : null,
-        codEntidad: _searchController.text.isNotEmpty ? _searchController.text : null,
         fechaDateDesde: _fechaDesde,
         fechaDateHasta: _fechaHasta,
         estado: _groupValue != -1 ? ['PENDIENTE', 'EN PROCESO', 'CERRADO'][_groupValue] : null,
-        ruc: _searchController.text.isNotEmpty ? _searchController.text : null,
-        serie: _searchController.text.isNotEmpty ? _searchController.text : null,
-        numeroDocumento: _searchController.text.isNotEmpty ? _searchController.text : null,
-        almacenIdOrigen: _selectedAlmacenOrigen,
-        almacenIdDestino: _selectedAlmacenDestino,
-        localidad: _selectedLocalidad,
+        numeroDocumento: _searchControllerNumeroDoc.text.isNotEmpty ? _searchControllerNumeroDoc.text : null,
+        nombre: _searchControllerNombre.text.isNotEmpty ? _searchControllerNombre.text : null,
         usuId: _selectedUsuarioCreado?.usuarioId,
         modUsuId: _selectedUsuarioMod?.usuarioId,
       );
@@ -94,6 +91,7 @@ class _MonitorPageState extends State<MonitorPage> {
         });
       }
     } finally {
+      _isFilterExpanded = false;
       setState(() => _isLoading = false);
     }
   }
@@ -108,13 +106,12 @@ class _MonitorPageState extends State<MonitorPage> {
       _fechaHasta = null;
       _selectedPrioridad = null;
       _selectedTipos.clear();
-      _selectedLocalidad = null;
-      _selectedAlmacenOrigen = null;
-      _selectedAlmacenDestino = null;
       _groupValue = -1;
-      _searchController.clear();
+      _searchControllerNombre.clear();
+      _searchControllerNumeroDoc.clear();
       _selectedUsuarioCreado = null;
       _selectedUsuarioMod = null;
+      _isFilterExpanded = false;
       _loadData();
     });
   }
@@ -142,10 +139,10 @@ class _MonitorPageState extends State<MonitorPage> {
            _fechaHasta != null ||
            (_selectedPrioridad != null && _selectedPrioridad != 'TODAS') ||
            _selectedTipos.isNotEmpty ||
-           _selectedLocalidad != null ||
-           _selectedAlmacenOrigen != null ||
-           _selectedAlmacenDestino != null ||
-           _searchController.text.isNotEmpty ||
+           _searchControllerNombre.text.isNotEmpty ||
+           _searchControllerNumeroDoc.text.isNotEmpty ||
+           _selectedUsuarioCreado != null ||
+           _selectedUsuarioMod != null ||
            _groupValue != -1;
   }
 
@@ -250,21 +247,46 @@ class _MonitorPageState extends State<MonitorPage> {
                               children: [
                                 const Divider(),
                                 // Dropdown para Tipo
-                                TextField(
-                                  controller: _searchController,
-                                  decoration: InputDecoration(
-                                    labelText: 'Buscar (Código, RUC, Documento, Serie)',
-                                    border: const OutlineInputBorder(),
-                                    suffixIcon: _searchController.text.isNotEmpty
-                                      ? IconButton(
-                                          icon: const Icon(Icons.clear),
-                                          onPressed: () {
-                                            _searchController.clear();
-                                            _loadData();
-                                          },
-                                        )
-                                      : const Icon(Icons.search),
-                                  ),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: TextField(
+                                        controller: _searchControllerNombre,
+                                        decoration: InputDecoration(
+                                          labelText: 'Buscar (Cliente/Proveedor)',
+                                          border: const OutlineInputBorder(),
+                                          suffixIcon: _searchControllerNombre.text.isNotEmpty
+                                            ? IconButton(
+                                                icon: const Icon(Icons.clear),
+                                                onPressed: () {
+                                                  _searchControllerNombre.clear();
+                                                  _loadData();
+                                                },
+                                              )
+                                            : const Icon(Icons.search),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10,),
+                                    Expanded(
+                                      child: TextField(
+                                        controller: _searchControllerNumeroDoc,
+                                        decoration: InputDecoration(
+                                          labelText: 'Buscar (Número de documento)',
+                                          border: const OutlineInputBorder(),
+                                          suffixIcon: _searchControllerNumeroDoc.text.isNotEmpty
+                                            ? IconButton(
+                                                icon: const Icon(Icons.clear),
+                                                onPressed: () {
+                                                  _searchControllerNumeroDoc.clear();
+                                                  _loadData();
+                                                },
+                                              )
+                                            : const Icon(Icons.search),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                                 const SizedBox(height: 15),
                                 Row(
@@ -576,6 +598,8 @@ class _MonitorPageState extends State<MonitorPage> {
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
                                           Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                             children: [
                                               Stack(
                                                 alignment: Alignment.center,
@@ -591,7 +615,7 @@ class _MonitorPageState extends State<MonitorPage> {
                                                     ),
                                                   ),
                                                   Text(
-                                                    '${orden.porcentajeCompletado.toStringAsFixed(orden.porcentajeCompletado % 1 == 0 ? 0 : 2)}%',
+                                                    '${orden.porcentajeCompletado.toStringAsFixed(orden.porcentajeCompletado % 1 == 0 ? 0 : 0)}%',
                                                     style: const TextStyle(
                                                       fontSize: 12, 
                                                       fontWeight: FontWeight.bold
@@ -599,54 +623,82 @@ class _MonitorPageState extends State<MonitorPage> {
                                                   )
                                                 ],
                                               ),
-                                              Expanded(
-                                                child: Text(
-                                                  'Doc: ${orden.numeroDocumento} ${orden.serie ?? ''}',
-                                                  style: const TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 18,
-                                                  ),
+                                              const SizedBox(width: 10),
+                                              Text(
+                                                'Doc: ${orden.numeroDocumento} ${orden.serie ?? ''}',
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 18,
                                                 ),
                                               ),
-                                              Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                                decoration: BoxDecoration(
-                                                  color: _getStatusColor(orden.estado),
-                                                  borderRadius: BorderRadius.circular(12),
-                                                ),
-                                                child: Text(
-                                                  orden.estado,
-                                                  style: const TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.bold,
+                                              const Spacer(),
+                                              if(kIsWeb)
+                                                Expanded(
+                                                  flex: 10,
+                                                  child: SizedBox(
+                                                    width: MediaQuery.of(context).size.width * 0.8,
+                                                    child: Wrap(
+                                                      spacing: 16,
+                                                      runSpacing: 8,
+                                                      alignment: WrapAlignment.center,
+                                                      children: [
+                                                        _infoBox('Tipo:', _getTipoLabel(orden.tipo)),
+                                                        _infoBox('Fecha:', DateFormat('dd/MM/yyyy').format(orden.fechaDate)),
+                                                        _infoBox('Cliente:', '${orden.codEntidad} - ${orden.nombre}'),
+                                                        _infoBox('Creado por:', orden.creadoPor),
+                                                        _infoBox('RUC:', orden.ruc),
+                                                        _infoBox(
+                                                          'Última modificación por:',
+                                                          orden.modificadoPor,
+                                                        ),
+                                                        _infoBox("Fecha última modificiación:", DateFormat('dd/MM/yyyy HH:mm').format(orden.fechaDate))
+                                                      ],
+                                                    ),
                                                   ),
                                                 ),
+                                              Column(
+                                                crossAxisAlignment: CrossAxisAlignment.end,
+                                                children: [
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                    decoration: BoxDecoration(
+                                                      color: _getStatusColor(orden.estado),
+                                                      borderRadius: BorderRadius.circular(12),
+                                                    ),
+                                                    child: Text(
+                                                      orden.estado,
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 12,
+                                                        fontWeight: FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  Text(orden.prioridad),
+                                                  Text('PickId: ${orden.pickId}'),
+                                                  Text('Líneas: ${orden.cantLineas ?? 0}'),
+                                                ],
                                               ),
                                             ],
                                           ),
                                           const SizedBox(height: 8),
-                                          Text('Tipo: ${_getTipoLabel(orden.tipo)}'),
-                                          Text('Cliente: ${orden.codEntidad} - ${orden.nombre}'),
-                                          Text('RUC: ${orden.ruc}'),
-                                          Row(
+                                          if (!kIsWeb)
+                                          Wrap(
+                                            spacing: 16,
+                                            runSpacing: 8,
                                             children: [
-                                              Text('Prioridad: ${orden.prioridad}'),
-                                              const Spacer(),
-                                              Text('Líneas: ${orden.cantLineas ?? 0}'),
+                                              _infoBox('Tipo:', _getTipoLabel(orden.tipo)),
+                                              _infoBox('Fecha:', DateFormat('dd/MM/yyyy').format(orden.fechaDate)),
+                                              _infoBox('Cliente:', '${orden.codEntidad} - ${orden.nombre}'),
+                                              _infoBox('Creado por:', orden.creadoPor),
+                                              _infoBox('RUC:', orden.ruc),
+                                              _infoBox(
+                                                'Última modificación por:',
+                                                orden.modificadoPor,
+                                              ),
+                                              _infoBox("Fecha última modificiación:", DateFormat('dd/MM/yyyy HH:mm').format(orden.fechaDate))
                                             ],
                                           ),
-                                          Text(orden.transaccion),
-                                          Row(
-                                            children: [
-                                              Text('Fecha: ${DateFormat('dd/MM/yyyy').format(orden.fechaDate)}'),
-                                              const Spacer(),
-                                              // Text('PickId: ${orden.pickId}')
-                                              Text('${orden.pickId}')
-                                            ],
-                                          ),
-                                          Text('Creado por: ${orden.creadoPor}'),
-                                          Text('Última modificación por: ${orden.modificadoPor} a las ${DateFormat('dd/MM/yyyy').format(orden.fechaDate)}'),                                          
                                         ],
                                       ),
                                     ),
@@ -656,6 +708,24 @@ class _MonitorPageState extends State<MonitorPage> {
                             ),
                     ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _infoBox(String label, String value) {
+    return SizedBox(
+      width: 360, // ajustá este valor para lograr alineación visual entre columnas
+      child: RichText(
+        text: TextSpan(
+          style: const TextStyle(color: Colors.black, fontSize: 14),
+          children: [
+            TextSpan(
+              text: '$label ',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            TextSpan(text: value),
           ],
         ),
       ),

@@ -167,7 +167,7 @@ class PickingLinea {
   late int itemId;
   late int cantidadPedida;
   late int cantidadPickeada;
-  late int tipoLineaAdicional;
+  late String tipoLineaAdicional;
   late int lineaIdOriginal;
   late String codItem;
   late String descripcion;
@@ -194,7 +194,7 @@ class PickingLinea {
     itemId: json["itemId"] as int? ?? 0,
     cantidadPedida: json["cantidadPedida"] as int? ?? 0,
     cantidadPickeada: json["cantidadPickeada"] as int? ?? 0,
-    tipoLineaAdicional: json["tipoLineaAdicional"] as int? ?? 0,
+    tipoLineaAdicional: json["tipoLineaAdicional"] as String? ?? '',
     lineaIdOriginal: json["lineaIdOriginal"] as int? ?? 0,
     codItem: json["codItem"] as String? ?? '',
     descripcion: json["descripcion"] as String? ?? '',
@@ -222,7 +222,7 @@ class PickingLinea {
     itemId = 0;
     cantidadPedida = 0;
     cantidadPickeada = 0;
-    tipoLineaAdicional = 0;
+    tipoLineaAdicional = '';
     lineaIdOriginal = 0;
     codItem = '';
     descripcion = '';

@@ -112,53 +112,61 @@ class _TransferenciaUbicacionDestinoState extends State<TransferenciaUbicacionDe
                   },
                 ),
               ),
-              VisibilityDetector(
-                key: const Key('scanner-field-visibility'),
-                onVisibilityChanged: (info) {
-                  if (info.visibleFraction > 0) {
-                    focoDeScanner.requestFocus();
-                  }
-                },
-                child: TextFormField(
-                  focusNode: focoDeScanner,
-                  cursorColor: Colors.transparent,
-                  decoration: const InputDecoration(
-                    border: UnderlineInputBorder(borderSide: BorderSide.none),
-                  ),
-                  style: const TextStyle(color: Colors.transparent),
-                  autofocus: true,
-                  keyboardType: TextInputType.none,
-                  controller: textController,
-                  onFieldSubmitted: procesarEscaneo,
-                ),
-              ),
               // Botón de transferir
-              CustomButton(
-                text: 'Transferir',
-                onPressed: () async {
-                  if (ubicacionDestino.almacenId == 0 && enMano == false) {
-                    Carteles.showDialogs(context, 'Seleccione una ubicación de destino', false, true, false);
-                    return;
-                  }
-                  await transferirProductos(context);
-                },
-              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  Switch(
+                    value: enMano,
+                    onChanged: (value) {
+                      ubicacionDestino = UbicacionAlmacen.empty();
+                      setState(() {
+                        enMano = value;
+                      });
+                    }
+                  ),
+                  const Text('Llevar en mano'),
+                  VisibilityDetector(
+                    key: const Key('scanner-field-visibility'),
+                    onVisibilityChanged: (info) {
+                      if (info.visibleFraction > 0) {
+                        focoDeScanner.requestFocus();
+                      }
+                    },
+                    child: SizedBox(
+                      width: 100,
+                      child: TextFormField(
+                        focusNode: focoDeScanner,
+                        cursorColor: Colors.transparent,
+                        decoration: const InputDecoration(
+                          border: UnderlineInputBorder(borderSide: BorderSide.none),
+                        ),
+                        style: const TextStyle(color: Colors.transparent),
+                        autofocus: true,
+                        keyboardType: TextInputType.none,
+                        controller: textController,
+                        onFieldSubmitted: procesarEscaneo,
+                      ),
+                    ),
+                  ),
+                ],
+              ),  
             ],
           ),
         ),
         bottomNavigationBar: Row(
-          mainAxisAlignment: MainAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Switch(
-              value: enMano,
-              onChanged: (value) {
-                ubicacionDestino = UbicacionAlmacen.empty();
-                setState(() {
-                  enMano = value;
-                });
-              }
+            CustomButton(
+              text: 'Transferir',
+              onPressed: () async {
+                if (ubicacionDestino.almacenId == 0 && enMano == false) {
+                  Carteles.showDialogs(context, 'Seleccione una ubicación de destino', false, true, false);
+                  return;
+                }
+                await transferirProductos(context);
+              },
             ),
-            const Text('Llevar en mano')
           ],
         ),
         floatingActionButton: SpeedDial(

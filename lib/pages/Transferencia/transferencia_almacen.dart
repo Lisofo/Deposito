@@ -36,6 +36,8 @@ class _TransferenciaAlmacenPageState extends State<TransferenciaAlmacenPage> {
   List<Product> historial = [];
   late Product selectedProduct = Product.empty();
   late bool camera = false;
+  late bool enMano = false;
+  late bool hayEnMano = false;
 
   @override
   void initState() {
@@ -55,6 +57,12 @@ class _TransferenciaAlmacenPageState extends State<TransferenciaAlmacenPage> {
     token = productProvider.token;
     camera = productProvider.camera;
     listaUbicaciones = await _almacenServices.getUbicacionDeAlmacen(context, almacen.almacenId, token);
+    for(var ubicacion in listaUbicaciones) {
+      hayEnMano = ubicacion.codUbicacion == 'USER${productProvider.uId}';
+      if(hayEnMano){
+        break;
+      }
+    }
     setState(() {});
   }
 
@@ -103,48 +111,47 @@ class _TransferenciaAlmacenPageState extends State<TransferenciaAlmacenPage> {
                     ubicacionEscaneada = true;
                   });
                 },
-                enabled: productosEscaneados.isNotEmpty ? false : true,
+                enabled: (productosEscaneados.isNotEmpty || enMano) ? false : true,
                 hintText: 'Seleccione ubicación de origen',
               ),
               // Escaneo de productos (solo si la ubicación ya fue escaneada)
               const SizedBox(height: 20),
               // Lista de productos escaneados (solo si la ubicación ya fue escaneada)
-              if (ubicacionEscaneada)
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: productosEscaneados.length,
-                    itemBuilder: (context, index) {
-                      final productoAAgregar = productosEscaneados[index];
-                      return ListTile(
-                        title: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(productoAAgregar.productoAgregado.raiz),
-                            Text(productoAAgregar.productoAgregado.descripcion),
-                          ],
-                        ),
-                        subtitle: Text('Cantidad: ${productoAAgregar.cantidad}'),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.edit, color: Colors.blue),
-                              onPressed: () => _editarCantidad(context, productoAAgregar),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () {
-                                setState(() {
-                                  productosEscaneados.removeAt(index);
-                                });
-                              },
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: productosEscaneados.length,
+                  itemBuilder: (context, index) {
+                    final productoAAgregar = productosEscaneados[index];
+                    return ListTile(
+                      title: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(productoAAgregar.productoAgregado.raiz),
+                          Text(productoAAgregar.productoAgregado.descripcion),
+                        ],
+                      ),
+                      subtitle: Text('Cantidad: ${productoAAgregar.cantidad}'),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.edit, color: Colors.blue),
+                            onPressed: () => _editarCantidad(context, productoAAgregar),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () {
+                              setState(() {
+                                productosEscaneados.removeAt(index);
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
+              ),
               VisibilityDetector(
                 key: const Key('scanner-field-visibility'),
                 onVisibilityChanged: (info) {
@@ -152,38 +159,63 @@ class _TransferenciaAlmacenPageState extends State<TransferenciaAlmacenPage> {
                     focoDeScanner.requestFocus();
                   }
                 },
-                child: TextFormField(
-                  focusNode: focoDeScanner,
-                  cursorColor: Colors.transparent,
-                  decoration: const InputDecoration(
-                    border: UnderlineInputBorder(borderSide: BorderSide.none),
+                child: SizedBox(
+                  width: 100,
+                  child: TextFormField(
+                    focusNode: focoDeScanner,
+                    cursorColor: Colors.transparent,
+                    decoration: const InputDecoration(
+                      border: UnderlineInputBorder(borderSide: BorderSide.none),
+                    ),
+                    style: const TextStyle(color: Colors.transparent),
+                    autofocus: true,
+                    keyboardType: TextInputType.none,
+                    controller: textController,
+                    onFieldSubmitted: procesarEscaneoProducto,
                   ),
-                  style: const TextStyle(color: Colors.transparent),
-                  autofocus: true,
-                  keyboardType: TextInputType.none,
-                  controller: textController,
-                  onFieldSubmitted: procesarEscaneoProducto,
                 ),
               ),
               // Botón para continuar a la siguiente pantalla (solo si la ubicación ya fue escaneada)
-              if (ubicacionEscaneada)
-                CustomButton(
-                  text: 'Continuar',
-                  onPressed: () {
-                    if (ubicacionOrigen.almacenId == 0 || productosEscaneados.isEmpty) {
-                      Carteles.showDialogs(context, 'Complete todos los campos para continuar', false, false, false);
-                      return;
-                    }
-                    // Pasar los argumentos a la siguiente pantalla
-                    appRouter.push('/transferencia-destino', extra: {
-                      'ubicacionOrigen': ubicacionOrigen,
-                      'productosEscaneados': productosEscaneados,
-                    });
-                  },
-                ),
-              
+              Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  if(hayEnMano)...[
+                    Switch(
+                      value: enMano,
+                      onChanged: (value) {
+                        ubicacionOrigen = listaUbicaciones.firstWhere((element) => element.codUbicacion == 'USER${context.read<ProductProvider>().uId}');
+                        setState(() {
+                          ubicacionEscaneada = value;
+                          enMano = value;
+                        });
+                      }
+                    ),
+                    const Text('Llevar en mano'),
+                  ],
+                ],
+              ),
             ],
           ),
+        ),
+        bottomNavigationBar: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (ubicacionEscaneada || enMano)
+              CustomButton(
+                text: 'Continuar',
+                onPressed: () {
+                  if (ubicacionOrigen.almacenId == 0 || productosEscaneados.isEmpty) {
+                    Carteles.showDialogs(context, 'Complete todos los campos para continuar', false, false, false);
+                    return;
+                  }
+                  // Pasar los argumentos a la siguiente pantalla
+                  appRouter.push('/transferencia-destino', extra: {
+                    'ubicacionOrigen': ubicacionOrigen,
+                    'productosEscaneados': productosEscaneados,
+                  });
+                },
+              ),
+          ],
         ),
         floatingActionButton: SpeedDial(
           icon: Icons.add,

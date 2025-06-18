@@ -60,21 +60,15 @@ class PickingServices {
     }
   }
 
-  Future getOrdenesPicking(BuildContext context, String token, {
+  Future getOrdenesPicking(BuildContext context, int almacenIdOrigen, String token, {
     String? tipo,
     String? prioridad,
-    String? codEntidad,
     DateTime? fechaDateDesde,
     DateTime? fechaDateHasta,
-    DateTime? fechaDocumentoDesde,
-    DateTime? fechaDocumentoHasta,
     String? estado,
-    String? ruc,
-    String? serie,
     String? numeroDocumento,
-    String? almacenIdOrigen,
-    String? almacenIdDestino,
     String? localidad,
+    String? nombre,
     int? usuId,
     int? modUsuId,
   }) async {
@@ -82,17 +76,12 @@ class PickingServices {
     Map<String, dynamic> queryParams = {};
     if (tipo != null && tipo.isNotEmpty) queryParams['tipo'] = tipo;
     if (prioridad != null && prioridad.isNotEmpty) queryParams['prioridad'] = prioridad;
-    if (codEntidad != null && codEntidad.isNotEmpty) queryParams['codEntidad'] = codEntidad;
     if (fechaDateDesde != null) queryParams['fechaDateDesde'] = DateFormat('yyyy-MM-dd').format(fechaDateDesde);
     if (fechaDateHasta != null) queryParams['fechaDateHasta'] = DateFormat('yyyy-MM-dd').format(fechaDateHasta);
-    if (fechaDocumentoDesde != null) queryParams['fechaDocumentoDesde'] = DateFormat('yyyy-MM-dd').format(fechaDocumentoDesde);
-    if (fechaDocumentoHasta != null) queryParams['fechaDocumentoHasta'] = DateFormat('yyyy-MM-dd').format(fechaDocumentoHasta);
     if (estado != null && estado.isNotEmpty) queryParams['estado'] = estado;
-    if (ruc != null && ruc.isNotEmpty) queryParams['ruc'] = ruc;
-    if (serie != null && serie.isNotEmpty) queryParams['serie'] = serie;
     if (numeroDocumento != null && numeroDocumento.isNotEmpty) queryParams['numeroDocumento'] = numeroDocumento;
-    if (almacenIdOrigen != null && almacenIdOrigen.isNotEmpty) queryParams['almacenIdOrigen'] = almacenIdOrigen;
-    if (almacenIdDestino != null && almacenIdDestino.isNotEmpty) queryParams['almacenIdDestino'] = almacenIdDestino;
+    if (nombre != null && nombre.isNotEmpty) queryParams['nombre'] = nombre;
+    if (almacenIdOrigen != 0) queryParams['almacenIdOrigen'] = almacenIdOrigen;
     if (localidad != null && localidad.isNotEmpty) queryParams['localidad'] = localidad;
     if(usuId != null && usuId != 0) queryParams['usuId'] = usuId;
     if(modUsuId != null && modUsuId != 0) queryParams['modUsuId'] = modUsuId;

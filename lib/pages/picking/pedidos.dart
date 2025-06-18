@@ -1,6 +1,7 @@
 // ignore_for_file: unused_field
 
 import 'package:deposito/config/router/router.dart';
+import 'package:deposito/models/almacen.dart';
 import 'package:deposito/models/orden_picking.dart';
 import 'package:deposito/provider/product_provider.dart';
 import 'package:deposito/services/picking_services.dart';
@@ -20,7 +21,8 @@ class _ListaPickingState extends State<ListaPicking> {
   final PickingServices _pickingServices = PickingServices();
   final TextEditingController _searchController = TextEditingController();
   final GlobalKey<RefreshIndicatorState> _refreshIndicatorKey = GlobalKey<RefreshIndicatorState>();
-
+  late Almacen almacen = Almacen.empty();
+  
   List<OrdenPicking> _ordenes = [];
   List<OrdenPicking> _filteredOrdenes = [];
   bool _isLoading = true;
@@ -52,7 +54,7 @@ class _ListaPickingState extends State<ListaPicking> {
       await _pickingServices.resetStatusCode();
       String menu = context.read<ProductProvider>().menu;
       var menuSplitted = menu.split('-');
-      final result = await _pickingServices.getOrdenesPicking(context, token, tipo: menuSplitted[1]);
+      final result = await _pickingServices.getOrdenesPicking(context, almacen.almacenId,token, tipo: menuSplitted[1]);
       if (result != null && _pickingServices.statusCode == 1) {
         setState(() {
           _ordenes = result;
@@ -70,7 +72,8 @@ class _ListaPickingState extends State<ListaPicking> {
     try {
       await _pickingServices.resetStatusCode();
       String menu = context.read<ProductProvider>().menu;
-      final result = await _pickingServices.getOrdenesPicking(context, token, tipo: menu);
+      var menuSplitted = menu.split('-');
+      final result = await _pickingServices.getOrdenesPicking(context, almacen.almacenId,token, tipo: menuSplitted[1]);
       if (result != null && _pickingServices.statusCode == 1) {
         setState(() {
           _ordenes = result;
@@ -90,8 +93,7 @@ class _ListaPickingState extends State<ListaPicking> {
       final searchText = _searchController.text.toLowerCase();
       filtered = filtered.where((orden) =>
         orden.tipo.toLowerCase().contains(searchText) ||
-        orden.codEntidad.toLowerCase().contains(searchText) ||
-        orden.ruc.toLowerCase().contains(searchText) ||
+        orden.nombre.toLowerCase().contains(searchText) ||
         orden.numeroDocumento.toString().contains(searchText) ||
         (orden.serie?.toLowerCase().contains(searchText) ?? false)
       ).toList();
