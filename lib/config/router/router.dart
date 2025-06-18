@@ -1,32 +1,4 @@
-import 'package:deposito/config/config.dart';
-import 'package:deposito/pages/Productos/agregar_ubicaciones.dart';
-import 'package:deposito/pages/Productos/buscador_producto.dart';
-import 'package:deposito/pages/Dashboard/dashboard.dart';
-import 'package:deposito/pages/Productos/edit_ubicaciones.dart';
-import 'package:deposito/pages/Inventario/editar_inventario.dart';
-import 'package:deposito/pages/Inventario/inventario.dart';
-import 'package:deposito/pages/consultaUbicaciones/consulta_ubicaciones.dart';
-import 'package:deposito/pages/login&menu/login.dart';
-import 'package:deposito/pages/login&menu/menu.dart';
-import 'package:deposito/pages/Productos/product_page.dart';
-import 'package:deposito/pages/Inventario/revisar_inventario.dart';
-import 'package:deposito/pages/picking/pedido_interno.dart';
-import 'package:deposito/pages/picking/pedidos.dart';
-import 'package:deposito/pages/picking/picking.dart';
-import 'package:deposito/pages/picking/picking_compra.dart';
-import 'package:deposito/pages/picking/picking_products.dart';
-import 'package:deposito/pages/picking/picking_products_compra.dart';
-import 'package:deposito/pages/picking/resumen_picking.dart';
-import 'package:deposito/pages/resumenInventario/resumen_general_inventario.dart';
-import 'package:deposito/pages/resumenInventario/resumen_inventario.dart';
-import 'package:deposito/pages/seleccion_almacen.dart';
-import 'package:deposito/pages/simple_product_page.dart';
-import 'package:deposito/pages/Transferencia/transferencia_almacen.dart';
-import 'package:deposito/pages/Transferencia/transferencia_ubicacion_destino.dart'; // Importa la nueva pantalla
-import 'package:deposito/pages/version_check_page.dart';
-import 'package:deposito/provider/product_provider.dart';
-import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
+import 'pages.dart';
 
 class AppRouter {
   static Future<GoRouter> createAppRouter(String initialLocation) async {
@@ -89,6 +61,7 @@ class AppRouter {
         ),
         GoRoute(path: '/pickingCompra', builder: (context, state) => const PickingCompra(),),
         GoRoute(path: '/pickingProductosCompra', builder: (context, state) => const PickingProductsEntrada()),
+        GoRoute(path: '/monitor', builder: (context, state) => const MonitorPage()),
       ],
     );
   }

@@ -28,6 +28,7 @@ class PickingProductsEntradaState extends State<PickingProductsEntrada> {
   FocusNode focoDeScanner = FocusNode();
   TextEditingController textController = TextEditingController();
   late UbicacionAlmacen ubicacionSeleccionada = UbicacionAlmacen.empty();
+  late bool camera = false;
 
   @override
   void initState() {
@@ -60,6 +61,7 @@ class PickingProductsEntradaState extends State<PickingProductsEntrada> {
       final provider = Provider.of<ProductProvider>(context, listen: false);
       final ordenPicking = provider.ordenPickingInterna;
       ubicacionSeleccionada = provider.ubicacion;
+      camera = provider.camera;
 
       if (ordenPicking.lineas == null || ordenPicking.lineas!.isEmpty) {
         setState(() {
@@ -604,6 +606,7 @@ class PickingProductsEntradaState extends State<PickingProductsEntrada> {
       backgroundColor: colors.primary,
       foregroundColor: Colors.white,
       children: [
+        if(camera)
         SpeedDialChild(
           child: const Icon(Icons.qr_code_scanner_outlined),
           backgroundColor: colors.primary,

@@ -29,6 +29,7 @@ class _PickingCompraState extends State<PickingCompra> {
   TextEditingController textController = TextEditingController();
   List<UbicacionAlmacen> listaUbicaciones = [];
   late UbicacionAlmacen ubicacionSeleccionada = UbicacionAlmacen.empty();
+  late bool camera = false;
 
   @override
   void initState() {
@@ -40,6 +41,7 @@ class _PickingCompraState extends State<PickingCompra> {
     final productProvider = context.read<ProductProvider>();
     almacen = productProvider.almacen;
     token = productProvider.token;
+    camera = productProvider.camera;
     focoDeScanner.requestFocus();
     try {
       setState(() {
@@ -187,6 +189,7 @@ class _PickingCompraState extends State<PickingCompra> {
       backgroundColor: colors.primary,
       foregroundColor: Colors.white,
       children: [
+        if(camera)
         SpeedDialChild(
           child: const Icon(Icons.qr_code_scanner_outlined),
           backgroundColor: colors.primary,

@@ -37,6 +37,7 @@ class _InventarioPageState extends State<InventarioPage> {
   late UbicacionAlmacen ubicacionSeleccionada = UbicacionAlmacen.empty();
   List<dynamic> productosBuscados = [];
   bool estoyBuscando = true;
+  late bool camera = false;
 
   @override
   void initState() {
@@ -67,6 +68,7 @@ class _InventarioPageState extends State<InventarioPage> {
     final productProvider = context.read<ProductProvider>();
     almacen = productProvider.almacen;
     token = productProvider.token;
+    camera = productProvider.camera;
     listaUbicaciones = await AlmacenServices().getUbicacionDeAlmacen(context, almacen.almacenId, token);
     setState(() {});
   }
@@ -149,6 +151,7 @@ class _InventarioPageState extends State<InventarioPage> {
         backgroundColor: colors.primary,
         foregroundColor: Colors.white,
         children: [
+          if(camera)
           SpeedDialChild(
             child: const Icon(Icons.qr_code_scanner_outlined),
             backgroundColor: colors.primary,

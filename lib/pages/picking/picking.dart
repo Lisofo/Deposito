@@ -27,6 +27,7 @@ class _PickingPageState extends State<PickingPage> {
   FocusNode focoDeScanner = FocusNode();
   TextEditingController textController = TextEditingController();
   late UbicacionePicking ubiSeleccionada = UbicacionePicking.empty();
+  late bool camera = false;
 
   @override
   void initState() {
@@ -39,6 +40,7 @@ class _PickingPageState extends State<PickingPage> {
     almacen = productProvider.almacen;
     token = productProvider.token;
     focoDeScanner.requestFocus();
+    camera = productProvider.camera;
     try {
       setState(() {
         isLoading = true;
@@ -92,6 +94,7 @@ class _PickingPageState extends State<PickingPage> {
       backgroundColor: colors.primary,
       foregroundColor: Colors.white,
       children: [
+        if(camera)
         SpeedDialChild(
           child: const Icon(Icons.qr_code_scanner_outlined),
           backgroundColor: colors.primary,

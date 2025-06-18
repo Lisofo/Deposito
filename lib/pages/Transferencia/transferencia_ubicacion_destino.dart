@@ -35,6 +35,8 @@ class _TransferenciaUbicacionDestinoState extends State<TransferenciaUbicacionDe
   final _almacenServices = AlmacenServices();
   TextEditingController textController = TextEditingController();
   FocusNode focoDeScanner = FocusNode();
+  late bool camera = false;
+  late bool enMano = false;
 
   @override
   void didChangeDependencies() {
@@ -46,6 +48,7 @@ class _TransferenciaUbicacionDestinoState extends State<TransferenciaUbicacionDe
     final productProvider = context.read<ProductProvider>();
     almacen = productProvider.almacen;
     token = productProvider.token;
+    camera = productProvider.camera;
     listaUbicaciones = await _almacenServices.getUbicacionDeAlmacen(context, almacen.almacenId, token);
     setState(() {});
   }
@@ -81,6 +84,7 @@ class _TransferenciaUbicacionDestinoState extends State<TransferenciaUbicacionDe
               UbicacionDropdown(
                 listaUbicaciones: listaUbicaciones,
                 selectedItem: ubicacionDestino.almacenId == 0 ? null : ubicacionDestino,
+                enabled: !enMano,
                 onChanged: (value) {
                   setState(() {
                     ubicacionDestino = value!;
@@ -132,7 +136,7 @@ class _TransferenciaUbicacionDestinoState extends State<TransferenciaUbicacionDe
               CustomButton(
                 text: 'Transferir',
                 onPressed: () async {
-                  if (ubicacionDestino.almacenId == 0) {
+                  if (ubicacionDestino.almacenId == 0 && enMano == false) {
                     Carteles.showDialogs(context, 'Seleccione una ubicación de destino', false, true, false);
                     return;
                   }
@@ -142,12 +146,28 @@ class _TransferenciaUbicacionDestinoState extends State<TransferenciaUbicacionDe
             ],
           ),
         ),
+        bottomNavigationBar: Row(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            Switch(
+              value: enMano,
+              onChanged: (value) {
+                ubicacionDestino = UbicacionAlmacen.empty();
+                setState(() {
+                  enMano = value;
+                });
+              }
+            ),
+            const Text('Llevar en mano')
+          ],
+        ),
         floatingActionButton: SpeedDial(
           icon: Icons.add,
           activeIcon: Icons.close,
           backgroundColor: colors.primary,
           foregroundColor: Colors.white,
           children: [
+            if(camera)
             SpeedDialChild(
               child: const Icon(Icons.qr_code_scanner_outlined),
               backgroundColor: colors.primary,
@@ -227,7 +247,7 @@ class _TransferenciaUbicacionDestinoState extends State<TransferenciaUbicacionDe
         productoAAgregar.productoAgregado.raiz,
         almacen.almacenId,
         widget.ubicacionOrigen.almacenUbicacionId,
-        ubicacionDestino.almacenUbicacionId,
+        enMano ? 0 :ubicacionDestino.almacenUbicacionId,
         productoAAgregar.cantidad,
         token,
       );
@@ -235,7 +255,11 @@ class _TransferenciaUbicacionDestinoState extends State<TransferenciaUbicacionDe
     statusCode = await _almacenServices.getStatusCode();
     await _almacenServices.resetStatusCode();
     if(statusCode == 1) {
-      Carteles.showDialogs(context, 'Transferencia completada', true, false, false);
-    }
+      var push = Carteles.showDialogs(context, 'Transferencia completada', true, true, false);
+      if(push){
+        Navigator.of(context).popUntil((route) => route.settings.name == '/transferencia');
+        appRouter.pushReplacement('/transferencia');
+      }
+    }    
   }
 }

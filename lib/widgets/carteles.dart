@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 class Carteles {
   
-  static Future<void> showDialogs(BuildContext context, String errorMessage, bool doblePop, bool triplePop, bool cuadruplePop) async {
+  static showDialogs(BuildContext context, String errorMessage, bool doblePop, bool triplePop, bool cuadruplePop) {
     showDialog(
       barrierDismissible: false,
       context: context,
@@ -29,6 +29,7 @@ class Carteles {
         );
       },
     );
+    return true;
   }
 
   static void showErrorDialog(BuildContext context, String errorMessage) {

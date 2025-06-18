@@ -28,6 +28,7 @@ class PickingProductsState extends State<PickingProducts> {
   ScaffoldMessengerState? _scaffoldMessenger;
   FocusNode focoDeScanner = FocusNode();
   TextEditingController textController = TextEditingController();
+  late bool camera = false;
 
   @override
   void initState() {
@@ -59,7 +60,7 @@ class PickingProductsState extends State<PickingProducts> {
 
       final provider = Provider.of<ProductProvider>(context, listen: false);
       final ordenPicking = provider.ordenPickingInterna;
-
+      camera = provider.camera;
       if (ordenPicking.lineas == null || ordenPicking.lineas!.isEmpty) {
         setState(() {
           _error = 'No hay líneas para procesar';
@@ -643,6 +644,7 @@ class PickingProductsState extends State<PickingProducts> {
       backgroundColor: colors.primary,
       foregroundColor: Colors.white,
       children: [
+        if(camera)
         SpeedDialChild(
           child: const Icon(Icons.qr_code_scanner_outlined),
           backgroundColor: colors.primary,

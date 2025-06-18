@@ -2,62 +2,95 @@
 
 import 'package:deposito/config/router/router.dart';
 import 'package:deposito/models/orden_picking.dart';
+import 'package:deposito/models/usuario.dart';
 import 'package:deposito/provider/product_provider.dart';
 import 'package:deposito/services/picking_services.dart';
+import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-class ListaPicking extends StatefulWidget {
-  const ListaPicking({super.key});
+class MonitorPage extends StatefulWidget {
+  const MonitorPage({super.key});
 
   @override
-  State<ListaPicking> createState() => _ListaPickingState();
+  State<MonitorPage> createState() => _MonitorPageState();
 }
 
-class _ListaPickingState extends State<ListaPicking> {
+class _MonitorPageState extends State<MonitorPage> {
   final PickingServices _pickingServices = PickingServices();
   final TextEditingController _searchController = TextEditingController();
   final GlobalKey<RefreshIndicatorState> _refreshIndicatorKey = GlobalKey<RefreshIndicatorState>();
 
   List<OrdenPicking> _ordenes = [];
   List<OrdenPicking> _filteredOrdenes = [];
+  List<Usuario> usuarios = [];
   bool _isLoading = true;
-  bool _isFilterExpanded = false; // Nuevo: controla si los filtros están expandidos
+  bool _isFilterExpanded = false;
 
   // Filtros
   DateTime? _fechaDesde;
   DateTime? _fechaHasta;
   String? _selectedPrioridad;
-  String? _selectedEstado;
+  List<Map<String, String>> _selectedTipos = [];
+  String? _selectedLocalidad;
+  String? _selectedAlmacenOrigen;
+  String? _selectedAlmacenDestino;
+  Usuario? _selectedUsuarioMod;
+  Usuario? _selectedUsuarioCreado;
   int _groupValue = -1;
 
   // Opciones para dropdowns
   final List<String> _prioridades = ['ALTA', 'NORMAL', 'BAJA', 'TODAS'];
-  final List<String> _estados = ['Pendiente', 'En proceso', 'Cerrado', 'Cancelado', 'Todos'];
+  final List<Map<String, String>> _tipos = [
+    {'value': 'C', 'label': 'Compra'},
+    {'value': 'TE', 'label': 'Remito Entrada'},
+    {'value': 'V', 'label': 'Venta'},
+    {'value': 'TS', 'label': 'Remito Salida'},
+    {'value': 'P', 'label': 'Pedido de venta'},
+    {'value': '', 'label': 'Todos'},
+  ];
 
   String token = '';
 
   @override
   void initState() {
     super.initState();
-    token = context.read<ProductProvider>().token;
-    _loadData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      token = context.read<ProductProvider>().token;
+      _loadData();
+    });
   }
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     try {
       await _pickingServices.resetStatusCode();
-      String menu = context.read<ProductProvider>().menu;
-      var menuSplitted = menu.split('-');
-      final result = await _pickingServices.getOrdenesPicking(context, token, tipo: menuSplitted[1]);
+      usuarios = await _pickingServices.getUsuarios(context, token);
+      final result = await _pickingServices.getOrdenesPicking(
+        context,
+        token,
+        tipo: _selectedTipos.isNotEmpty ? _selectedTipos.map((t) => t['value']!).join(',') : null,
+        prioridad: _selectedPrioridad != 'TODAS' ? _selectedPrioridad : null,
+        codEntidad: _searchController.text.isNotEmpty ? _searchController.text : null,
+        fechaDateDesde: _fechaDesde,
+        fechaDateHasta: _fechaHasta,
+        estado: _groupValue != -1 ? ['PENDIENTE', 'EN PROCESO', 'CERRADO'][_groupValue] : null,
+        ruc: _searchController.text.isNotEmpty ? _searchController.text : null,
+        serie: _searchController.text.isNotEmpty ? _searchController.text : null,
+        numeroDocumento: _searchController.text.isNotEmpty ? _searchController.text : null,
+        almacenIdOrigen: _selectedAlmacenOrigen,
+        almacenIdDestino: _selectedAlmacenDestino,
+        localidad: _selectedLocalidad,
+        usuId: _selectedUsuarioCreado?.usuarioId,
+        modUsuId: _selectedUsuarioMod?.usuarioId,
+      );
+      
       if (result != null && _pickingServices.statusCode == 1) {
         setState(() {
           _ordenes = result;
-          _filteredOrdenes = List.from(_ordenes); // Primero carga todos los datos sin filtros
-          _applyFilters(); // Luego aplica los filtros si los hay
+          _filteredOrdenes = List.from(_ordenes);
         });
       }
     } finally {
@@ -66,73 +99,7 @@ class _ListaPickingState extends State<ListaPicking> {
   }
 
   Future<void> _refreshData() async {
-    setState(() => _isLoading = true);
-    try {
-      await _pickingServices.resetStatusCode();
-      String menu = context.read<ProductProvider>().menu;
-      final result = await _pickingServices.getOrdenesPicking(context, token, tipo: menu);
-      if (result != null && _pickingServices.statusCode == 1) {
-        setState(() {
-          _ordenes = result;
-          _applyFilters(); // Aplica los filtros activos (incluyendo el estado del segmented control)
-        });
-      }
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  void _applyFilters() {
-    List<OrdenPicking> filtered = List.from(_ordenes);
-
-    // Filtro de búsqueda de texto
-    if (_searchController.text.isNotEmpty) {
-      final searchText = _searchController.text.toLowerCase();
-      filtered = filtered.where((orden) =>
-        orden.tipo.toLowerCase().contains(searchText) ||
-        orden.codEntidad.toLowerCase().contains(searchText) ||
-        orden.ruc.toLowerCase().contains(searchText) ||
-        orden.numeroDocumento.toString().contains(searchText) ||
-        (orden.serie?.toLowerCase().contains(searchText) ?? false)
-      ).toList();
-    }
-
-    // Filtro por estado (segmented control)
-    if (_groupValue != -1) {
-      switch (_groupValue) {
-        case 0:
-          filtered = filtered.where((orden) => orden.estado.toUpperCase() == 'PENDIENTE').toList();
-          break;
-        case 1:
-          filtered = filtered.where((orden) => orden.estado.toUpperCase() == 'EN PROCESO').toList();
-          break;
-        case 2:
-          filtered = filtered.where((orden) => orden.estado.toUpperCase() == 'CERRADO').toList();
-          break;
-      }
-    }
-
-    // Filtro por fecha desde
-    if (_fechaDesde != null) {
-      filtered = filtered.where((orden) => 
-        orden.fechaDate.isAfter(_fechaDesde!) || 
-        orden.fechaDate.isAtSameMomentAs(_fechaDesde!)
-      ).toList();
-    }
-
-    // Filtro por fecha hasta
-    if (_fechaHasta != null) {
-      filtered = filtered.where((orden) => 
-        orden.fechaDate.isBefore(_fechaHasta!) || 
-        orden.fechaDate.isAtSameMomentAs(_fechaHasta!)
-      ).toList();
-    }
-
-    // Filtro por prioridad
-    if (_selectedPrioridad != null && _selectedPrioridad!.isNotEmpty && _selectedPrioridad != 'TODAS') {
-      filtered = filtered.where((orden) => orden.prioridad == _selectedPrioridad).toList();
-    }    
-    setState(() => _filteredOrdenes = filtered);
+    await _loadData();
   }
 
   void _resetFilters() {
@@ -140,10 +107,15 @@ class _ListaPickingState extends State<ListaPicking> {
       _fechaDesde = null;
       _fechaHasta = null;
       _selectedPrioridad = null;
-      _selectedEstado = null;
+      _selectedTipos.clear();
+      _selectedLocalidad = null;
+      _selectedAlmacenOrigen = null;
+      _selectedAlmacenDestino = null;
       _groupValue = -1;
       _searchController.clear();
-      _filteredOrdenes = List.from(_ordenes);
+      _selectedUsuarioCreado = null;
+      _selectedUsuarioMod = null;
+      _loadData();
     });
   }
 
@@ -161,22 +133,25 @@ class _ListaPickingState extends State<ListaPicking> {
         } else {
           _fechaHasta = picked;
         }
-        _applyFilters();
       });
     }
   }
 
-  // Método para verificar si hay filtros activos
   bool _hasActiveFilters() {
     return _fechaDesde != null ||
            _fechaHasta != null ||
            (_selectedPrioridad != null && _selectedPrioridad != 'TODAS') ||
+           _selectedTipos.isNotEmpty ||
+           _selectedLocalidad != null ||
+           _selectedAlmacenOrigen != null ||
+           _selectedAlmacenDestino != null ||
            _searchController.text.isNotEmpty ||
            _groupValue != -1;
   }
 
   @override
   Widget build(BuildContext context) {
+    // final isWeb = MediaQuery.of(context).size.width > 600;
     final colors = Theme.of(context).colorScheme;
     
     return SafeArea(
@@ -189,7 +164,6 @@ class _ListaPickingState extends State<ListaPicking> {
           ),
           iconTheme: IconThemeData(color: colors.onPrimary),
           actions: [
-            // Indicador de filtros activos
             if (_hasActiveFilters())
               Container(
                 margin: const EdgeInsets.only(right: 8),
@@ -238,7 +212,6 @@ class _ListaPickingState extends State<ListaPicking> {
                             ),
                           ),
                           const Spacer(),
-                          // Mostrar conteo de filtros activos
                           if (_hasActiveFilters())
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -264,7 +237,6 @@ class _ListaPickingState extends State<ListaPicking> {
                       ),
                     ),
                   ),
-                  // Contenido de filtros (colapsable)
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 300),
                     height: _isFilterExpanded ? null : 0,
@@ -277,23 +249,22 @@ class _ListaPickingState extends State<ListaPicking> {
                             child: Column(
                               children: [
                                 const Divider(),
-                                // Búsqueda general
+                                // Dropdown para Tipo
                                 TextField(
                                   controller: _searchController,
                                   decoration: InputDecoration(
-                                    labelText: 'Buscar (Tipo, Código, RUC, Documento, Serie)',
+                                    labelText: 'Buscar (Código, RUC, Documento, Serie)',
                                     border: const OutlineInputBorder(),
                                     suffixIcon: _searchController.text.isNotEmpty
                                       ? IconButton(
                                           icon: const Icon(Icons.clear),
                                           onPressed: () {
                                             _searchController.clear();
-                                            _applyFilters();
+                                            _loadData();
                                           },
                                         )
                                       : const Icon(Icons.search),
                                   ),
-                                  onChanged: (value) => _applyFilters(),
                                 ),
                                 const SizedBox(height: 15),
                                 Row(
@@ -311,7 +282,6 @@ class _ListaPickingState extends State<ListaPicking> {
                                                   onPressed: () {
                                                     setState(() {
                                                       _fechaDesde = null;
-                                                      _applyFilters();
                                                     });
                                                   },
                                                 )
@@ -321,11 +291,6 @@ class _ListaPickingState extends State<ListaPicking> {
                                             _fechaDesde != null 
                                               ? DateFormat('dd/MM/yyyy').format(_fechaDesde!)
                                               : 'Seleccionar fecha',
-                                            style: TextStyle(
-                                              color: _fechaDesde != null 
-                                                ? Colors.black 
-                                                : Colors.grey[600],
-                                            ),
                                           ),
                                         ),
                                       ),
@@ -344,7 +309,6 @@ class _ListaPickingState extends State<ListaPicking> {
                                                   onPressed: () {
                                                     setState(() {
                                                       _fechaHasta = null;
-                                                      _applyFilters();
                                                     });
                                                   },
                                                 )
@@ -354,11 +318,6 @@ class _ListaPickingState extends State<ListaPicking> {
                                             _fechaHasta != null 
                                               ? DateFormat('dd/MM/yyyy').format(_fechaHasta!)
                                               : 'Seleccionar fecha',
-                                            style: TextStyle(
-                                              color: _fechaHasta != null 
-                                                ? Colors.black 
-                                                : Colors.grey[600],
-                                            ),
                                           ),
                                         ),
                                       ),
@@ -366,7 +325,6 @@ class _ListaPickingState extends State<ListaPicking> {
                                   ],
                                 ),
                                 const SizedBox(height: 15),
-                                // Prioridad Dropdown
                                 DropdownButtonFormField<String>(
                                   value: _selectedPrioridad,
                                   decoration: InputDecoration(
@@ -378,7 +336,6 @@ class _ListaPickingState extends State<ListaPicking> {
                                           onPressed: () {
                                             setState(() {
                                               _selectedPrioridad = 'TODAS';
-                                              _applyFilters();
                                             });
                                           },
                                         )
@@ -393,9 +350,133 @@ class _ListaPickingState extends State<ListaPicking> {
                                   onChanged: (newValue) {
                                     setState(() {
                                       _selectedPrioridad = newValue;
-                                      _applyFilters();
                                     });
                                   },
+                                ),
+                                const SizedBox(height: 15,),
+                                DropdownSearch<Map<String, String>>.multiSelection(
+                                  selectedItems: _selectedTipos,
+                                  items: _tipos,
+                                  dropdownDecoratorProps: const DropDownDecoratorProps(
+                                    dropdownSearchDecoration: InputDecoration(
+                                      labelText: 'Tipo',
+                                      border: OutlineInputBorder(),
+                                    ),
+                                  ),
+                                  popupProps: PopupPropsMultiSelection.menu(
+                                    searchFieldProps: TextFieldProps(
+                                      decoration: InputDecoration(
+                                        suffixIcon: _selectedTipos.isNotEmpty
+                                          ? IconButton(
+                                              icon: const Icon(Icons.clear),
+                                              onPressed: () {
+                                                setState(() => _selectedTipos.clear());
+                                              },
+                                            )
+                                          : null,
+                                        hintText: 'Buscar tipo...',
+                                        border: const OutlineInputBorder(),
+                                      ),
+                                    ),
+                                    itemBuilder: (context, item, isSelected) {
+                                      return ListTile(
+                                        title: Text(item['label']!),
+                                        trailing: isSelected ? const Icon(Icons.check) : null,
+                                      );
+                                    },
+                                    emptyBuilder: (context, searchEntry) => const Center(
+                                      child: Text('No se encontraron tipos'),
+                                    ),
+                                  ),
+                                  onChanged: (values) {
+                                    setState(() => _selectedTipos = values);
+                                  },
+                                  // Muestra los labels en el campo principal
+                                  dropdownBuilder: (context, selectedItems) {
+                                    if (selectedItems.isEmpty) {
+                                      return const Text('Seleccionar tipos...');
+                                    }
+                                    return Text(
+                                      selectedItems.map((tipo) => tipo['label']!).join(', '),
+                                      style: const TextStyle(fontSize: 14),
+                                      overflow: TextOverflow.ellipsis,
+                                    );
+                                  },
+                                ),
+                                const SizedBox(height: 10),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: DropdownSearch<Usuario>(
+                                        selectedItem: _selectedUsuarioCreado,
+                                        items: usuarios,
+                                        dropdownDecoratorProps: const DropDownDecoratorProps(
+                                          dropdownSearchDecoration: InputDecoration(
+                                            labelText: 'Creado por',
+                                            border: OutlineInputBorder()
+                                          ),
+                                        ),
+                                        popupProps: const PopupProps.menu(
+                                          showSearchBox: true,
+                                          searchDelay: Duration.zero,
+                                          searchFieldProps: TextFieldProps(
+                                            decoration: InputDecoration(
+                                              hintText: 'Buscar usuario...',
+                                              border: OutlineInputBorder(),
+                                            ),
+                                          ),
+                                        ),
+                                        onChanged: (value) {
+                                          setState(() {
+                                            _selectedUsuarioCreado = value;
+                                          });
+                                        },
+                                      )
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: DropdownSearch<Usuario>(
+                                        selectedItem: _selectedUsuarioMod,
+                                        items: usuarios,
+                                        dropdownDecoratorProps: const DropDownDecoratorProps(
+                                          dropdownSearchDecoration: InputDecoration(
+                                            labelText: 'Ultima modificación por',
+                                            border: OutlineInputBorder()
+                                          ),
+                                        ),
+                                        popupProps: const PopupProps.menu(
+                                          showSearchBox: true,
+                                          searchDelay: Duration.zero,
+                                          searchFieldProps: TextFieldProps(
+                                            decoration: InputDecoration(
+                                              hintText: 'Buscar usuario...',
+                                              border: OutlineInputBorder(),
+                                            ),
+                                          ),
+                                        ),
+                                        onChanged: (value) {
+                                          setState(() {
+                                            _selectedUsuarioMod = value;
+                                          });
+                                        },
+                                      )
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 10),
+                                ElevatedButton(
+                                  onPressed: _loadData,
+                                  style: ElevatedButton.styleFrom(
+                                    minimumSize: const Size(double.infinity, 50),
+                                    backgroundColor: colors.primary,
+                                  ),
+                                  child: const Text(
+                                    'BUSCAR',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),
@@ -406,7 +487,6 @@ class _ListaPickingState extends State<ListaPicking> {
                 ],
               ),
             ),
-            // Segmented Control para estados (siempre visible)
             CupertinoSegmentedControl<int>(
               padding: const EdgeInsets.symmetric(horizontal: 10),
               groupValue: _groupValue,
@@ -422,12 +502,11 @@ class _ListaPickingState extends State<ListaPicking> {
               onValueChanged: (newValue) {
                 setState(() {
                   _groupValue = newValue;
-                  _applyFilters();
+                  _loadData();
                 });
               },
             ),
             const SizedBox(height: 10),
-            // Lista de resultados
             Expanded(
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
@@ -472,6 +551,7 @@ class _ListaPickingState extends State<ListaPicking> {
                               itemCount: _filteredOrdenes.length,
                               itemBuilder: (context, index) {
                                 final orden = _filteredOrdenes[index];
+
                                 return Card(
                                   margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                                   surfaceTintColor: Colors.white,
@@ -497,6 +577,28 @@ class _ListaPickingState extends State<ListaPicking> {
                                         children: [
                                           Row(
                                             children: [
+                                              Stack(
+                                                alignment: Alignment.center,
+                                                children: [
+                                                  SizedBox(
+                                                    width: 48,
+                                                    height: 48,
+                                                    child: CircularProgressIndicator(
+                                                      value: orden.porcentajeCompletado / 100,
+                                                      strokeWidth: 5,
+                                                      backgroundColor: Colors.grey[400],
+                                                      color: orden.porcentajeCompletado == 100.0 ? Colors.green : colors.secondary,
+                                                    ),
+                                                  ),
+                                                  Text(
+                                                    '${orden.porcentajeCompletado.toStringAsFixed(orden.porcentajeCompletado % 1 == 0 ? 0 : 2)}%',
+                                                    style: const TextStyle(
+                                                      fontSize: 12, 
+                                                      fontWeight: FontWeight.bold
+                                                    ),
+                                                  )
+                                                ],
+                                              ),
                                               Expanded(
                                                 child: Text(
                                                   'Doc: ${orden.numeroDocumento} ${orden.serie ?? ''}',
@@ -524,7 +626,7 @@ class _ListaPickingState extends State<ListaPicking> {
                                             ],
                                           ),
                                           const SizedBox(height: 8),
-                                          Text('Tipo: ${orden.tipo}'),
+                                          Text('Tipo: ${_getTipoLabel(orden.tipo)}'),
                                           Text('Cliente: ${orden.codEntidad} - ${orden.nombre}'),
                                           Text('RUC: ${orden.ruc}'),
                                           Row(
@@ -539,9 +641,12 @@ class _ListaPickingState extends State<ListaPicking> {
                                             children: [
                                               Text('Fecha: ${DateFormat('dd/MM/yyyy').format(orden.fechaDate)}'),
                                               const Spacer(),
-                                              Text(orden.pickId.toString())
+                                              // Text('PickId: ${orden.pickId}')
+                                              Text('${orden.pickId}')
                                             ],
                                           ),
+                                          Text('Creado por: ${orden.creadoPor}'),
+                                          Text('Última modificación por: ${orden.modificadoPor} a las ${DateFormat('dd/MM/yyyy').format(orden.fechaDate)}'),                                          
                                         ],
                                       ),
                                     ),
@@ -555,6 +660,14 @@ class _ListaPickingState extends State<ListaPicking> {
         ),
       ),
     );
+  }
+
+  String _getTipoLabel(String tipo) {
+    final tipoMap = _tipos.firstWhere(
+      (item) => item['value'] == tipo,
+      orElse: () => {'value': tipo, 'label': tipo},
+    );
+    return tipoMap['label']!;
   }
 
   Color _getStatusColor(String status) {

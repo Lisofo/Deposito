@@ -32,6 +32,10 @@ class OrdenPicking {
   late String nombre;
   late String telefono;
   late String localidad;
+  late double porcentajeCompletado;
+  late String creadoPor;
+  late String modificadoPor;
+  late DateTime fechaModificadoPor;
   late List<PickingLinea>? lineas;
 
   OrdenPicking({
@@ -58,7 +62,11 @@ class OrdenPicking {
     required this.nombre,
     required this.telefono,
     required this.localidad,
+    required this.porcentajeCompletado,
     required this.lineas,
+    required this.creadoPor,
+    required this.modificadoPor,
+    required this.fechaModificadoPor,
   });
 
   factory OrdenPicking.fromJson(Map<String, dynamic> json) => OrdenPicking(
@@ -85,6 +93,10 @@ class OrdenPicking {
     nombre: json["nombre"] as String? ?? '',
     telefono: json["telefono"] as String? ?? '',
     localidad: json["localidad"] as String? ?? '',
+    porcentajeCompletado: (json["porcentajeCompletado"] is int) ? (json["porcentajeCompletado"] as int).toDouble() : json["porcentajeCompletado"] as double? ?? 0.0,
+    creadoPor: json["creadoPor"] as String? ?? '',
+    modificadoPor: json["modificadoPor"] as String? ?? '',
+    fechaModificadoPor: DateTime.parse(json["fechaModificadoPor"]),
     lineas: json["lineas"] != null ? List<PickingLinea>.from(json["lineas"].map((x) => PickingLinea.fromJson(x))) : [],
   );
 
@@ -112,6 +124,7 @@ class OrdenPicking {
     "nombre": nombre,
     "telefono": telefono,
     "localidad": localidad,
+    "porcentajeCompletado": porcentajeCompletado,
     "lineas": List<dynamic>.from(lineas!.map((x) => x.toJson())),
   };
 
@@ -125,6 +138,7 @@ class OrdenPicking {
     movimientoId = 0;
     fechaDate = DateTime.now();
     fechaDocumento = DateTime.now();
+    fechaModificadoPor = DateTime.now();
     estado = '';
     almacenIdOrigen = 0;
     almacenIdDestino = 0;
@@ -134,11 +148,14 @@ class OrdenPicking {
     tInfoEmpresaWsId = 0;
     usuId = 0;
     entidadId = 0;
+    porcentajeCompletado = 0.0;
     codEntidad = '';
     ruc = '';
     nombre = '';
     telefono = '';
     localidad = '';
+    creadoPor = '';
+    modificadoPor = '';
     lineas = [];
   }
 }

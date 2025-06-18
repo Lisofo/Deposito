@@ -63,7 +63,9 @@ class _SeleccionAlmacenState extends State<SeleccionAlmacen> {
             iconTheme: IconThemeData(color: colors.onPrimary),
             actions: [
               IconButton(
-                onPressed: () {},
+                onPressed: () {
+                  appRouter.push('/config');
+                },
                 icon: Icon(Icons.settings, color: colors.onPrimary,)
               )
             ],

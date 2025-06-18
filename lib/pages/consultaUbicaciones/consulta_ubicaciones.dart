@@ -30,6 +30,7 @@ class _ConsultaUbicacionesPageState extends State<ConsultaUbicacionesPage> {
   late String valorUbicacion = '';
   late List<ItemConsulta> listaItems = [];
   late List<Variante> variantes = [];
+  late bool camera = false;
 
   @override
   void initState() {
@@ -41,6 +42,7 @@ class _ConsultaUbicacionesPageState extends State<ConsultaUbicacionesPage> {
     final productProvider = context.read<ProductProvider>();
     almacen = productProvider.almacen;
     token = productProvider.token;
+    camera = productProvider.camera;
     listaUbicaciones = await _almacenServices.getUbicacionDeAlmacen(context, almacen.almacenId, token);
     focoDeScanner.requestFocus();
     setState(() {});
@@ -141,6 +143,7 @@ class _ConsultaUbicacionesPageState extends State<ConsultaUbicacionesPage> {
         backgroundColor: colors.primary,
         foregroundColor: Colors.white,
         children: [
+          if(camera)
           SpeedDialChild(
             child: const Icon(Icons.qr_code_scanner_outlined),
             backgroundColor: colors.primary,

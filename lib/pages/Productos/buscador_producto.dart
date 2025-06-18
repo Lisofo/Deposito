@@ -49,6 +49,7 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
   late bool tienePermiso = true;
   late bool agregarCodBarra = false;
   late List<String> permisos = [];
+  late bool camera = false;
 
   @override
   void initState() {
@@ -77,6 +78,7 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
     almacen = productProvider.almacen;
     token = productProvider.token;
     permisos = productProvider.permisos;
+    camera = productProvider.camera;
     tienePermiso = permisos.contains('WMS_MANT_ITEM_CB');
     setState(() {});
   }
@@ -262,6 +264,7 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
           backgroundColor: colores.primary,
           foregroundColor: Colors.white,
           children: [
+            if(camera)
             SpeedDialChild(
               child: const Icon(Icons.qr_code_scanner_outlined),
               backgroundColor: colores.primary,

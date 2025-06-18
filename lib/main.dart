@@ -9,9 +9,13 @@ import 'package:flutter/foundation.dart'; // Importa esto para kIsWeb
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  final prefs = await SharedPreferences.getInstance();
+  final bool camDisponible = prefs.getBool('cambioVista') ?? false;
   
   // Inicializa initialLocation con un valor por defecto
   String initialLocation = '/login';
@@ -26,7 +30,7 @@ Future<void> main() async {
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_)=> ProductProvider(),),
+        ChangeNotifierProvider(create: (_)=> ProductProvider()..setCamara(camDisponible),),
         ChangeNotifierProvider(create: (_) => ThemeProvider(),),
         ChangeNotifierProvider(create: (_) => UbicacionProvider(),),
       ],

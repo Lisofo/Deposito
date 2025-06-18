@@ -568,7 +568,7 @@ class AlmacenServices {
   }
 
   Future postTransferencia(BuildContext context, String codItem, int almacenId, int almacenIdOrigen, int almacenIdDestino, int cantidad, String token) async {
-    String link = '$apirUrl/api/v1/movimientos/$almacenId/ubicaciones';
+    String link = '$apirUrl/api/v1/movimientos/$almacenId/transferencia-ubicaciones';
 
     var data = ({
       "codItem": codItem,

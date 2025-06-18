@@ -108,6 +108,14 @@ class ProductProvider with ChangeNotifier {
   String _menuTitle = '';
   String get menuTitle => _menuTitle;
 
+  bool _camDisponible = true;
+  bool get camera => _camDisponible;
+
+  void setCamara (bool camera) {
+    _camDisponible = camera;
+    notifyListeners();
+  }
+
   void setTitle(String title) {
     _menuTitle = title;
     notifyListeners();

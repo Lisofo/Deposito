@@ -35,6 +35,7 @@ class _TransferenciaAlmacenPageState extends State<TransferenciaAlmacenPage> {
   late String valorUbicacion = '';
   List<Product> historial = [];
   late Product selectedProduct = Product.empty();
+  late bool camera = false;
 
   @override
   void initState() {
@@ -42,10 +43,17 @@ class _TransferenciaAlmacenPageState extends State<TransferenciaAlmacenPage> {
     cargarDatos();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    cargarDatos();
+  }
+
   cargarDatos() async {
     final productProvider = context.read<ProductProvider>();
     almacen = productProvider.almacen;
     token = productProvider.token;
+    camera = productProvider.camera;
     listaUbicaciones = await _almacenServices.getUbicacionDeAlmacen(context, almacen.almacenId, token);
     setState(() {});
   }
@@ -183,6 +191,7 @@ class _TransferenciaAlmacenPageState extends State<TransferenciaAlmacenPage> {
           backgroundColor: colors.primary,
           foregroundColor: Colors.white,
           children: [
+            if(camera)
             SpeedDialChild(
               child: const Icon(Icons.qr_code_scanner_outlined),
               backgroundColor: colors.primary,

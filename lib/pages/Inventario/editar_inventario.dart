@@ -39,6 +39,7 @@ class _EditarInventarioState extends State<EditarInventario> {
   late List<Conteo> conteoList = [];
   final TextEditingController conteoController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
+  late bool camera = false;
 
   @override
   void initState() {
@@ -51,6 +52,7 @@ class _EditarInventarioState extends State<EditarInventario> {
     almacen = productProvider.almacen;
     token = productProvider.token;
     ubicacion = productProvider.ubicacion;
+    camera = productProvider.camera;
     conteoList = await _almacenServices.getConteoUbicacion(context, almacen.almacenId, ubicacion.almacenUbicacionId, token);
     focoDeScanner.requestFocus();
     setState(() {});
@@ -158,6 +160,7 @@ class _EditarInventarioState extends State<EditarInventario> {
           backgroundColor: colors.primary,
           foregroundColor: Colors.white,
           children: [
+            if(camera)
             SpeedDialChild(
               child: const Icon(Icons.qr_code_scanner_outlined),
               backgroundColor: colors.primary,
