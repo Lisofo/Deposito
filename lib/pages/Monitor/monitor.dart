@@ -37,7 +37,7 @@ class _MonitorPageState extends State<MonitorPage> {
   DateTime? _fechaDesde;
   DateTime? _fechaHasta;
   String? _selectedPrioridad;
-  List<Map<String, String>> _selectedTipos = [];
+  List<Map<String, String>>? _selectedTipos = [];
   Usuario? _selectedUsuarioMod;
   Usuario? _selectedUsuarioCreado;
   int _groupValue = -1;
@@ -73,8 +73,12 @@ class _MonitorPageState extends State<MonitorPage> {
         context,
         almacen.almacenId,
         token,
-        tipo: _selectedTipos.isNotEmpty ? _selectedTipos.map((t) => t['value']!).join(',') : null,
-        prioridad: _selectedPrioridad != 'TODAS' ? _selectedPrioridad : null,
+        tipo: _selectedTipos != null && _selectedTipos!.isNotEmpty 
+            ? _selectedTipos!.map((t) => t['value']!).join(',') 
+            : null,
+        prioridad: _selectedPrioridad != null && _selectedPrioridad != 'TODAS' 
+            ? _selectedPrioridad 
+            : null,
         fechaDateDesde: _fechaDesde,
         fechaDateHasta: _fechaHasta,
         estado: _groupValue != -1 ? ['PENDIENTE', 'EN PROCESO', 'CERRADO'][_groupValue] : null,
@@ -105,7 +109,7 @@ class _MonitorPageState extends State<MonitorPage> {
       _fechaDesde = null;
       _fechaHasta = null;
       _selectedPrioridad = null;
-      _selectedTipos.clear();
+      _selectedTipos?.clear();
       _groupValue = -1;
       _searchControllerNombre.clear();
       _searchControllerNumeroDoc.clear();
@@ -118,14 +122,14 @@ class _MonitorPageState extends State<MonitorPage> {
   
   bool _hasActiveFilters() {
     return _fechaDesde != null ||
-           _fechaHasta != null ||
-           (_selectedPrioridad != null && _selectedPrioridad != 'TODAS') ||
-           _selectedTipos.isNotEmpty ||
-           _searchControllerNombre.text.isNotEmpty ||
-           _searchControllerNumeroDoc.text.isNotEmpty ||
-           _selectedUsuarioCreado != null ||
-           _selectedUsuarioMod != null ||
-           _groupValue != -1;
+          _fechaHasta != null ||
+          (_selectedPrioridad != null && _selectedPrioridad != 'TODAS') ||
+          (_selectedTipos != null && _selectedTipos!.isNotEmpty) ||
+          _searchControllerNombre.text.isNotEmpty ||
+          _searchControllerNumeroDoc.text.isNotEmpty ||
+          _selectedUsuarioCreado != null ||
+          _selectedUsuarioMod != null ||
+          _groupValue != -1;
   }
 
   @override

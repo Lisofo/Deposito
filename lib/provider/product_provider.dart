@@ -102,7 +102,7 @@ class ProductProvider with ChangeNotifier {
   String _menu = '';
   String get menu => _menu;
 
-  bool _modoSeleccionUbicacion = false;
+  bool _modoSeleccionUbicacion = true;
   bool get modoSeleccionUbicacion => _modoSeleccionUbicacion;
 
   String _menuTitle = '';
@@ -110,6 +110,14 @@ class ProductProvider with ChangeNotifier {
 
   bool _camDisponible = true;
   bool get camera => _camDisponible;
+
+  List<UbicacionAlmacen> _listaDeUbicacionesXAlmacen = [];
+  List<UbicacionAlmacen> get listaDeUbicacionesXAlmacen => _listaDeUbicacionesXAlmacen;
+
+  void setListaDeUbicaciones (List<UbicacionAlmacen> lista) {
+    _listaDeUbicacionesXAlmacen = lista;
+    notifyListeners();
+  } 
 
   void setCamara (bool camera) {
     _camDisponible = camera;

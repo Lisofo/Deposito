@@ -62,6 +62,7 @@ class _ListaPickingState extends State<ListaPicking> {
         estado: _groupValue != -1 ? ['PENDIENTE', 'EN PROCESO', 'CERRADO'][_groupValue] : null,
         numeroDocumento: _searchControllerNumeroDoc.text.isNotEmpty ? _searchControllerNumeroDoc.text : null,
         nombre: _searchControllerNombre.text.isNotEmpty ? _searchControllerNombre.text : null,
+        modUsuId: _groupValue == 0 ? null : context.read<ProductProvider>().uId
       );
       
       if (result != null && _pickingServices.statusCode == 1) {
@@ -168,7 +169,7 @@ class _ListaPickingState extends State<ListaPicking> {
               selectedColor: colors.primary,
               unselectedColor: Colors.white,
               children: {
-                -1: buildSegment('Todos'),
+                -1: buildSegment('Mis ordenes'),
                 0: buildSegment('Pendiente'),
                 1: buildSegment('En Proceso'),
                 2: buildSegment('Completado'),

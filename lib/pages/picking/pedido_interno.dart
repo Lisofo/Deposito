@@ -31,6 +31,12 @@ class _PedidoInternoState extends State<PedidoInterno> {
     cargarData();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    cargarData();
+  }
+
   void cargarData() async {
     orderProvider = context.read<ProductProvider>().ordenPicking;
     token = context.read<ProductProvider>().token;
@@ -38,7 +44,7 @@ class _PedidoInternoState extends State<PedidoInterno> {
     order = await PickingServices().getLineasOrder(context, orderProvider.pickId, almacen.almacenId, token);
     
     // Inicializar el modo en el provider
-    context.read<ProductProvider>().setModoSeleccionUbicacion(valorSwitch);
+    valorSwitch = context.read<ProductProvider>().modoSeleccionUbicacion;
     
     setState(() {});
   }
@@ -125,20 +131,28 @@ class _PedidoInternoState extends State<PedidoInterno> {
             const SizedBox(height: 8),
             Column(
               children: [
-                for (final item in order.lineas!)
+                for (var i = 0; i < order.lineas!.length; i++)...[
                   Card(
                     margin: const EdgeInsets.only(bottom: 8),
                     child: ListTile(
                       leading: const Icon(Icons.inventory),
-                      title: Text(item.descripcion),
-                      subtitle: Text('Código: ${item.codItem}'),
-                      trailing: Text('${item.cantidadPedida} unid'),
-                      onTap: valorSwitch ? null : () {
+                      title: Text(order.lineas![i].descripcion),
+                      subtitle: Text('Código: ${order.lineas![i].codItem}'),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('${order.lineas![i].cantidadPickeada} / ${order.lineas![i].cantidadPedida} unid.'),
+                          const SizedBox(width: 8,),
+                          if(order.lineas![i].cantidadPickeada == order.lineas![i].cantidadPedida)
+                            const Icon(Icons.check_circle, color: Colors.green,),
+                        ]
+                      ),
+                      onTap: (valorSwitch || order.estado == 'CERRADO') ? null : () {
                         if(seleccionado == false) {
                           setState(() {
                             seleccionado = true;
                           });
-                          _seleccionarLineaManual(item);
+                          _seleccionarLineaManual(order.lineas![i], i);
                           setState(() {
                             seleccionado = false;
                           });
@@ -146,6 +160,7 @@ class _PedidoInternoState extends State<PedidoInterno> {
                       } ,
                     ),
                   ),
+                ]
               ],
             ),
             
@@ -155,9 +170,10 @@ class _PedidoInternoState extends State<PedidoInterno> {
     );
   }
 
-  void _seleccionarLineaManual(PickingLinea linea) {
+  void _seleccionarLineaManual(PickingLinea linea, int index) {
     final provider = Provider.of<ProductProvider>(context, listen: false);
-    provider.setCurrentLineIndex(order.lineas!.indexOf(linea));
+    
+    provider.setCurrentLineIndex(index); // <-- ESTABLECER ÍNDICE CORRECTO
     provider.setOrdenPickingInterna(order);
     provider.setLineasPicking(order.lineas ?? []);
     
@@ -241,7 +257,7 @@ class _PedidoInternoState extends State<PedidoInterno> {
               Icon(Icons.handyman, color: !valorSwitch ? colors.secondary : colors.onSurface,),
               Switch(
                 value: valorSwitch,
-                onChanged: (value) {
+                onChanged: order.estado == 'CERRADO' ? null : (value) {
                   valorSwitch = value;
                   context.read<ProductProvider>().setModoSeleccionUbicacion(value);
                   setState(() {});
@@ -353,7 +369,7 @@ class _PedidoInternoState extends State<PedidoInterno> {
         return Colors.orange;
       case 'EN PROCESO':
         return Colors.blue;
-      case 'COMPLETADO':
+      case 'CERRADO':
         return Colors.green;
       case 'CANCELADO':
         return Colors.red;

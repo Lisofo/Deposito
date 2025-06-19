@@ -119,7 +119,7 @@ class _PickingPageState extends State<PickingPage> {
         final ordenPicking = provider.ordenPickingInterna;
         final lineas = ordenPicking.lineas ?? [];
         final currentLineIndex = provider.currentLineIndex;
-        final selectedLine = currentLineIndex < lineas.length ? lineas[currentLineIndex] : null;
+        final selectedLine = (currentLineIndex >= 0 && currentLineIndex < lineas.length) ? lineas[currentLineIndex] : null;
         
         // Si no hay línea seleccionada o no hay ubicaciones, muestra un mensaje alternativo
         final ubicacionTexto = selectedLine?.ubicaciones.isNotEmpty == true 
@@ -269,8 +269,15 @@ class _PickingPageState extends State<PickingPage> {
     if (currentLineIndex >= lineas.length) return;
     
     try {
-      final selectedLine = lineas[currentLineIndex];
-      final ubicacion = selectedLine.ubicaciones.firstWhere(
+      final currentLine = lineas[currentLineIndex];
+      
+      // Si no hay ubicaciones, avanzar a la siguiente línea
+      if (currentLine.ubicaciones.isEmpty) {
+        _handleEmptyLocations(provider);
+        return;
+      }
+      
+      final ubicacion = currentLine.ubicaciones.firstWhere(
         (u) => u.codUbicacion == value,
         orElse: () => UbicacionePicking.empty(),
       );
@@ -289,7 +296,6 @@ class _PickingPageState extends State<PickingPage> {
       
       textController.clear();
       
-      
     } catch (e) {
       Carteles.showDialogs(context, 'Error al procesar el escaneo', false, false, false);
     }
@@ -303,8 +309,19 @@ class _PickingPageState extends State<PickingPage> {
           color: Colors.white,
           padding: const EdgeInsets.all(8),
           child: ElevatedButton(
-            onPressed: ubiSeleccionada.almacenUbicacionId == 0 ? null : () {
-              if (ubiSeleccionada.almacenUbicacionId != 0) {
+            onPressed: () {
+              final ordenPicking = provider.ordenPickingInterna;
+              final currentLineIndex = provider.currentLineIndex;
+              final currentLine = ordenPicking.lineas![currentLineIndex];
+              
+              // Si no hay ubicaciones, avanzar a la siguiente línea
+              if (currentLine.ubicaciones.isEmpty) {
+                _handleEmptyLocations(provider);
+              } else if (ubiSeleccionada.almacenUbicacionId == 0) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Debe seleccionar o escanear una ubicación')),
+                );
+              } else {
                 provider.setUbicacionSeleccionada(ubiSeleccionada);
                 provider.setCurrentLineIndex(provider.currentLineIndex);
                 if (provider.modoSeleccionUbicacion) {
@@ -312,10 +329,6 @@ class _PickingPageState extends State<PickingPage> {
                 } else {
                   appRouter.push('/pickingProductosConteo');
                 }
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Debe seleccionar o escanear una ubicación')),
-                );
               }
             },
             style: ElevatedButton.styleFrom(
@@ -330,5 +343,28 @@ class _PickingPageState extends State<PickingPage> {
         );
       },
     );
+  }
+
+  // Nuevo método para manejar líneas sin ubicaciones
+  void _handleEmptyLocations(ProductProvider provider) {
+    final ordenPicking = provider.ordenPickingInterna;
+    final currentLineIndex = provider.currentLineIndex;
+    final isLastLine = currentLineIndex >= ordenPicking.lineas!.length - 1;
+    
+    if (isLastLine) {
+      // Ir al resumen si es la última línea
+      appRouter.push('/resumenPicking');
+    } else {
+      // Avanzar a la siguiente línea
+      provider.setCurrentLineIndex(currentLineIndex + 1);
+      setState(() {});
+      
+      // Verificar si la nueva línea tiene ubicaciones
+      final nextLine = ordenPicking.lineas![currentLineIndex + 1];
+      if (nextLine.ubicaciones.isEmpty) {
+        // Si la siguiente línea tampoco tiene ubicaciones, manejar recursivamente
+        _handleEmptyLocations(provider);
+      }
+    }
   }
 }

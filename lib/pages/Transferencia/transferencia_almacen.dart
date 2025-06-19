@@ -1,4 +1,5 @@
 import 'package:deposito/search/product_search_delegate.dart';
+import 'package:deposito/services/almacen_services.dart';
 import 'package:deposito/widgets/ubicacion_dropdown.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
@@ -8,7 +9,6 @@ import 'package:deposito/models/almacen.dart';
 import 'package:deposito/models/ubicacion_almacen.dart';
 import 'package:deposito/models/product.dart';
 import 'package:deposito/provider/product_provider.dart';
-import 'package:deposito/services/almacen_services.dart';
 import 'package:deposito/services/product_services.dart';
 import 'package:deposito/widgets/carteles.dart';
 import 'package:deposito/widgets/custom_button.dart';
@@ -28,7 +28,6 @@ class _TransferenciaAlmacenPageState extends State<TransferenciaAlmacenPage> {
   late UbicacionAlmacen ubicacionOrigen = UbicacionAlmacen.empty();
   TextEditingController textController = TextEditingController();
   FocusNode focoDeScanner = FocusNode();
-  final _almacenServices = AlmacenServices();
   List<ProductoAAgregar> productosEscaneados = []; // Lista de ProductoAAgregar
   List<UbicacionAlmacen> listaUbicaciones = [];
   bool ubicacionEscaneada = false; // Controla si la ubicación ya fue escaneada
@@ -51,12 +50,12 @@ class _TransferenciaAlmacenPageState extends State<TransferenciaAlmacenPage> {
     cargarDatos();
   }
 
-  cargarDatos() async {
+  Future<void> cargarDatos() async {
     final productProvider = context.read<ProductProvider>();
     almacen = productProvider.almacen;
     token = productProvider.token;
     camera = productProvider.camera;
-    listaUbicaciones = await _almacenServices.getUbicacionDeAlmacen(context, almacen.almacenId, token);
+    await cargarListaUsuarios(productProvider);
     for(var ubicacion in listaUbicaciones) {
       hayEnMano = ubicacion.codUbicacion == 'USER${productProvider.uId}';
       if(hayEnMano){
@@ -64,6 +63,15 @@ class _TransferenciaAlmacenPageState extends State<TransferenciaAlmacenPage> {
       }
     }
     setState(() {});
+  }
+
+  Future<void> cargarListaUsuarios(ProductProvider productProvider) async {
+    final listaUser = await AlmacenServices().getUbicacionDeAlmacen(context, almacen.almacenId, token, visualizacion: 'U');
+    if(listaUser.isNotEmpty) {
+      listaUbicaciones = [...productProvider.listaDeUbicacionesXAlmacen, ...listaUser];
+    } else {
+      listaUbicaciones = [...productProvider.listaDeUbicacionesXAlmacen,];
+    }
   }
 
   @override

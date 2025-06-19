@@ -213,12 +213,13 @@ class PickingServices {
     }
   }
 
-  Future patchPicking (BuildContext context, int pickId, String codItem, int almacenUbicacionId, int conteo, String token) async {
+  Future patchPicking (BuildContext context, int pickId, String codItem, int almacenUbicacionId, int conteo, int pickLineaId, String token) async {
     String link = '$apirUrl/api/v1/ordenpicking/$pickId/items';
     var data = {
       "codItem": codItem,
       "almacenUbicacionId": almacenUbicacionId,
-      "conteo": conteo
+      "conteo": conteo,
+      "pickLineaId": pickLineaId
     };
     try {
       var headers = {'Authorization': token};

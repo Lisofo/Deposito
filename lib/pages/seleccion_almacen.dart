@@ -75,16 +75,17 @@ class _SeleccionAlmacenState extends State<SeleccionAlmacen> {
               itemCount: almacenes.length,
               itemBuilder: (context, i) {
                 var almacen = almacenes[i];
+                final productProvider = Provider.of<ProductProvider>(context, listen: false);
                 return ListTile(
                   title: Text(almacen.descripcion, style: const TextStyle(fontSize: 18)),
                   leading: CircleAvatar(child: Text(almacen.codAlmacen, style: const TextStyle(fontSize: 14))),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    Provider.of<ProductProvider>(context, listen: false).setAlmacen(almacen);
-                    Provider.of<ProductProvider>(context, listen: false).setAlmacenNombre(almacen.descripcion);
-      
+                  onTap: () async {
+                    productProvider.setAlmacen(almacen);
+                    productProvider.setAlmacenNombre(almacen.descripcion);
                     // Cambiar el tema usando el color del almacén seleccionado
                     Provider.of<ThemeProvider>(context, listen: false).setThemeFromAlmacen(almacen);
+                    productProvider.setListaDeUbicaciones(await AlmacenServices().getUbicacionDeAlmacen(context, almacen.almacenId, token, visualizacion: 'F'));
       
                     appRouter.push('/menu');
                   },

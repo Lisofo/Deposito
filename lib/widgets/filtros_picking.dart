@@ -40,7 +40,7 @@ class _FiltrosPickingState extends State<FiltrosPicking> {
   DateTime? _fechaDesde;
   DateTime? _fechaHasta;
   String? _selectedPrioridad;
-  List<Map<String, String>>? _selectedTipos;
+  List<Map<String, String>>? _selectedTipos = [];
   Usuario? _selectedUsuarioCreado;
   Usuario? _selectedUsuarioMod;
 
@@ -62,13 +62,13 @@ class _FiltrosPickingState extends State<FiltrosPicking> {
 
   bool _hasActiveFilters() {
     return _fechaDesde != null ||
-           _fechaHasta != null ||
-           (_selectedPrioridad != null && _selectedPrioridad != 'TODAS') ||
-           (_selectedTipos != null && _selectedTipos!.isNotEmpty) ||
-           widget.nombreController.text.isNotEmpty ||
-           widget.numeroDocController.text.isNotEmpty ||
-           _selectedUsuarioCreado != null ||
-           _selectedUsuarioMod != null;
+          _fechaHasta != null ||
+          (_selectedPrioridad != null && _selectedPrioridad != 'TODAS') ||
+          (_selectedTipos != null && _selectedTipos!.isNotEmpty) ||
+          widget.nombreController.text.isNotEmpty ||
+          widget.numeroDocController.text.isNotEmpty ||
+          _selectedUsuarioCreado != null ||
+          _selectedUsuarioMod != null;
   }
 
   Future<void> _selectDate(BuildContext context, bool isDesde) async {
@@ -157,25 +157,10 @@ class _FiltrosPickingState extends State<FiltrosPicking> {
                             Expanded(
                               child: TextField(
                                 controller: widget.nombreController,
-                                decoration: InputDecoration(
-                                  labelText: 'Buscar (Cliente/Proveedor)',
-                                  border: const OutlineInputBorder(),
-                                  suffixIcon: widget.nombreController.text.isNotEmpty
-                                    ? IconButton(
-                                        icon: const Icon(Icons.clear),
-                                        onPressed: () {
-                                          widget.nombreController.clear();
-                                          widget.onSearch(
-                                            _fechaDesde, 
-                                            _fechaHasta, 
-                                            _selectedPrioridad, 
-                                            _selectedTipos, 
-                                            _selectedUsuarioCreado, 
-                                            _selectedUsuarioMod
-                                          );
-                                        },
-                                      )
-                                    : const Icon(Icons.search),
+                                decoration: const InputDecoration(
+                                  labelText: 'Cliente/Proveedor',
+                                  border: OutlineInputBorder(),
+                                  suffixIcon: Icon(Icons.search),
                                 ),
                               ),
                             ),
@@ -183,25 +168,10 @@ class _FiltrosPickingState extends State<FiltrosPicking> {
                             Expanded(
                               child: TextField(
                                 controller: widget.numeroDocController,
-                                decoration: InputDecoration(
-                                  labelText: 'Buscar (Número de documento)',
-                                  border: const OutlineInputBorder(),
-                                  suffixIcon: widget.numeroDocController.text.isNotEmpty
-                                    ? IconButton(
-                                        icon: const Icon(Icons.clear),
-                                        onPressed: () {
-                                          widget.numeroDocController.clear();
-                                          widget.onSearch(
-                                            _fechaDesde, 
-                                            _fechaHasta, 
-                                            _selectedPrioridad, 
-                                            _selectedTipos, 
-                                            _selectedUsuarioCreado, 
-                                            _selectedUsuarioMod
-                                          );
-                                        },
-                                      )
-                                    : const Icon(Icons.search),
+                                decoration: const InputDecoration(
+                                  labelText: 'Número de documento',
+                                  border: OutlineInputBorder(),
+                                  suffixIcon: Icon(Icons.search),
                                 ),
                               ),
                             ),
@@ -414,7 +384,7 @@ class _FiltrosPickingState extends State<FiltrosPicking> {
                               _fechaDesde, 
                               _fechaHasta, 
                               _selectedPrioridad, 
-                              _selectedTipos, 
+                              _selectedTipos ?? [], // Provide empty list if null
                               _selectedUsuarioCreado, 
                               _selectedUsuarioMod
                             );

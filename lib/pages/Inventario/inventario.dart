@@ -5,6 +5,7 @@ import 'package:deposito/models/ubicacion_almacen.dart';
 import 'package:deposito/pages/Inventario/editar_inventario.dart';
 import 'package:deposito/provider/product_provider.dart';
 import 'package:deposito/services/almacen_services.dart';
+import 'package:deposito/widgets/cargando.dart';
 import 'package:deposito/widgets/ubicacion_dropdown.dart';
 import 'package:flutter/material.dart';
 import 'package:deposito/config/router/router.dart';
@@ -64,13 +65,11 @@ class _InventarioPageState extends State<InventarioPage> {
     });
   }
 
-  cargarDatos() async {
+  Future<void> cargarDatos() async {
     final productProvider = context.read<ProductProvider>();
     almacen = productProvider.almacen;
     token = productProvider.token;
     camera = productProvider.camera;
-    listaUbicaciones = await AlmacenServices().getUbicacionDeAlmacen(context, almacen.almacenId, token);
-    setState(() {});
   }
   
   @override
@@ -80,6 +79,8 @@ class _InventarioPageState extends State<InventarioPage> {
   }
 
   Scaffold  scaffoldScannerSearch(BuildContext context, ColorScheme colors) {
+    final productProvider = context.read<ProductProvider>();
+    listaUbicaciones = productProvider.listaDeUbicacionesXAlmacen;
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -100,48 +101,52 @@ class _InventarioPageState extends State<InventarioPage> {
         backgroundColor: colors.primary,
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              UbicacionDropdown(
-                listaUbicaciones: listaUbicaciones, 
-                selectedItem: ubicacionSeleccionada.almacenId == 0 ? null : ubicacionSeleccionada,
-                onChanged: (value) {
-                  ubicacionSeleccionada = value!;
-                  Provider.of<ProductProvider>(context, listen: false).setUbicacion(ubicacionSeleccionada);
-                  appRouter.push('/editarInventario');
-                  setState(() {});
-                },
-                hintText: 'Seleccione una ubicacion',
-              ),
-              const SizedBox(height: 20,),
-              VisibilityDetector(
-                key: const Key('scanner-field-visibility'),
-                onVisibilityChanged: (info) {
-                  if (info.visibleFraction > 0) {
-                    focoDeScanner.requestFocus();
-                  }
-                },
-                child: TextFormField(
-                  focusNode: focoDeScanner,
-                  cursorColor: Colors.transparent,
-                  decoration: const InputDecoration(
-                    border: UnderlineInputBorder(borderSide: BorderSide.none)
-                  ),
-                  style: const TextStyle(color: Colors.transparent),
-                  autofocus: true,
-                  keyboardType: TextInputType.none,
-                  controller: textController,
-                  onFieldSubmitted: procesarEscaneo, // Cambiado a usar onFieldSubmitted
+        child: LoadingReloadWidget(
+          loadDataFunction: cargarDatos,
+          loadingMessage: 'Cargando inventario...',
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                UbicacionDropdown(
+                  listaUbicaciones: listaUbicaciones, 
+                  selectedItem: ubicacionSeleccionada.almacenId == 0 ? null : ubicacionSeleccionada,
+                  onChanged: (value) {
+                    ubicacionSeleccionada = value!;
+                    Provider.of<ProductProvider>(context, listen: false).setUbicacion(ubicacionSeleccionada);
+                    appRouter.push('/editarInventario');
+                    setState(() {});
+                  },
+                  hintText: 'Seleccione una ubicacion',
                 ),
-              ),
-              const Expanded(
-                child: Text('Escanee una ubicación'),
-              ),
-            ],
+                const SizedBox(height: 20,),
+                VisibilityDetector(
+                  key: const Key('scanner-field-visibility'),
+                  onVisibilityChanged: (info) {
+                    if (info.visibleFraction > 0) {
+                      focoDeScanner.requestFocus();
+                    }
+                  },
+                  child: TextFormField(
+                    focusNode: focoDeScanner,
+                    cursorColor: Colors.transparent,
+                    decoration: const InputDecoration(
+                      border: UnderlineInputBorder(borderSide: BorderSide.none)
+                    ),
+                    style: const TextStyle(color: Colors.transparent),
+                    autofocus: true,
+                    keyboardType: TextInputType.none,
+                    controller: textController,
+                    onFieldSubmitted: procesarEscaneo, // Cambiado a usar onFieldSubmitted
+                  ),
+                ),
+                const Expanded(
+                  child: Text('Escanee una ubicación'),
+                ),
+              ],
+            ),
           ),
         ),
       ),

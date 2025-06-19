@@ -49,7 +49,12 @@ class _TransferenciaUbicacionDestinoState extends State<TransferenciaUbicacionDe
     almacen = productProvider.almacen;
     token = productProvider.token;
     camera = productProvider.camera;
-    listaUbicaciones = await _almacenServices.getUbicacionDeAlmacen(context, almacen.almacenId, token);
+    final listaUser = await AlmacenServices().getUbicacionDeAlmacen(context, almacen.almacenId, token, visualizacion: 'U');
+    if(listaUser.isNotEmpty) {
+      listaUbicaciones = [...productProvider.listaDeUbicacionesXAlmacen, ...listaUser];
+    } else {
+      listaUbicaciones = [...productProvider.listaDeUbicacionesXAlmacen,];
+    }
     setState(() {});
   }
 
@@ -263,6 +268,7 @@ class _TransferenciaUbicacionDestinoState extends State<TransferenciaUbicacionDe
     statusCode = await _almacenServices.getStatusCode();
     await _almacenServices.resetStatusCode();
     if(statusCode == 1) {
+      Provider.of<ProductProvider>(context, listen: false).setListaDeUbicaciones(await AlmacenServices().getUbicacionDeAlmacen(context, almacen.almacenId, token, visualizacion: 'F'));
       var push = Carteles.showDialogs(context, 'Transferencia completada', true, true, false);
       if(push){
         Navigator.of(context).popUntil((route) => route.settings.name == '/transferencia');

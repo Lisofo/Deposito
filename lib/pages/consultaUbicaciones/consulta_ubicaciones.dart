@@ -22,7 +22,6 @@ class ConsultaUbicacionesPage extends StatefulWidget {
 class _ConsultaUbicacionesPageState extends State<ConsultaUbicacionesPage> {
   late Almacen almacen;
   late String token;
-  final _almacenServices = AlmacenServices();
   List<UbicacionAlmacen> listaUbicaciones = [];
   late UbicacionAlmacen ubicacionOrigen = UbicacionAlmacen.empty();
   TextEditingController textController = TextEditingController();
@@ -38,14 +37,23 @@ class _ConsultaUbicacionesPageState extends State<ConsultaUbicacionesPage> {
     cargarDatos();
   }
 
-  cargarDatos() async {
+  Future<void> cargarDatos() async {
     final productProvider = context.read<ProductProvider>();
     almacen = productProvider.almacen;
     token = productProvider.token;
     camera = productProvider.camera;
-    listaUbicaciones = await _almacenServices.getUbicacionDeAlmacen(context, almacen.almacenId, token);
     focoDeScanner.requestFocus();
+    await cargarListaUsuarios(productProvider); 
     setState(() {});
+  }
+
+  Future<void> cargarListaUsuarios(ProductProvider productProvider) async {
+    final listaUser = await AlmacenServices().getUbicacionDeAlmacen(context, almacen.almacenId, token, visualizacion: 'U');
+    if(listaUser.isNotEmpty) {
+      listaUbicaciones = [...productProvider.listaDeUbicacionesXAlmacen, ...listaUser];
+    } else {
+      listaUbicaciones = [...productProvider.listaDeUbicacionesXAlmacen,];
+    }
   }
   
   @override

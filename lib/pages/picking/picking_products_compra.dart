@@ -467,6 +467,7 @@ class PickingProductsEntradaState extends State<PickingProductsEntrada> {
         line.codItem,
         provider.ubicacion.almacenUbicacionId,
         cantidad,
+        line.pickLineaId,
         provider.token
       );
       

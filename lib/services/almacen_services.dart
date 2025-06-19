@@ -64,9 +64,10 @@ class AlmacenServices {
     } 
   }
 
-  Future getUbicacionDeAlmacen(BuildContext context, int almacenId, token) async {
+  Future getUbicacionDeAlmacen(BuildContext context, int almacenId, String token, {String? visualizacion}) async {
     String link = '$apirUrl/api/v1/almacenes/$almacenId/ubicaciones';
-
+    Map<String, dynamic> queryParams = {};
+    if(visualizacion != null && visualizacion.isNotEmpty) queryParams['visualizacion'] = visualizacion;
     try {
       var headers = {'Authorization': token};
       var resp = await _dio.request(
@@ -74,7 +75,8 @@ class AlmacenServices {
         options: Options(
           method: 'GET',
           headers: headers,
-        )
+        ),
+        queryParameters: queryParams.isNotEmpty ? queryParams : null,
       );
       statusCode = 1;
       final List<dynamic> ubicacionAlmacenesList = resp.data;

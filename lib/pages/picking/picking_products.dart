@@ -74,7 +74,7 @@ class PickingProductsState extends State<PickingProducts> {
 
       setState(() {
         for (int i = 0; i < currentLine.ubicaciones.length; i++) {
-          _quantityControllers[i] = TextEditingController(text: '0');
+          _quantityControllers[i] = TextEditingController(text: currentLine.cantidadPickeada.toString());
         }
         _isLoading = false;
       });
@@ -99,6 +99,7 @@ class PickingProductsState extends State<PickingProducts> {
         currentLine.codItem,
         provider.ubicacionSeleccionada!.almacenUbicacionId,
         currentLine.cantidadPickeada,
+        currentLine.pickLineaId,
         token
       );
       
@@ -211,13 +212,18 @@ class PickingProductsState extends State<PickingProducts> {
       if (isLastLine) {
         _navigateToSummary();
       } else {
-        if (provider.modoSeleccionUbicacion) {
+        // Verificar si la siguiente línea tiene ubicaciones
+        final nextLineIndex = provider.currentLineIndex + 1;
+        final nextLine = provider.ordenPickingInterna.lineas![nextLineIndex];
+        
+        if (provider.modoSeleccionUbicacion && nextLine.ubicaciones.isNotEmpty) {
           // Modo automático - volver a picking para escanear siguiente ubicación
-          provider.setCurrentLineIndex(provider.currentLineIndex + 1);
+          provider.setCurrentLineIndex(nextLineIndex);
           appRouter.pushReplacement('/pickingProductos');
         } else {
-          // Modo manual - volver a pedido_interno
+          // Modo manual o línea sin ubicaciones - volver a pedido_interno
           Navigator.of(context).popUntil((route) => route.settings.name == '/pickingInterno');
+          appRouter.pushReplacement('/pickingInterno');
         }
       }
     } catch (e) {
@@ -371,8 +377,12 @@ class PickingProductsState extends State<PickingProducts> {
             child: Text('No hay productos para procesar'),
           );
         }
-
-        final currentLine = ordenPicking.lineas![provider.currentLineIndex];
+        final currentLineIndex = provider.currentLineIndex;
+        // Validar índice
+        if (currentLineIndex < 0 || currentLineIndex >= ordenPicking.lineas!.length) {
+          return const Center(child: Text('Error: Índice de línea inválido'));
+        }
+        final currentLine = ordenPicking.lineas![currentLineIndex];
 
         return Column(
           children: [
@@ -419,7 +429,7 @@ class PickingProductsState extends State<PickingProducts> {
             Text(
               line.descripcion,
               style: const TextStyle(
-                fontSize: 18,
+                fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -461,6 +471,8 @@ class PickingProductsState extends State<PickingProducts> {
       final producto = productos[0];
       bool mismoProducto = producto.raiz == currentLine.codItem;
       
+      if(provider.ubicacionSeleccionada?.existenciaActual == 0) return;
+
       if (mismoProducto) {
         _incrementProductQuantity(0);
         
@@ -497,6 +509,8 @@ class PickingProductsState extends State<PickingProducts> {
       productos = await ProductServices().getProductByName(context, '', '2', provider.almacen.almacenId.toString(), barcodeScanRes.toString(), '0', provider.token);
       final producto = productos[0];
       bool mismoProducto = producto.raiz == currentLine.codItem;
+
+      if(provider.ubicacionSeleccionada?.existenciaActual == 0) return;
 
       if (mismoProducto) {
         _incrementProductQuantity(0);
@@ -536,7 +550,7 @@ class PickingProductsState extends State<PickingProducts> {
                 ),
               ),
               const SizedBox(height: 16),
-              _buildLocationListItem(ubicacion, 0),
+              _buildLocationListItem(ubicacion, 0, line),
             ],
           ),
         );
@@ -544,7 +558,10 @@ class PickingProductsState extends State<PickingProducts> {
     );
   }
 
-  Widget _buildLocationListItem(UbicacionePicking ubicacion, int index) {
+  Widget _buildLocationListItem(UbicacionePicking ubicacion, int index, PickingLinea line) {
+    print(ubicacion.existenciaActual);
+    print(line.cantidadPedida);
+
     return Card(
       // margin: const EdgeInsets.only(bottom: 12),
       elevation: 2,
@@ -570,11 +587,12 @@ class PickingProductsState extends State<PickingProducts> {
                   children: [
                     IconButton(
                       icon: const Icon(Icons.remove),
-                      onPressed: () => _decrementProductQuantity(index),
+                      onPressed: ubicacion.existenciaActual == 0 ? null : () => _decrementProductQuantity(index),
                     ),
                     SizedBox(
                       width: 60,
                       child: TextField(
+                        enabled: ubicacion.existenciaActual == 0 ? false : true,
                         controller: _quantityControllers[index],
                         keyboardType: TextInputType.number,
                         textAlign: TextAlign.center,
@@ -582,12 +600,12 @@ class PickingProductsState extends State<PickingProducts> {
                           border: OutlineInputBorder(),
                           contentPadding: EdgeInsets.symmetric(vertical: 8),
                         ),
-                        onChanged: (value) => _updateProductQuantity(index, value),
+                        onChanged: ubicacion.existenciaActual == 0 ? null : (value) => _updateProductQuantity(index, value), 
                       ),
                     ),
                     IconButton(
                       icon: const Icon(Icons.add),
-                      onPressed: () => _incrementProductQuantity(index),
+                      onPressed: (ubicacion.existenciaActual == 0 || ubicacion.existenciaActual <= line.cantidadPedida) ? null : () => _incrementProductQuantity(index),
                     ),
                   ],
                 ),

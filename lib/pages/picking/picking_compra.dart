@@ -5,7 +5,6 @@ import 'package:deposito/models/almacen.dart';
 import 'package:deposito/models/ubicacion_almacen.dart';
 import 'package:deposito/pages/picking/picking_products_compra.dart';
 import 'package:deposito/provider/product_provider.dart';
-import 'package:deposito/services/almacen_services.dart';
 import 'package:deposito/widgets/ubicacion_dropdown.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
@@ -48,7 +47,7 @@ class _PickingCompraState extends State<PickingCompra> {
         isLoading = true;
         _error = null;
       });
-      listaUbicaciones = await AlmacenServices().getUbicacionDeAlmacen(context, almacen.almacenId, token);
+      listaUbicaciones = [...productProvider.listaDeUbicacionesXAlmacen];
       // final ordenPicking = productProvider.ordenPickingInterna;
       // final lines = ordenPicking.lineas;
       
