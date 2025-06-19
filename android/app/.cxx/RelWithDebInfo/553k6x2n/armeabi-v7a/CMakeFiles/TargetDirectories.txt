@@ -1,2 +1,0 @@
-C:/flutter/software/Deposito/android/app/.cxx/RelWithDebInfo/553k6x2n/armeabi-v7a/CMakeFiles/edit_cache.dir
-C:/flutter/software/Deposito/android/app/.cxx/RelWithDebInfo/553k6x2n/armeabi-v7a/CMakeFiles/rebuild_cache.dir
