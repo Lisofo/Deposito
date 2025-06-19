@@ -1,13 +1,12 @@
-// ignore_for_file: unused_field
-
+import 'package:deposito/widgets/filtros_picking.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:deposito/config/router/router.dart';
 import 'package:deposito/models/almacen.dart';
 import 'package:deposito/models/orden_picking.dart';
 import 'package:deposito/provider/product_provider.dart';
 import 'package:deposito/services/picking_services.dart';
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 class ListaPicking extends StatefulWidget {
@@ -19,32 +18,32 @@ class ListaPicking extends StatefulWidget {
 
 class _ListaPickingState extends State<ListaPicking> {
   final PickingServices _pickingServices = PickingServices();
-  final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _searchControllerNombre = TextEditingController();
+  final TextEditingController _searchControllerNumeroDoc = TextEditingController();
   final GlobalKey<RefreshIndicatorState> _refreshIndicatorKey = GlobalKey<RefreshIndicatorState>();
   late Almacen almacen = Almacen.empty();
   
   List<OrdenPicking> _ordenes = [];
   List<OrdenPicking> _filteredOrdenes = [];
   bool _isLoading = true;
-  bool _isFilterExpanded = false; // Nuevo: controla si los filtros están expandidos
+  bool _isFilterExpanded = false;
 
   // Filtros
   DateTime? _fechaDesde;
   DateTime? _fechaHasta;
   String? _selectedPrioridad;
-  String? _selectedEstado;
   int _groupValue = -1;
 
-  // Opciones para dropdowns
-  final List<String> _prioridades = ['ALTA', 'NORMAL', 'BAJA', 'TODAS'];
-  final List<String> _estados = ['Pendiente', 'En proceso', 'Cerrado', 'Cancelado', 'Todos'];
-
   String token = '';
+  late String menu;
+  late List<String> menuSplitted;
 
   @override
   void initState() {
     super.initState();
     token = context.read<ProductProvider>().token;
+    menu = context.read<ProductProvider>().menu;
+    menuSplitted = menu.split('-');
     _loadData();
   }
 
@@ -52,14 +51,23 @@ class _ListaPickingState extends State<ListaPicking> {
     setState(() => _isLoading = true);
     try {
       await _pickingServices.resetStatusCode();
-      String menu = context.read<ProductProvider>().menu;
-      var menuSplitted = menu.split('-');
-      final result = await _pickingServices.getOrdenesPicking(context, almacen.almacenId,token, tipo: menuSplitted[1]);
+      final result = await _pickingServices.getOrdenesPicking(
+        context, 
+        almacen.almacenId,
+        token, 
+        tipo: menuSplitted[1],
+        prioridad: _selectedPrioridad != 'TODAS' ? _selectedPrioridad : null,
+        fechaDateDesde: _fechaDesde,
+        fechaDateHasta: _fechaHasta,
+        estado: _groupValue != -1 ? ['PENDIENTE', 'EN PROCESO', 'CERRADO'][_groupValue] : null,
+        numeroDocumento: _searchControllerNumeroDoc.text.isNotEmpty ? _searchControllerNumeroDoc.text : null,
+        nombre: _searchControllerNombre.text.isNotEmpty ? _searchControllerNombre.text : null,
+      );
+      
       if (result != null && _pickingServices.statusCode == 1) {
         setState(() {
           _ordenes = result;
-          _filteredOrdenes = List.from(_ordenes); // Primero carga todos los datos sin filtros
-          _applyFilters(); // Luego aplica los filtros si los hay
+          _filteredOrdenes = List.from(_ordenes);
         });
       }
     } finally {
@@ -68,73 +76,7 @@ class _ListaPickingState extends State<ListaPicking> {
   }
 
   Future<void> _refreshData() async {
-    setState(() => _isLoading = true);
-    try {
-      await _pickingServices.resetStatusCode();
-      String menu = context.read<ProductProvider>().menu;
-      var menuSplitted = menu.split('-');
-      final result = await _pickingServices.getOrdenesPicking(context, almacen.almacenId,token, tipo: menuSplitted[1]);
-      if (result != null && _pickingServices.statusCode == 1) {
-        setState(() {
-          _ordenes = result;
-          _applyFilters(); // Aplica los filtros activos (incluyendo el estado del segmented control)
-        });
-      }
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  void _applyFilters() {
-    List<OrdenPicking> filtered = List.from(_ordenes);
-
-    // Filtro de búsqueda de texto
-    if (_searchController.text.isNotEmpty) {
-      final searchText = _searchController.text.toLowerCase();
-      filtered = filtered.where((orden) =>
-        orden.tipo.toLowerCase().contains(searchText) ||
-        orden.nombre.toLowerCase().contains(searchText) ||
-        orden.numeroDocumento.toString().contains(searchText) ||
-        (orden.serie?.toLowerCase().contains(searchText) ?? false)
-      ).toList();
-    }
-
-    // Filtro por estado (segmented control)
-    if (_groupValue != -1) {
-      switch (_groupValue) {
-        case 0:
-          filtered = filtered.where((orden) => orden.estado.toUpperCase() == 'PENDIENTE').toList();
-          break;
-        case 1:
-          filtered = filtered.where((orden) => orden.estado.toUpperCase() == 'EN PROCESO').toList();
-          break;
-        case 2:
-          filtered = filtered.where((orden) => orden.estado.toUpperCase() == 'CERRADO').toList();
-          break;
-      }
-    }
-
-    // Filtro por fecha desde
-    if (_fechaDesde != null) {
-      filtered = filtered.where((orden) => 
-        orden.fechaDate.isAfter(_fechaDesde!) || 
-        orden.fechaDate.isAtSameMomentAs(_fechaDesde!)
-      ).toList();
-    }
-
-    // Filtro por fecha hasta
-    if (_fechaHasta != null) {
-      filtered = filtered.where((orden) => 
-        orden.fechaDate.isBefore(_fechaHasta!) || 
-        orden.fechaDate.isAtSameMomentAs(_fechaHasta!)
-      ).toList();
-    }
-
-    // Filtro por prioridad
-    if (_selectedPrioridad != null && _selectedPrioridad!.isNotEmpty && _selectedPrioridad != 'TODAS') {
-      filtered = filtered.where((orden) => orden.prioridad == _selectedPrioridad).toList();
-    }    
-    setState(() => _filteredOrdenes = filtered);
+    await _loadData();
   }
 
   void _resetFilters() {
@@ -142,38 +84,19 @@ class _ListaPickingState extends State<ListaPicking> {
       _fechaDesde = null;
       _fechaHasta = null;
       _selectedPrioridad = null;
-      _selectedEstado = null;
       _groupValue = -1;
-      _searchController.clear();
-      _filteredOrdenes = List.from(_ordenes);
+      _searchControllerNombre.clear();
+      _searchControllerNumeroDoc.clear();
+      _loadData();
     });
   }
 
-  Future<void> _selectDate(BuildContext context, bool isDesde) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-    );
-    if (picked != null) {
-      setState(() {
-        if (isDesde) {
-          _fechaDesde = picked;
-        } else {
-          _fechaHasta = picked;
-        }
-        _applyFilters();
-      });
-    }
-  }
-
-  // Método para verificar si hay filtros activos
   bool _hasActiveFilters() {
     return _fechaDesde != null ||
            _fechaHasta != null ||
            (_selectedPrioridad != null && _selectedPrioridad != 'TODAS') ||
-           _searchController.text.isNotEmpty ||
+           _searchControllerNombre.text.isNotEmpty ||
+           _searchControllerNumeroDoc.text.isNotEmpty ||
            _groupValue != -1;
   }
 
@@ -191,7 +114,6 @@ class _ListaPickingState extends State<ListaPicking> {
           ),
           iconTheme: IconThemeData(color: colors.onPrimary),
           actions: [
-            // Indicador de filtros activos
             if (_hasActiveFilters())
               Container(
                 margin: const EdgeInsets.only(right: 8),
@@ -216,199 +138,29 @@ class _ListaPickingState extends State<ListaPicking> {
         backgroundColor: Colors.grey.shade200,
         body: Column(
           children: [
-            Card(
-              margin: const EdgeInsets.all(10),
-              child: Column(
-                children: [
-                  InkWell(
-                    onTap: () {
-                      setState(() {
-                        _isFilterExpanded = !_isFilterExpanded;
-                      });
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.filter_list),
-                          const SizedBox(width: 8),
-                          const Text(
-                            'Filtros',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const Spacer(),
-                          // Mostrar conteo de filtros activos
-                          if (_hasActiveFilters())
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: colors.primary,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Text(
-                                '${_filteredOrdenes.length}',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                          const SizedBox(width: 8),
-                          Icon(
-                            _isFilterExpanded 
-                              ? Icons.keyboard_arrow_up 
-                              : Icons.keyboard_arrow_down,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  // Contenido de filtros (colapsable)
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    height: _isFilterExpanded ? null : 0,
-                    child: AnimatedOpacity(
-                      duration: const Duration(milliseconds: 300),
-                      opacity: _isFilterExpanded ? 1.0 : 0.0,
-                      child: _isFilterExpanded
-                        ? Padding(
-                            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                            child: Column(
-                              children: [
-                                const Divider(),
-                                // Búsqueda general
-                                TextField(
-                                  controller: _searchController,
-                                  decoration: InputDecoration(
-                                    labelText: 'Buscar (Tipo, Código, RUC, Documento, Serie)',
-                                    border: const OutlineInputBorder(),
-                                    suffixIcon: _searchController.text.isNotEmpty
-                                      ? IconButton(
-                                          icon: const Icon(Icons.clear),
-                                          onPressed: () {
-                                            _searchController.clear();
-                                            _applyFilters();
-                                          },
-                                        )
-                                      : const Icon(Icons.search),
-                                  ),
-                                  onChanged: (value) => _applyFilters(),
-                                ),
-                                const SizedBox(height: 15),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: InkWell(
-                                        onTap: () => _selectDate(context, true),
-                                        child: InputDecorator(
-                                          decoration: InputDecoration(
-                                            labelText: 'Fecha Desde',
-                                            border: const OutlineInputBorder(),
-                                            suffixIcon: _fechaDesde != null
-                                              ? IconButton(
-                                                  icon: const Icon(Icons.clear, size: 18),
-                                                  onPressed: () {
-                                                    setState(() {
-                                                      _fechaDesde = null;
-                                                      _applyFilters();
-                                                    });
-                                                  },
-                                                )
-                                              : const Icon(Icons.calendar_today, size: 18),
-                                          ),
-                                          child: Text(
-                                            _fechaDesde != null 
-                                              ? DateFormat('dd/MM/yyyy').format(_fechaDesde!)
-                                              : 'Seleccionar fecha',
-                                            style: TextStyle(
-                                              color: _fechaDesde != null 
-                                                ? Colors.black 
-                                                : Colors.grey[600],
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: InkWell(
-                                        onTap: () => _selectDate(context, false),
-                                        child: InputDecorator(
-                                          decoration: InputDecoration(
-                                            labelText: 'Fecha Hasta',
-                                            border: const OutlineInputBorder(),
-                                            suffixIcon: _fechaHasta != null
-                                              ? IconButton(
-                                                  icon: const Icon(Icons.clear, size: 18),
-                                                  onPressed: () {
-                                                    setState(() {
-                                                      _fechaHasta = null;
-                                                      _applyFilters();
-                                                    });
-                                                  },
-                                                )
-                                              : const Icon(Icons.calendar_today, size: 18),
-                                          ),
-                                          child: Text(
-                                            _fechaHasta != null 
-                                              ? DateFormat('dd/MM/yyyy').format(_fechaHasta!)
-                                              : 'Seleccionar fecha',
-                                            style: TextStyle(
-                                              color: _fechaHasta != null 
-                                                ? Colors.black 
-                                                : Colors.grey[600],
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 15),
-                                // Prioridad Dropdown
-                                DropdownButtonFormField<String>(
-                                  value: _selectedPrioridad,
-                                  decoration: InputDecoration(
-                                    labelText: 'Prioridad',
-                                    border: const OutlineInputBorder(),
-                                    suffixIcon: _selectedPrioridad != null && _selectedPrioridad != 'TODAS'
-                                      ? IconButton(
-                                          icon: const Icon(Icons.clear, size: 18),
-                                          onPressed: () {
-                                            setState(() {
-                                              _selectedPrioridad = 'TODAS';
-                                              _applyFilters();
-                                            });
-                                          },
-                                        )
-                                      : null,
-                                  ),
-                                  items: _prioridades.map((String value) {
-                                    return DropdownMenuItem<String>(
-                                      value: value,
-                                      child: Text(value),
-                                    );
-                                  }).toList(),
-                                  onChanged: (newValue) {
-                                    setState(() {
-                                      _selectedPrioridad = newValue;
-                                      _applyFilters();
-                                    });
-                                  },
-                                ),
-                              ],
-                            ),
-                          )
-                        : Container(),
-                    ),
-                  ),
-                ],
-              ),
+            FiltrosPicking(
+              usuarios: null,
+              mostrarFiltroUsuarios: false,
+              mostrarFiltroTipos: false,
+              onSearch: (fechaDesde, fechaHasta, prioridad, tipos, usuarioCreado, usuarioMod) {
+                setState(() {
+                  _fechaDesde = fechaDesde;
+                  _fechaHasta = fechaHasta;
+                  _selectedPrioridad = prioridad;
+                });
+                _loadData();
+              },
+              onReset: _resetFilters,
+              nombreController: _searchControllerNombre,
+              numeroDocController: _searchControllerNumeroDoc,
+              isFilterExpanded: _isFilterExpanded,
+              onToggleFilter: (expanded) {
+                setState(() {
+                  _isFilterExpanded = expanded;
+                });
+              },
+              cantidadDeOrdenes: _filteredOrdenes.length,
             ),
-            // Segmented Control para estados (siempre visible)
             CupertinoSegmentedControl<int>(
               padding: const EdgeInsets.symmetric(horizontal: 10),
               groupValue: _groupValue,
@@ -424,12 +176,11 @@ class _ListaPickingState extends State<ListaPicking> {
               onValueChanged: (newValue) {
                 setState(() {
                   _groupValue = newValue;
-                  _applyFilters();
+                  _loadData();
                 });
               },
             ),
             const SizedBox(height: 10),
-            // Lista de resultados
             Expanded(
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
@@ -508,20 +259,28 @@ class _ListaPickingState extends State<ListaPicking> {
                                                   ),
                                                 ),
                                               ),
-                                              Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                                decoration: BoxDecoration(
-                                                  color: _getStatusColor(orden.estado),
-                                                  borderRadius: BorderRadius.circular(12),
-                                                ),
-                                                child: Text(
-                                                  orden.estado,
-                                                  style: const TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.bold,
+                                              Column(
+                                                crossAxisAlignment: CrossAxisAlignment.end,
+                                                children: [
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                    decoration: BoxDecoration(
+                                                      color: _getStatusColor(orden.estado),
+                                                      borderRadius: BorderRadius.circular(12),
+                                                    ),
+                                                    child: Text(
+                                                      orden.estado,
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 12,
+                                                        fontWeight: FontWeight.bold,
+                                                      ),
+                                                    ),
                                                   ),
-                                                ),
+                                                  Text(orden.prioridad),
+                                                  Text('PickId: ${orden.pickId}'),
+                                                  Text('Líneas: ${orden.cantLineas ?? 0}'),
+                                                ],
                                               ),
                                             ],
                                           ),
@@ -529,21 +288,8 @@ class _ListaPickingState extends State<ListaPicking> {
                                           Text('Tipo: ${orden.tipo}'),
                                           Text('Cliente: ${orden.codEntidad} - ${orden.nombre}'),
                                           Text('RUC: ${orden.ruc}'),
-                                          Row(
-                                            children: [
-                                              Text('Prioridad: ${orden.prioridad}'),
-                                              const Spacer(),
-                                              Text('Líneas: ${orden.cantLineas ?? 0}'),
-                                            ],
-                                          ),
                                           Text(orden.transaccion),
-                                          Row(
-                                            children: [
-                                              Text('Fecha: ${DateFormat('dd/MM/yyyy').format(orden.fechaDate)}'),
-                                              const Spacer(),
-                                              Text(orden.pickId.toString())
-                                            ],
-                                          ),
+                                          Text('Fecha: ${DateFormat('dd/MM/yyyy').format(orden.fechaDate)}'),
                                         ],
                                       ),
                                     ),

@@ -6,7 +6,7 @@ import 'package:deposito/models/orden_picking.dart';
 import 'package:deposito/models/usuario.dart';
 import 'package:deposito/provider/product_provider.dart';
 import 'package:deposito/services/picking_services.dart';
-import 'package:dropdown_search/dropdown_search.dart';
+import 'package:deposito/widgets/filtros_picking.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -115,25 +115,7 @@ class _MonitorPageState extends State<MonitorPage> {
       _loadData();
     });
   }
-
-  Future<void> _selectDate(BuildContext context, bool isDesde) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-    );
-    if (picked != null) {
-      setState(() {
-        if (isDesde) {
-          _fechaDesde = picked;
-        } else {
-          _fechaHasta = picked;
-        }
-      });
-    }
-  }
-
+  
   bool _hasActiveFilters() {
     return _fechaDesde != null ||
            _fechaHasta != null ||
@@ -185,329 +167,31 @@ class _MonitorPageState extends State<MonitorPage> {
         backgroundColor: Colors.grey.shade200,
         body: Column(
           children: [
-            Card(
-              margin: const EdgeInsets.all(10),
-              child: Column(
-                children: [
-                  InkWell(
-                    onTap: () {
-                      setState(() {
-                        _isFilterExpanded = !_isFilterExpanded;
-                      });
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.filter_list),
-                          const SizedBox(width: 8),
-                          const Text(
-                            'Filtros',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const Spacer(),
-                          if (_hasActiveFilters())
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: colors.primary,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Text(
-                                '${_filteredOrdenes.length}',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                          const SizedBox(width: 8),
-                          Icon(
-                            _isFilterExpanded 
-                              ? Icons.keyboard_arrow_up 
-                              : Icons.keyboard_arrow_down,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    height: _isFilterExpanded ? null : 0,
-                    child: AnimatedOpacity(
-                      duration: const Duration(milliseconds: 300),
-                      opacity: _isFilterExpanded ? 1.0 : 0.0,
-                      child: _isFilterExpanded
-                        ? Padding(
-                            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                            child: Column(
-                              children: [
-                                const Divider(),
-                                // Dropdown para Tipo
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: TextField(
-                                        controller: _searchControllerNombre,
-                                        decoration: InputDecoration(
-                                          labelText: 'Buscar (Cliente/Proveedor)',
-                                          border: const OutlineInputBorder(),
-                                          suffixIcon: _searchControllerNombre.text.isNotEmpty
-                                            ? IconButton(
-                                                icon: const Icon(Icons.clear),
-                                                onPressed: () {
-                                                  _searchControllerNombre.clear();
-                                                  _loadData();
-                                                },
-                                              )
-                                            : const Icon(Icons.search),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10,),
-                                    Expanded(
-                                      child: TextField(
-                                        controller: _searchControllerNumeroDoc,
-                                        decoration: InputDecoration(
-                                          labelText: 'Buscar (Número de documento)',
-                                          border: const OutlineInputBorder(),
-                                          suffixIcon: _searchControllerNumeroDoc.text.isNotEmpty
-                                            ? IconButton(
-                                                icon: const Icon(Icons.clear),
-                                                onPressed: () {
-                                                  _searchControllerNumeroDoc.clear();
-                                                  _loadData();
-                                                },
-                                              )
-                                            : const Icon(Icons.search),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 15),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: InkWell(
-                                        onTap: () => _selectDate(context, true),
-                                        child: InputDecorator(
-                                          decoration: InputDecoration(
-                                            labelText: 'Fecha Desde',
-                                            border: const OutlineInputBorder(),
-                                            suffixIcon: _fechaDesde != null
-                                              ? IconButton(
-                                                  icon: const Icon(Icons.clear, size: 18),
-                                                  onPressed: () {
-                                                    setState(() {
-                                                      _fechaDesde = null;
-                                                    });
-                                                  },
-                                                )
-                                              : const Icon(Icons.calendar_today, size: 18),
-                                          ),
-                                          child: Text(
-                                            _fechaDesde != null 
-                                              ? DateFormat('dd/MM/yyyy').format(_fechaDesde!)
-                                              : 'Seleccionar fecha',
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: InkWell(
-                                        onTap: () => _selectDate(context, false),
-                                        child: InputDecorator(
-                                          decoration: InputDecoration(
-                                            labelText: 'Fecha Hasta',
-                                            border: const OutlineInputBorder(),
-                                            suffixIcon: _fechaHasta != null
-                                              ? IconButton(
-                                                  icon: const Icon(Icons.clear, size: 18),
-                                                  onPressed: () {
-                                                    setState(() {
-                                                      _fechaHasta = null;
-                                                    });
-                                                  },
-                                                )
-                                              : const Icon(Icons.calendar_today, size: 18),
-                                          ),
-                                          child: Text(
-                                            _fechaHasta != null 
-                                              ? DateFormat('dd/MM/yyyy').format(_fechaHasta!)
-                                              : 'Seleccionar fecha',
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 15),
-                                DropdownButtonFormField<String>(
-                                  value: _selectedPrioridad,
-                                  decoration: InputDecoration(
-                                    labelText: 'Prioridad',
-                                    border: const OutlineInputBorder(),
-                                    suffixIcon: _selectedPrioridad != null && _selectedPrioridad != 'TODAS'
-                                      ? IconButton(
-                                          icon: const Icon(Icons.clear, size: 18),
-                                          onPressed: () {
-                                            setState(() {
-                                              _selectedPrioridad = 'TODAS';
-                                            });
-                                          },
-                                        )
-                                      : null,
-                                  ),
-                                  items: _prioridades.map((String value) {
-                                    return DropdownMenuItem<String>(
-                                      value: value,
-                                      child: Text(value),
-                                    );
-                                  }).toList(),
-                                  onChanged: (newValue) {
-                                    setState(() {
-                                      _selectedPrioridad = newValue;
-                                    });
-                                  },
-                                ),
-                                const SizedBox(height: 15,),
-                                DropdownSearch<Map<String, String>>.multiSelection(
-                                  selectedItems: _selectedTipos,
-                                  items: _tipos,
-                                  dropdownDecoratorProps: const DropDownDecoratorProps(
-                                    dropdownSearchDecoration: InputDecoration(
-                                      labelText: 'Tipo',
-                                      border: OutlineInputBorder(),
-                                    ),
-                                  ),
-                                  popupProps: PopupPropsMultiSelection.menu(
-                                    searchFieldProps: TextFieldProps(
-                                      decoration: InputDecoration(
-                                        suffixIcon: _selectedTipos.isNotEmpty
-                                          ? IconButton(
-                                              icon: const Icon(Icons.clear),
-                                              onPressed: () {
-                                                setState(() => _selectedTipos.clear());
-                                              },
-                                            )
-                                          : null,
-                                        hintText: 'Buscar tipo...',
-                                        border: const OutlineInputBorder(),
-                                      ),
-                                    ),
-                                    itemBuilder: (context, item, isSelected) {
-                                      return ListTile(
-                                        title: Text(item['label']!),
-                                        trailing: isSelected ? const Icon(Icons.check) : null,
-                                      );
-                                    },
-                                    emptyBuilder: (context, searchEntry) => const Center(
-                                      child: Text('No se encontraron tipos'),
-                                    ),
-                                  ),
-                                  onChanged: (values) {
-                                    setState(() => _selectedTipos = values);
-                                  },
-                                  // Muestra los labels en el campo principal
-                                  dropdownBuilder: (context, selectedItems) {
-                                    if (selectedItems.isEmpty) {
-                                      return const Text('Seleccionar tipos...');
-                                    }
-                                    return Text(
-                                      selectedItems.map((tipo) => tipo['label']!).join(', '),
-                                      style: const TextStyle(fontSize: 14),
-                                      overflow: TextOverflow.ellipsis,
-                                    );
-                                  },
-                                ),
-                                const SizedBox(height: 10),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: DropdownSearch<Usuario>(
-                                        selectedItem: _selectedUsuarioCreado,
-                                        items: usuarios,
-                                        dropdownDecoratorProps: const DropDownDecoratorProps(
-                                          dropdownSearchDecoration: InputDecoration(
-                                            labelText: 'Creado por',
-                                            border: OutlineInputBorder()
-                                          ),
-                                        ),
-                                        popupProps: const PopupProps.menu(
-                                          showSearchBox: true,
-                                          searchDelay: Duration.zero,
-                                          searchFieldProps: TextFieldProps(
-                                            decoration: InputDecoration(
-                                              hintText: 'Buscar usuario...',
-                                              border: OutlineInputBorder(),
-                                            ),
-                                          ),
-                                        ),
-                                        onChanged: (value) {
-                                          setState(() {
-                                            _selectedUsuarioCreado = value;
-                                          });
-                                        },
-                                      )
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: DropdownSearch<Usuario>(
-                                        selectedItem: _selectedUsuarioMod,
-                                        items: usuarios,
-                                        dropdownDecoratorProps: const DropDownDecoratorProps(
-                                          dropdownSearchDecoration: InputDecoration(
-                                            labelText: 'Ultima modificación por',
-                                            border: OutlineInputBorder()
-                                          ),
-                                        ),
-                                        popupProps: const PopupProps.menu(
-                                          showSearchBox: true,
-                                          searchDelay: Duration.zero,
-                                          searchFieldProps: TextFieldProps(
-                                            decoration: InputDecoration(
-                                              hintText: 'Buscar usuario...',
-                                              border: OutlineInputBorder(),
-                                            ),
-                                          ),
-                                        ),
-                                        onChanged: (value) {
-                                          setState(() {
-                                            _selectedUsuarioMod = value;
-                                          });
-                                        },
-                                      )
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 10),
-                                ElevatedButton(
-                                  onPressed: _loadData,
-                                  style: ElevatedButton.styleFrom(
-                                    minimumSize: const Size(double.infinity, 50),
-                                    backgroundColor: colors.primary,
-                                  ),
-                                  child: const Text(
-                                    'BUSCAR',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
-                        : Container(),
-                    ),
-                  ),
-                ],
-              ),
+            FiltrosPicking(
+              usuarios: usuarios,
+              onSearch: (fechaDesde, fechaHasta, prioridad, tipos, usuarioCreado, usuarioMod) {
+                setState(() {
+                  _fechaDesde = fechaDesde;
+                  _fechaHasta = fechaHasta;
+                  _selectedPrioridad = prioridad;
+                  _selectedTipos = tipos!;
+                  _selectedUsuarioCreado = usuarioCreado;
+                  _selectedUsuarioMod = usuarioMod;
+                });
+                _loadData();
+              },
+              onReset: _resetFilters,
+              nombreController: _searchControllerNombre,
+              numeroDocController: _searchControllerNumeroDoc,
+              isFilterExpanded: _isFilterExpanded,
+              onToggleFilter: (expanded) {
+                setState(() {
+                  _isFilterExpanded = expanded;
+                });
+              },
+              cantidadDeOrdenes: _filteredOrdenes.length,
+              mostrarFiltroUsuarios: true,
+              mostrarFiltroTipos: true,
             ),
             CupertinoSegmentedControl<int>(
               padding: const EdgeInsets.symmetric(horizontal: 10),
