@@ -348,23 +348,29 @@ class _PickingPageState extends State<PickingPage> {
   // Nuevo método para manejar líneas sin ubicaciones
   void _handleEmptyLocations(ProductProvider provider) {
     final ordenPicking = provider.ordenPickingInterna;
-    final currentLineIndex = provider.currentLineIndex;
-    final isLastLine = currentLineIndex >= ordenPicking.lineas!.length - 1;
-    
-    if (isLastLine) {
-      // Ir al resumen si es la última línea
-      appRouter.push('/resumenPicking');
-    } else {
-      // Avanzar a la siguiente línea
-      provider.setCurrentLineIndex(currentLineIndex + 1);
-      setState(() {});
-      
-      // Verificar si la nueva línea tiene ubicaciones
-      final nextLine = ordenPicking.lineas![currentLineIndex + 1];
-      if (nextLine.ubicaciones.isEmpty) {
-        // Si la siguiente línea tampoco tiene ubicaciones, manejar recursivamente
-        _handleEmptyLocations(provider);
+    int currentLineIndex = provider.currentLineIndex;
+    // bool isLastLine = currentLineIndex >= ordenPicking.lineas!.length - 1;
+
+    // Buscar la siguiente línea con stock o que no esté completa
+    int nextValidIndex = -1;
+    for (int i = currentLineIndex + 1; i < ordenPicking.lineas!.length; i++) {
+      final line = ordenPicking.lineas![i];
+      bool hasStock = line.ubicaciones.any((ubic) => ubic.existenciaActual > 0);
+      bool isComplete = line.cantidadPickeada == line.cantidadPedida;
+
+      if (!isComplete && hasStock) {
+        nextValidIndex = i;
+        break;
       }
+    }
+
+    if (nextValidIndex != -1) {
+      // Ir a la siguiente línea válida
+      provider.setCurrentLineIndex(nextValidIndex);
+      setState(() {});
+    } else {
+      // No hay más líneas válidas, ir al resumen
+      appRouter.push('/resumenPicking');
     }
   }
 }

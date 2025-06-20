@@ -10,9 +10,9 @@ import 'package:deposito/services/product_services.dart';
 import 'package:deposito/widgets/carteles.dart';
 import 'package:deposito/widgets/custom_button.dart';
 import 'package:deposito/widgets/custom_form_field.dart';
+import 'package:deposito/widgets/custom_speed_dial.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:provider/provider.dart';
 import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 import 'package:visibility_detector/visibility_detector.dart';
@@ -154,29 +154,28 @@ class _EditarInventarioState extends State<EditarInventario> {
             )
           ],
         ),
-        floatingActionButton: SpeedDial(
-          icon: Icons.add,
-          activeIcon: Icons.close,
-          backgroundColor: colors.primary,
-          foregroundColor: Colors.white,
-          children: [
-            if(camera)
-            SpeedDialChild(
-              child: const Icon(Icons.qr_code_scanner_outlined),
+        floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CustomSpeedDialChild(
+            icon: Icons.restore,
+            backgroundColor: colors.primary,
+            foregroundColor: Colors.white,
+            label: 'Reiniciar',
+            onTap: _resetSearch,
+          ),
+          if (camera) ...[
+            CustomSpeedDialChild(
+              icon: Icons.qr_code_scanner_outlined,
+              label: 'Escanear',
               backgroundColor: colors.primary,
               foregroundColor: Colors.white,
-              label: 'Escanear',
               onTap: _scanBarcode,
             ),
-            SpeedDialChild(
-              child: const Icon(Icons.restore),
-              backgroundColor: colors.primary,
-              foregroundColor: Colors.white,
-              label: 'Reiniciar',
-              onTap: _resetSearch,
-            ),
+            const SizedBox(height: 8),
           ],
-        ),
+        ],
+      ),
         bottomNavigationBar: Row(
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,

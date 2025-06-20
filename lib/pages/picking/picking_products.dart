@@ -89,26 +89,71 @@ class PickingProductsState extends State<PickingProducts> {
   Future<bool> _patchCurrentLine() async {
     final provider = Provider.of<ProductProvider>(context, listen: false);
     final pickingServices = PickingServices();
-    final String token = provider.token;
+    final token = provider.token;
     final currentLine = provider.ordenPickingInterna.lineas![provider.currentLineIndex];
+    final ubicacionSeleccionada = provider.ubicacionSeleccionada!;
 
     try {
-      await pickingServices.patchPicking(
+      // 1. Ejecutar el PATCH y obtener la respuesta
+      final response = await pickingServices.patchPicking(
         context,
         currentLine.pickId,
         currentLine.codItem,
-        provider.ubicacionSeleccionada!.almacenUbicacionId,
+        ubicacionSeleccionada.almacenUbicacionId,
         currentLine.cantidadPickeada,
         currentLine.pickLineaId,
         token
       );
-      
-      int? statusCode = await pickingServices.getStatusCode();
-      return statusCode == 1;
+
+      // 2. Extraer la nueva existenciaActual de la respuesta
+      final nuevaExistencia = response['ubicaciones']
+          .firstWhere((u) => u['almacenUbicacionId'] == ubicacionSeleccionada.almacenUbicacionId)
+          ['existenciaActual'];
+
+      // 3. Actualizar TODAS las ubicaciones con el mismo itemAlmacenUbicacionId
+      _actualizarExistenciasEnTodasLasLineas(
+        provider,
+        ubicacionSeleccionada.itemAlmacenUbicacionId,
+        nuevaExistencia
+      );
+
+      return true;
     } catch (e) {
       print('Error en patchCurrentLine: $e');
       return false;
     }
+  }
+
+  void _actualizarExistenciasEnTodasLasLineas(
+    ProductProvider provider,
+    int itemAlmacenUbicacionId,
+    int nuevaExistencia
+  ) {
+    // Actualizar en ordenPickingInterna
+    provider.ordenPickingInterna.lineas?.forEach((linea) {
+      for (var ubicacion in linea.ubicaciones) {
+        if (ubicacion.itemAlmacenUbicacionId == itemAlmacenUbicacionId) {
+          ubicacion.existenciaActual = nuevaExistencia;
+        }
+      }
+    });
+
+    // Actualizar en lineasPicking
+    for (var linea in provider.lineasPicking) {
+      for (var ubicacion in linea.ubicaciones) {
+        if (ubicacion.itemAlmacenUbicacionId == itemAlmacenUbicacionId) {
+          ubicacion.existenciaActual = nuevaExistencia;
+        }
+      }
+    }
+
+    // Actualizar la ubicación seleccionada si corresponde
+    if (provider.ubicacionSeleccionada?.itemAlmacenUbicacionId == itemAlmacenUbicacionId) {
+      provider.ubicacionSeleccionada?.existenciaActual = nuevaExistencia;
+    }
+
+    // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
+    provider.notifyListeners();
   }
 
   void _incrementProductQuantity(int index) {
@@ -198,10 +243,9 @@ class PickingProductsState extends State<PickingProducts> {
     try {
       final success = await _completeCurrentLine();
       
-      Navigator.of(context).pop();
+      Navigator.of(context).pop(); // Cerrar el diálogo de progreso
       
       if (!success) {
-        Navigator.of(context).pop();
         _showSingleSnackBar('Error al actualizar la línea', backgroundColor: Colors.red);
         return;
       }
@@ -212,23 +256,39 @@ class PickingProductsState extends State<PickingProducts> {
       if (isLastLine) {
         _navigateToSummary();
       } else {
-        // Verificar si la siguiente línea tiene ubicaciones
-        final nextLineIndex = provider.currentLineIndex + 1;
-        final nextLine = provider.ordenPickingInterna.lineas![nextLineIndex];
-        
-        if (provider.modoSeleccionUbicacion && nextLine.ubicaciones.isNotEmpty) {
-          // Modo automático - volver a picking para escanear siguiente ubicación
-          provider.setCurrentLineIndex(nextLineIndex);
-          appRouter.pushReplacement('/pickingProductos');
+        if (provider.modoSeleccionUbicacion) {
+          // Modo automático
+          final nextLineIndex = provider.currentLineIndex + 1;
+          final nextLine = provider.ordenPickingInterna.lineas![nextLineIndex];
+          
+          if (nextLine.ubicaciones.isNotEmpty) {
+            provider.setCurrentLineIndex(nextLineIndex);
+            appRouter.pushReplacement('/pickingProductos');
+          } else {
+            _handleLineWithoutLocations(provider);
+          }
         } else {
-          // Modo manual o línea sin ubicaciones - volver a pedido_interno
+          // Modo manual - volver a pickingInterno
           Navigator.of(context).popUntil((route) => route.settings.name == '/pickingInterno');
           appRouter.pushReplacement('/pickingInterno');
         }
       }
     } catch (e) {
-      Navigator.of(context).pop();
+      Navigator.of(context).pop(); // Cerrar el diálogo de progreso en caso de error
       _showSingleSnackBar('Error: ${e.toString()}', backgroundColor: Colors.red);
+    }
+  }
+
+  void _handleLineWithoutLocations(ProductProvider provider) {
+    final nextLineIndex = provider.currentLineIndex + 1;
+    final isLastLine = nextLineIndex >= provider.ordenPickingInterna.lineas!.length - 1;
+    
+    if (isLastLine) {
+      _navigateToSummary();
+    } else {
+      provider.setCurrentLineIndex(nextLineIndex);
+      Navigator.of(context).popUntil((route) => route.settings.name == '/pickingInterno');
+      appRouter.pushReplacement('/pickingInterno');
     }
   }
 
@@ -537,18 +597,22 @@ class PickingProductsState extends State<PickingProducts> {
           return const Center(child: Text('No hay ubicación seleccionada'));
         }
 
+        // Mostrar advertencia si no hay stock
+        if (ubicacion.existenciaActual == 0) {
+          return const Center(
+            child: Text(
+              '⚠️ Ubicación sin stock disponible',
+              style: TextStyle(color: Colors.red, fontSize: 18),
+            ),
+          );
+        }
+
         return Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Ubicación seleccionada',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              const Text('Ubicación seleccionada', style: TextStyle(fontSize: 18)),
               const SizedBox(height: 16),
               _buildLocationListItem(ubicacion, 0, line),
             ],
@@ -605,7 +669,7 @@ class PickingProductsState extends State<PickingProducts> {
                     ),
                     IconButton(
                       icon: const Icon(Icons.add),
-                      onPressed: (ubicacion.existenciaActual == 0 || ubicacion.existenciaActual <= line.cantidadPedida) ? null : () => _incrementProductQuantity(index),
+                      onPressed: ubicacion.existenciaActual == 0 ? null : () => _incrementProductQuantity(index),
                     ),
                   ],
                 ),

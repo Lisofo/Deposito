@@ -204,10 +204,10 @@ class _MonitorPageState extends State<MonitorPage> {
               selectedColor: colors.primary,
               unselectedColor: Colors.white,
               children: {
-                -1: buildSegment('Todos'),
                 0: buildSegment('Pendiente'),
                 1: buildSegment('En Proceso'),
                 2: buildSegment('Completado'),
+                -1: buildSegment('Todos'),
               },
               onValueChanged: (newValue) {
                 setState(() {
@@ -339,7 +339,7 @@ class _MonitorPageState extends State<MonitorPage> {
                                                           'Última modificación por:',
                                                           orden.modificadoPor,
                                                         ),
-                                                        _infoBox("Fecha última modificiación:", DateFormat('dd/MM/yyyy HH:mm').format(orden.fechaDate))
+                                                        _infoBox("Fecha última modificación:", DateFormat('dd/MM/yyyy HH:mm').format(orden.fechaDate))
                                                       ],
                                                     ),
                                                   ),
@@ -384,7 +384,7 @@ class _MonitorPageState extends State<MonitorPage> {
                                                 'Última modificación por:',
                                                 orden.modificadoPor,
                                               ),
-                                              _infoBox("Fecha última modificiación:", DateFormat('dd/MM/yyyy HH:mm').format(orden.fechaDate))
+                                              _infoBox("Fecha última modificación:", DateFormat('dd/MM/yyyy HH:mm').format(orden.fechaDate))
                                             ],
                                           ),
                                         ],

@@ -252,12 +252,12 @@ class UbicacionePicking {
   });
 
   factory UbicacionePicking.fromJson(Map<String, dynamic> json) => UbicacionePicking(
-    itemAlmacenUbicacionId: json["ItemAlmacenUbicacionId"] as int? ?? 0,
-    itemId: json["ItemId"] as int? ?? 0,
-    almacenUbicacionId: json["AlmacenUbicacionId"] as int? ?? 0,
-    existenciaActual: json["ExistenciaActual"] as int? ?? 0,
-    existenciaMaxima: json["ExistenciaMaxima"] as int? ?? 0,
-    existenciaMinima: json["ExistenciaMinima"] as int? ?? 0,
+    itemAlmacenUbicacionId: json["itemAlmacenUbicacionId"] as int? ?? 0,
+    itemId: json["itemId"] as int? ?? 0,
+    almacenUbicacionId: json["almacenUbicacionId"] as int? ?? 0,
+    existenciaActual: json["existenciaActual"] as int? ?? 0,
+    existenciaMaxima: json["existenciaMaxima"] as int? ?? 0,
+    existenciaMinima: json["existenciaMinima"] as int? ?? 0,
     fechaBaja: json["fechaBaja"] != null ? DateTime.parse(json["fechaBaja"]) : DateTime.now(),
     codUbicacion: json["codUbicacion"] as String? ?? '',
   );

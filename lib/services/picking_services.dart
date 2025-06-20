@@ -213,7 +213,7 @@ class PickingServices {
     }
   }
 
-  Future patchPicking (BuildContext context, int pickId, String codItem, int almacenUbicacionId, int conteo, int pickLineaId, String token) async {
+  Future<Map<String, dynamic>> patchPicking(BuildContext context, int pickId, String codItem, int almacenUbicacionId, int conteo, int pickLineaId, String token) async {
     String link = '$apirUrl/api/v1/ordenpicking/$pickId/items';
     var data = {
       "codItem": codItem,
@@ -221,6 +221,7 @@ class PickingServices {
       "conteo": conteo,
       "pickLineaId": pickLineaId
     };
+    
     try {
       var headers = {'Authorization': token};
       var resp = await _dio.request(
@@ -231,9 +232,12 @@ class PickingServices {
         ),
         data: data
       );
+      
       statusCode = 1;
-      final PickingLinea linea = PickingLinea.fromJson(resp.data);
-      return linea;
+      
+      // Devuelve el JSON completo para su procesamiento
+      return resp.data; 
+      
     } catch (e) {
       statusCode = 0;
       if (e is DioException) {
@@ -258,6 +262,7 @@ class PickingServices {
           Carteles.showErrorDialog(context, 'Error: No se pudo completar la solicitud');
         } 
       }
+      rethrow; // Relanza la excepción para manejo adicional si es necesario
     }
   }
 }

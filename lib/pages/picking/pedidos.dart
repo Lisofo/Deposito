@@ -169,10 +169,10 @@ class _ListaPickingState extends State<ListaPicking> {
               selectedColor: colors.primary,
               unselectedColor: Colors.white,
               children: {
-                -1: buildSegment('Mis ordenes'),
                 0: buildSegment('Pendiente'),
                 1: buildSegment('En Proceso'),
                 2: buildSegment('Completado'),
+                -1: buildSegment('Mis ordenes'),
               },
               onValueChanged: (newValue) {
                 setState(() {
@@ -251,6 +251,29 @@ class _ListaPickingState extends State<ListaPicking> {
                                         children: [
                                           Row(
                                             children: [
+                                              Stack(
+                                                alignment: Alignment.center,
+                                                children: [
+                                                  SizedBox(
+                                                    width: 48,
+                                                    height: 48,
+                                                    child: CircularProgressIndicator(
+                                                      value: orden.porcentajeCompletado / 100,
+                                                      strokeWidth: 5,
+                                                      backgroundColor: Colors.grey[400],
+                                                      color: orden.porcentajeCompletado == 100.0 ? Colors.green : colors.secondary,
+                                                    ),
+                                                  ),
+                                                  Text(
+                                                    '${orden.porcentajeCompletado.toStringAsFixed(orden.porcentajeCompletado % 1 == 0 ? 0 : 0)}%',
+                                                    style: const TextStyle(
+                                                      fontSize: 12, 
+                                                      fontWeight: FontWeight.bold
+                                                    ),
+                                                  )
+                                                ],
+                                              ),
+                                              const SizedBox(width: 8,),
                                               Expanded(
                                                 child: Text(
                                                   'Doc: ${orden.numeroDocumento} ${orden.serie ?? ''}',
@@ -291,6 +314,7 @@ class _ListaPickingState extends State<ListaPicking> {
                                           Text('RUC: ${orden.ruc}'),
                                           Text(orden.transaccion),
                                           Text('Fecha: ${DateFormat('dd/MM/yyyy').format(orden.fechaDate)}'),
+                                          Text("Fecha última mod.: ${DateFormat('dd/MM/yyyy HH:mm').format(orden.fechaDate)}"),
                                         ],
                                       ),
                                     ),

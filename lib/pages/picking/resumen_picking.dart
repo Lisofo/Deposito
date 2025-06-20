@@ -1,5 +1,3 @@
-// resumen_picking.dart (cambios completos)
-
 import 'package:deposito/models/orden_picking.dart';
 import 'package:deposito/provider/product_provider.dart';
 import 'package:flutter/material.dart';
@@ -7,34 +5,28 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:deposito/services/picking_services.dart';
 
-// ignore: must_be_immutable
 class SummaryScreen extends StatelessWidget {
-  List<PickingLinea>? processedLines = [];
-  SummaryScreen({super.key, required this.processedLines});
+  final List<PickingLinea>? processedLines;
+  const SummaryScreen({super.key, required this.processedLines});
 
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<ProductProvider>(context);
-    processedLines = provider.lineasPicking;
-    final colors = Theme.of(context).colorScheme;
     final ordenPicking = provider.ordenPickingInterna;
     final token = provider.token;
-
-    for(var line in processedLines!) {
-      print('${line.descripcion} total pickeado: ${line.cantidadPickeada}');
-    }
+    final colors = Theme.of(context).colorScheme;
 
     return SafeArea(
       child: Scaffold(
         appBar: AppBar(
-          title: Text('Resumen de Picking', style: TextStyle(color: colors.onPrimary)),
           backgroundColor: colors.primary,
-          iconTheme: IconThemeData(color: colors.onPrimary),
+          title: Text('Resumen de Picking', style: TextStyle(color: colors.onPrimary),),
           leading: BackButton(
             onPressed: () {
               Navigator.of(context).popUntil((route) => route.settings.name == '/pickingInterno');
             },
           ),
+          iconTheme: IconThemeData(color: colors.onPrimary),
         ),
         body: processedLines!.isEmpty
             ? const Center(child: Text('No hay líneas procesadas'))
@@ -60,75 +52,11 @@ class SummaryScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _completarPicking(BuildContext context, ProductProvider provider, OrdenPicking ordenPicking, String token) async {
-    try {
-      // Mostrar diálogo de confirmación
-      final confirm = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Confirmar'),
-          content: const Text('¿Estás seguro que deseas completar el picking?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancelar'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Confirmar'),
-            ),
-          ],
-        ),
-      );
-
-      if (confirm != true) return;
-
-      // Mostrar indicador de progreso
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(child: CircularProgressIndicator()),
-      );
-
-      // Hacer el PUT para cerrar la orden
-      final orderProvider = await PickingServices().putOrderPicking(
-        context, 
-        ordenPicking.pickId, 
-        'cerrado', 
-        token
-      );
-
-      // Navegar de regreso
-      Navigator.of(context).pop(); // Cerrar el diálogo de progreso
-      
-      if (orderProvider.pickId != 0) {
-        provider.setOrdenPickingInterna(OrdenPicking.empty());
-        provider.resetLineasPicking();
-        provider.resetCurrentLineIndex();
-        
-        // Usar popUntil para volver a pedido_interno eliminando resumen_picking del stack
-        Navigator.of(context).popUntil((route) => route.settings.name == '/pickingInterno');
-        
-        // Si no existe en el stack, entonces navegamos normalmente
-        if (!Navigator.of(context).canPop()) {
-          final router = GoRouter.of(context);
-          router.go('/pickingInterno');
-        }
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error al completar el picking')),
-        );
-      }
-    } catch (e) {
-      Navigator.of(context).pop(); // Cerrar el diálogo de progreso en caso de error
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.toString()}')),
-      );
-    }
-  }
-
   Widget _buildSummaryList(List<PickingLinea> lines) {
-    // Calcular totales generales
+    final lineasPadre = lines.where((line) => line.tipoLineaAdicional == "C" && line.lineaIdOriginal == 0).toList();
+    final lineasHijas = lines.where((line) => line.tipoLineaAdicional == "C" && line.lineaIdOriginal != 0).toList();
+    final lineasNormales = lines.where((line) => line.tipoLineaAdicional != "C").toList();
+
     int totalPedido = 0;
     int totalPickeado = 0;
     
@@ -139,7 +67,6 @@ class SummaryScreen extends StatelessWidget {
 
     return Column(
       children: [
-        // Resumen general
         Card(
           margin: const EdgeInsets.all(16),
           child: Padding(
@@ -148,10 +75,7 @@ class SummaryScreen extends StatelessWidget {
               children: [
                 const Text(
                   'Resumen General',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
                 Row(
@@ -181,84 +105,171 @@ class SummaryScreen extends StatelessWidget {
           ),
         ),
         
-        // Lista detallada
         Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: ListView.builder(
-              itemCount: lines.length,
-              itemBuilder: (context, index) {
-                final line = lines[index];
-                final isComplete = line.cantidadPickeada >= line.cantidadPedida;
+          child: ListView(
+            children: [
+              ...lineasNormales.map((line) => _buildLineCard(line)),
+              
+              ...lineasPadre.map((padre) {
+                final hijos = lineasHijas.where((hija) => 
+                  hija.lineaIdOriginal == padre.pickLineaId).toList();
+                
+                if (hijos.isEmpty) return const SizedBox.shrink();
                 
                 return Card(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        FittedBox(
-                          fit: BoxFit.contain,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  margin: const EdgeInsets.all(16),
+                  child: Builder(
+                    builder: (context) {
+                      return Theme(
+                        data: Theme.of(context).copyWith(
+                          dividerColor: Colors.transparent,
+                          unselectedWidgetColor: Colors.transparent,
+                        ),
+                        child: ExpansionTile(
+                          initiallyExpanded: true,
+                          title: SizedBox(
+                            width: double.infinity,
+                            child: Text(
+                              padre.descripcion,
+                              style: const TextStyle(fontSize: 16),
+                              softWrap: true,
+                            ),
+                          ),
+                          subtitle: Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(
-                                line.descripcion,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              Icon(
-                                isComplete ? Icons.check_circle : Icons.warning,
-                                color: isComplete ? Colors.green : Colors.orange,
-                              ),
+                              Text('Código: ${padre.codItem}'),
+                              const Spacer(),
+                              Text('Pedido: ${padre.cantidadPedida}'),
                             ],
                           ),
+                          children: hijos.map((hija) => _buildLineCard(hija)).toList(),
                         ),
-                        const SizedBox(height: 8),
-                        Text('Código: ${line.codItem}'),
-                        Text('ID: ${line.itemId}'),
-                        const Divider(),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text('Cantidad Pedida:'),
-                            Text('${line.cantidadPedida}'),
-                          ],
-                        ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text('Cantidad Pickeada:'),
-                            Text('${line.cantidadPickeada}'),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        if (line.ubicaciones.isNotEmpty)
-                          const Text(
-                            'Ubicaciones:',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ...line.ubicaciones.map((ubicacion) {
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 4.0),
-                            child: Text(
-                              '- Ubicación ID: ${ubicacion.almacenUbicacionId} (Pickeado: ${ubicacion.existenciaActual})',
-                              style: const TextStyle(fontSize: 14),
-                            ),
-                          );
-                        }),
-                      ],
-                    ),
-                  ),
+                      );
+                    },
+                  )
                 );
-              },
-            ),
+              }),
+            ],
           ),
         ),
       ],
     );
+  }
+
+  Widget _buildLineCard(PickingLinea line) {
+    final isComplete = line.cantidadPickeada >= line.cantidadPedida;
+    
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Flexible(
+                  child: Text(
+                    line.descripcion,
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                ),
+                Icon(
+                  isComplete ? Icons.check_circle : Icons.warning,
+                  color: isComplete ? Colors.green : Colors.orange,
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text('Código: ${line.codItem}'),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Pedido:'),
+                Text('${line.cantidadPedida}'),
+              ],
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Pickeado:'),
+                Text('${line.cantidadPickeada}'),
+              ],
+            ),
+            if (line.ubicaciones.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              const Text('Ubicaciones:', style: TextStyle(fontWeight: FontWeight.bold)),
+              ...line.ubicaciones.map((ubicacion) => Padding(
+                padding: const EdgeInsets.only(top: 4.0),
+                child: Text('- ${ubicacion.codUbicacion} (Stock: ${ubicacion.existenciaActual})'),
+              )),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _completarPicking(BuildContext context, ProductProvider provider, OrdenPicking ordenPicking, String token) async {
+    try {
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Confirmar'),
+          content: const Text('¿Estás seguro que deseas completar el picking?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Confirmar'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirm != true) return;
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
+
+      final orderProvider = await PickingServices().putOrderPicking(
+        context, 
+        ordenPicking.pickId, 
+        'cerrado', 
+        token
+      );
+
+      Navigator.of(context).pop();
+      
+      if (orderProvider.pickId != 0) {
+        provider.setOrdenPickingInterna(OrdenPicking.empty());
+        provider.resetLineasPicking();
+        provider.resetCurrentLineIndex();
+        Navigator.of(context).popUntil((route) => route.settings.name == '/pickingInterno');
+        
+        if (!Navigator.of(context).canPop()) {
+          final router = GoRouter.of(context);
+          router.go('/pickingInterno');
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error al completar el picking')),
+        );
+      }
+    } catch (e) {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
+      );
+    }
   }
 }

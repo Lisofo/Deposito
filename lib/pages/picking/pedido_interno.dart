@@ -43,6 +43,7 @@ class _PedidoInternoState extends State<PedidoInterno> {
     almacen = context.read<ProductProvider>().almacen;
     order = await PickingServices().getLineasOrder(context, orderProvider.pickId, almacen.almacenId, token);
     
+    
     // Inicializar el modo en el provider
     valorSwitch = context.read<ProductProvider>().modoSeleccionUbicacion;
     
@@ -67,7 +68,7 @@ class _PedidoInternoState extends State<PedidoInterno> {
           padding: const EdgeInsets.all(16.0),
           child: Column(
             children: [
-              _expanded(),
+              _expanded(colors),
               _buildCommentSection(orderProvider, colors),
             ],
           ),
@@ -77,7 +78,7 @@ class _PedidoInternoState extends State<PedidoInterno> {
     );
   }
 
-  Widget _expanded() {
+  Widget _expanded(ColorScheme colors) {
     return Expanded(
       child: SingleChildScrollView(
         child: Column(
@@ -92,6 +93,28 @@ class _PedidoInternoState extends State<PedidoInterno> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
+                        Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            SizedBox(
+                              width: 48,
+                              height: 48,
+                              child: CircularProgressIndicator(
+                                value: order.porcentajeCompletado / 100,
+                                strokeWidth: 5,
+                                backgroundColor: Colors.grey[400],
+                                color: order.porcentajeCompletado == 100.0 ? Colors.green : colors.secondary,
+                              ),
+                            ),
+                            Text(
+                              '${order.porcentajeCompletado.toStringAsFixed(order.porcentajeCompletado % 1 == 0 ? 0 : 0)}%',
+                              style: const TextStyle(
+                                fontSize: 12, 
+                                fontWeight: FontWeight.bold
+                              ),
+                            )
+                          ],
+                        ),
                         Text(
                           '${orderProvider.numeroDocumento} - ${orderProvider.serie}',
                           style: const TextStyle(
@@ -118,7 +141,9 @@ class _PedidoInternoState extends State<PedidoInterno> {
                     if (orderProvider.prioridad != '')
                       Text('Prioridad: ${orderProvider.prioridad}'),
                     const SizedBox(height: 8,),
-                    Text(orderProvider.transaccion)
+                    Text(orderProvider.transaccion),
+                    const SizedBox(height: 8,),
+                    Text("Fecha última mod.: ${_formatDate(order.fechaModificadoPor)}"),
                   ],
                 ),
               ),
@@ -129,41 +154,42 @@ class _PedidoInternoState extends State<PedidoInterno> {
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
+            // En el método _expanded(), modifica el ListView.builder o Column que muestra las líneas:
             Column(
               children: [
                 for (var i = 0; i < order.lineas!.length; i++)...[
-                  Card(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    child: ListTile(
-                      leading: const Icon(Icons.inventory),
-                      title: Text(order.lineas![i].descripcion),
-                      subtitle: Text('Código: ${order.lineas![i].codItem}'),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text('${order.lineas![i].cantidadPickeada} / ${order.lineas![i].cantidadPedida} unid.'),
-                          const SizedBox(width: 8,),
-                          if(order.lineas![i].cantidadPickeada == order.lineas![i].cantidadPedida)
-                            const Icon(Icons.check_circle, color: Colors.green,),
-                        ]
+                  if (!(order.lineas![i].tipoLineaAdicional == "C" && order.lineas![i].lineaIdOriginal == 0))
+                    Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: ListTile(
+                        leading: const Icon(Icons.inventory),
+                        title: Text(order.lineas![i].descripcion),
+                        subtitle: Text('Código: ${order.lineas![i].codItem}'),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text('${order.lineas![i].cantidadPickeada} / ${order.lineas![i].cantidadPedida} unid.'),
+                            const SizedBox(width: 8),
+                            if(order.lineas![i].cantidadPickeada == order.lineas![i].cantidadPedida)
+                              const Icon(Icons.check_circle, color: Colors.green),
+                          ]
+                        ),
+                        onTap: (valorSwitch || order.estado == 'CERRADO') ? null : () {
+                          if(seleccionado == false) {
+                            setState(() {
+                              seleccionado = true;
+                            });
+                            _seleccionarLineaManual(order.lineas![i], i);
+                            setState(() {
+                              seleccionado = false;
+                            });
+                          }
+                        },
                       ),
-                      onTap: (valorSwitch || order.estado == 'CERRADO') ? null : () {
-                        if(seleccionado == false) {
-                          setState(() {
-                            seleccionado = true;
-                          });
-                          _seleccionarLineaManual(order.lineas![i], i);
-                          setState(() {
-                            seleccionado = false;
-                          });
-                        }
-                      } ,
                     ),
-                  ),
                 ]
               ],
-            ),
-            
+            ),            
           ],
         ),
       ),
@@ -289,32 +315,71 @@ class _PedidoInternoState extends State<PedidoInterno> {
             TextButton(
               onPressed: () async {
                 if (accion == 'iniciar') {
-                  orderProvider = await PickingServices().putOrderPicking(context, order.pickId, 'en proceso', token);
+                  orderProvider = await PickingServices().putOrderPicking(
+                    context, 
+                    order.pickId, 
+                    'en proceso', 
+                    token
+                  );
                   order.estado = orderProvider.estado;
-                  Provider.of<ProductProvider>(context, listen: false).setOrdenPickingInterna(order);
-                  Provider.of<ProductProvider>(context, listen: false).setLineasPicking(order.lineas ?? []);
-                  Navigator.of(context).pop();
-                  if(order.tipo == 'C' || order.tipo == 'TE') {
-                    appRouter.push('/pickingCompra');
-                  } else {
-                    appRouter.push('/pickingProductos');
-                  }
-                } else if(accion == 'finalizar') {
-                  // Guardamos los datos en el provider
                   final provider = Provider.of<ProductProvider>(context, listen: false);
                   provider.setOrdenPickingInterna(order);
                   provider.setLineasPicking(order.lineas ?? []);
                   Navigator.of(context).pop();
-                  // Navegamos sin parámetros
-                  appRouter.push('/resumenPicking');
-                } else if(accion == 'continuar') {
-                  Provider.of<ProductProvider>(context, listen: false).setOrdenPickingInterna(order);
-                  Provider.of<ProductProvider>(context, listen: false).setLineasPicking(order.lineas ?? []);
-                  Navigator.of(context).pop();
-                  if(order.tipo == 'C' || order.tipo == 'TE') {
+                  
+                  if (order.tipo == 'C' || order.tipo == 'TE') {
                     appRouter.push('/pickingCompra');
                   } else {
-                    appRouter.push('/pickingProductos');
+                    if (valorSwitch) {
+                      // Buscar la primera línea válida (no completada y con stock)
+                      int firstValidIndex = order.lineas!.indexWhere(
+                        (linea) => 
+                          linea.cantidadPickeada != linea.cantidadPedida &&
+                          linea.ubicaciones.any((ubic) => ubic.existenciaActual > 0)
+                      );
+                      
+                      if (firstValidIndex != -1) {
+                        provider.setCurrentLineIndex(firstValidIndex);
+                        appRouter.push('/pickingProductos');
+                      } else {
+                        // Si no hay líneas válidas, ir directamente al resumen
+                        appRouter.push('/resumenPicking');
+                      }
+                    }
+                  }
+                } 
+                else if (accion == 'finalizar') {
+                  final provider = Provider.of<ProductProvider>(context, listen: false);
+                  provider.setOrdenPickingInterna(order);
+                  provider.setLineasPicking(order.lineas ?? []);
+                  Navigator.of(context).pop();
+                  appRouter.push('/resumenPicking');
+                } 
+                else if (accion == 'continuar') {
+                  final provider = Provider.of<ProductProvider>(context, listen: false);
+                  provider.setOrdenPickingInterna(order);
+                  provider.setLineasPicking(order.lineas ?? []);
+                  Navigator.of(context).pop();
+                  
+                  if (order.tipo == 'C' || order.tipo == 'TE') {
+                    appRouter.push('/pickingCompra');
+                  } else {
+                    if (valorSwitch) {
+                      // Buscar la primera línea válida (no completada y con stock)
+                      int firstValidIndex = order.lineas!.indexWhere(
+                        (linea) => 
+                          linea.cantidadPickeada != linea.cantidadPedida &&
+                          linea.ubicaciones.any((ubic) => ubic.existenciaActual > 0)
+                      );
+                      
+                      if (firstValidIndex != -1) {
+                        provider.setCurrentLineIndex(firstValidIndex);
+                        appRouter.push('/pickingProductos');
+                      } else {
+                        // Si no hay líneas válidas, ir directamente al resumen
+                        appRouter.push('/resumenPicking');
+                      }
+                    }
                   }
                 }
                 setState(() {});
