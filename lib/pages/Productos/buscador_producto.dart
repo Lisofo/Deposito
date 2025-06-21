@@ -11,9 +11,9 @@ import 'package:deposito/provider/product_provider.dart';
 import 'package:deposito/services/product_services.dart';
 import 'package:deposito/services/qr_services.dart';
 import 'package:deposito/widgets/carteles.dart';
+import 'package:deposito/widgets/custom_speed_dial.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:provider/provider.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 import 'package:flutter_barcode_listener/flutter_barcode_listener.dart';
@@ -248,27 +248,26 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
               ],
             ),
           ),
-        floatingActionButton: SpeedDial(
-          icon: Icons.add,
-          activeIcon: Icons.close,
-          backgroundColor: colores.primary,
-          foregroundColor: Colors.white,
+        floatingActionButton: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            if(camera)
-            SpeedDialChild(
-              child: const Icon(Icons.qr_code_scanner_outlined),
-              backgroundColor: colores.primary,
-              foregroundColor: Colors.white,
-              label: 'Escanear',
-              onTap: _scanBarcode,
-            ),
-            SpeedDialChild(
-              child: const Icon(Icons.restore),
+            CustomSpeedDialChild(
+              icon: Icons.restore,
               backgroundColor: colores.primary,
               foregroundColor: Colors.white,
               label: 'Reiniciar',
               onTap: _resetSearch,
             ),
+            if (camera) ...[
+              CustomSpeedDialChild(
+                icon: Icons.qr_code_scanner_outlined,
+                label: 'Escanear',
+                backgroundColor: colores.primary,
+                foregroundColor: Colors.white,
+                onTap: _scanBarcode,
+              ),
+              const SizedBox(height: 8),
+            ],
           ],
         ),
       ),

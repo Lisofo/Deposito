@@ -24,6 +24,7 @@ class _PedidoInternoState extends State<PedidoInterno> {
   late Almacen almacen = Almacen.empty();
   bool valorSwitch = true;
   bool seleccionado = false;
+  bool continuar = false;
 
   @override
   void initState() {
@@ -160,6 +161,7 @@ class _PedidoInternoState extends State<PedidoInterno> {
                 for (var i = 0; i < order.lineas!.length; i++)...[
                   if (!(order.lineas![i].tipoLineaAdicional == "C" && order.lineas![i].lineaIdOriginal == 0))
                     Card(
+                      color: (valorSwitch || continuar == false) ? Colors.grey.shade300 : Colors.white,
                       margin: const EdgeInsets.only(bottom: 8),
                       child: ListTile(
                         leading: const Icon(Icons.inventory),
@@ -174,7 +176,7 @@ class _PedidoInternoState extends State<PedidoInterno> {
                               const Icon(Icons.check_circle, color: Colors.green),
                           ]
                         ),
-                        onTap: (valorSwitch || order.estado == 'CERRADO') ? null : () {
+                        onTap: (valorSwitch || order.estado == 'CERRADO' || continuar == false) ? null : () {
                           if(seleccionado == false) {
                             setState(() {
                               seleccionado = true;
@@ -283,7 +285,7 @@ class _PedidoInternoState extends State<PedidoInterno> {
               Icon(Icons.handyman, color: !valorSwitch ? colors.secondary : colors.onSurface,),
               Switch(
                 value: valorSwitch,
-                onChanged: order.estado == 'CERRADO' ? null : (value) {
+                onChanged: (order.estado == 'CERRADO' || continuar == false) ? null : (value) {
                   valorSwitch = value;
                   context.read<ProductProvider>().setModoSeleccionUbicacion(value);
                   setState(() {});
@@ -315,6 +317,7 @@ class _PedidoInternoState extends State<PedidoInterno> {
             TextButton(
               onPressed: () async {
                 if (accion == 'iniciar') {
+                  continuar = true;
                   orderProvider = await PickingServices().putOrderPicking(
                     context, 
                     order.pickId, 
@@ -364,7 +367,7 @@ class _PedidoInternoState extends State<PedidoInterno> {
                   if (order.tipo == 'C' || order.tipo == 'TE') {
                     appRouter.push('/pickingCompra');
                   } else {
-                    if (valorSwitch) {
+                    if (valorSwitch && continuar) {
                       // Buscar la primera línea válida (no completada y con stock)
                       int firstValidIndex = order.lineas!.indexWhere(
                         (linea) => 
@@ -379,6 +382,11 @@ class _PedidoInternoState extends State<PedidoInterno> {
                         // Si no hay líneas válidas, ir directamente al resumen
                         appRouter.push('/resumenPicking');
                       }
+                    } else {
+                      await PickingServices().iniciarTrabajo(context, orderProvider.pickId, token);
+                      setState(() {
+                        continuar = true;
+                      });
                     }
                   }
                 }

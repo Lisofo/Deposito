@@ -18,7 +18,18 @@ final _icons = <String, IconData>{
   'person_3_rounded': Icons.person_3_rounded,
   'task_outlined': Icons.task_outlined,
   'grain_outlined': Icons.grain_outlined,
-  'person_pin_circle_outlined': Icons.person_pin_circle_outlined
+  'person_pin_circle_outlined': Icons.person_pin_circle_outlined,
+  'inventory' : Icons.inventory,
+  'checklist' : Icons.checklist,
+  'assignment_ind' : Icons.assignment_ind,
+  'compare_arrows': Icons.compare_arrows,
+  'move_to_inbox': Icons.move_to_inbox,
+  'shopping_basket' : Icons.shopping_basket,
+  'sell' : Icons.sell,
+  'list_alt' : Icons.list_alt,
+  'exit_to_app' : Icons.exit_to_app,
+  'dashboard' : Icons.dashboard,
+  'monitor' : Icons.monitor,
 };
 
 Icon getIcon(String iconName,BuildContext context) {

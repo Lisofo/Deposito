@@ -31,22 +31,47 @@ class SummaryScreen extends StatelessWidget {
         body: processedLines!.isEmpty
             ? const Center(child: Text('No hay líneas procesadas'))
             : _buildSummaryList(processedLines!),
-        bottomNavigationBar: Container(
-          color: Colors.white,
-          padding: const EdgeInsets.all(16),
-          child: ElevatedButton(
-            onPressed: () async {
-              await _completarPicking(context, provider, ordenPicking, token);
-            },
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              backgroundColor: colors.primary,
+        bottomNavigationBar: Row(
+          children: [
+            Expanded(
+              child: Container(
+                color: Colors.white,
+                padding: const EdgeInsets.all(16),
+                child: ElevatedButton(
+                  onPressed: () async {
+                    await _completarPicking(context, provider, ordenPicking, token);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    backgroundColor: colors.primary,
+                  ),
+                  child: Text(
+                    'Completar Picking',
+                    style: TextStyle(fontSize: 16, color: colors.onPrimary),
+                  ),
+                ),
+              ),
             ),
-            child: Text(
-              'Completar Picking',
-              style: TextStyle(fontSize: 16, color: colors.onPrimary),
+            Expanded(
+              child: Container(
+                color: Colors.white,
+                padding: const EdgeInsets.all(16),
+                child: ElevatedButton(
+                  onPressed: () async {
+                    _pausarPicking(context, provider, ordenPicking, token);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    backgroundColor: colors.primary,
+                  ),
+                  child: Text(
+                    'Pausar Picking',
+                    style: TextStyle(fontSize: 16, color: colors.onPrimary),
+                  ),
+                ),
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -265,6 +290,55 @@ class SummaryScreen extends StatelessWidget {
           const SnackBar(content: Text('Error al completar el picking')),
         );
       }
+    } catch (e) {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
+      );
+    }
+  }
+
+  Future<void> _pausarPicking(BuildContext context, ProductProvider provider, OrdenPicking ordenPicking, String token) async {
+    try {
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Confirmar'),
+          content: const Text('¿Estás seguro que deseas pausar el picking?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Confirmar'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirm != true) return;
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
+
+      await PickingServices().cerrarTarea(context, ordenPicking.pickId, token);
+      Navigator.of(context).pop();
+      
+      provider.setOrdenPickingInterna(OrdenPicking.empty());
+      provider.resetLineasPicking();
+      provider.resetCurrentLineIndex();
+      Navigator.of(context).popUntil((route) => route.settings.name == '/pickingInterno');
+      
+      if (!Navigator.of(context).canPop()) {
+        final router = GoRouter.of(context);
+        router.go('/pickingInterno');
+      }
+      
     } catch (e) {
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(

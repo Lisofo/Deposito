@@ -4,8 +4,8 @@ import 'package:deposito/models/almacen.dart';
 import 'package:deposito/models/orden_picking.dart';
 import 'package:deposito/provider/product_provider.dart';
 import 'package:deposito/widgets/carteles.dart';
+import 'package:deposito/widgets/custom_speed_dial.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:provider/provider.dart';
 import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 import 'package:visibility_detector/visibility_detector.dart';
@@ -88,27 +88,26 @@ class _PickingPageState extends State<PickingPage> {
   }
 
   Widget _buildFloatingActionButton(ColorScheme colors) {
-    return SpeedDial(
-      icon: Icons.add,
-      activeIcon: Icons.close,
-      backgroundColor: colors.primary,
-      foregroundColor: Colors.white,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        if(camera)
-        SpeedDialChild(
-          child: const Icon(Icons.qr_code_scanner_outlined),
-          backgroundColor: colors.primary,
-          foregroundColor: Colors.white,
-          label: 'Escanear',
-          onTap: _scanBarcode,
-        ),
-        SpeedDialChild(
-          child: const Icon(Icons.restore),
+        CustomSpeedDialChild(
+          icon: Icons.restore,
           backgroundColor: colors.primary,
           foregroundColor: Colors.white,
           label: 'Reiniciar',
           onTap: _resetSearch,
         ),
+        if (camera) ...[
+          CustomSpeedDialChild(
+            icon: Icons.qr_code_scanner_outlined,
+            label: 'Escanear',
+            backgroundColor: colors.primary,
+            foregroundColor: Colors.white,
+            onTap: _scanBarcode,
+          ),
+          const SizedBox(height: 8),
+        ],
       ],
     );
   }
