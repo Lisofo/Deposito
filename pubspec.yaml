@@ -61,6 +61,7 @@ dependencies:
   graphic: ^2.5.1
   flutter_speed_dial: ^6.0.0
   flutter_animate: ^4.5.2
+  qr_flutter: ^4.1.0
 
 dev_dependencies:
   flutter_test:

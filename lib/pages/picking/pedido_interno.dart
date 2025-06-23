@@ -64,6 +64,9 @@ class _PedidoInternoState extends State<PedidoInterno> {
             'Orden ${orderProvider.numeroDocumento}',
             style: const TextStyle(color: Colors.white),
           ),
+          actions: [
+            IconButton(onPressed: () => appRouter.push('/qrPage'), icon: const Icon(Icons.qr_code))
+          ],
         ),
         body: Padding(
           padding: const EdgeInsets.all(16.0),

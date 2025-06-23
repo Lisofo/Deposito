@@ -71,6 +71,7 @@ class PickingServices {
     String? nombre,
     int? usuId,
     int? modUsuId,
+    int? pickId
   }) async {
     String link = '$apirUrl/api/v1/ordenpicking';
     Map<String, dynamic> queryParams = {};
@@ -85,6 +86,7 @@ class PickingServices {
     if (localidad != null && localidad.isNotEmpty) queryParams['localidad'] = localidad;
     if(usuId != null && usuId != 0) queryParams['usuId'] = usuId;
     if(modUsuId != null && modUsuId != 0) queryParams['modUsuId'] = modUsuId;
+    if(pickId != null && pickId != 0) queryParams['pickId'] = pickId;
 
     try {
       var headers = {'Authorization': token};

@@ -209,6 +209,7 @@ class _PickingPageState extends State<PickingPage> {
 
   void _resetSearch() {
     focoDeScanner.requestFocus();
+    textController.clear();
     setState(() {});
   }
 

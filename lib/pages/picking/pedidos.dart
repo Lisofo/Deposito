@@ -1,3 +1,5 @@
+import 'package:deposito/widgets/carteles.dart';
+import 'package:deposito/widgets/custom_speed_dial.dart';
 import 'package:deposito/widgets/filtros_picking.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -8,6 +10,8 @@ import 'package:deposito/models/orden_picking.dart';
 import 'package:deposito/provider/product_provider.dart';
 import 'package:deposito/services/picking_services.dart';
 import 'package:provider/provider.dart';
+import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 
 class ListaPicking extends StatefulWidget {
   const ListaPicking({super.key});
@@ -22,11 +26,15 @@ class _ListaPickingState extends State<ListaPicking> {
   final TextEditingController _searchControllerNumeroDoc = TextEditingController();
   final GlobalKey<RefreshIndicatorState> _refreshIndicatorKey = GlobalKey<RefreshIndicatorState>();
   late Almacen almacen = Almacen.empty();
+  FocusNode focoDeScanner = FocusNode();
+  TextEditingController textController = TextEditingController();
   
   List<OrdenPicking> _ordenes = [];
   List<OrdenPicking> _filteredOrdenes = [];
   bool _isLoading = true;
   bool _isFilterExpanded = false;
+  bool scanMode = false;
+  bool camera = false;
 
   // Filtros
   DateTime? _fechaDesde;
@@ -43,6 +51,7 @@ class _ListaPickingState extends State<ListaPicking> {
     super.initState();
     token = context.read<ProductProvider>().token;
     menu = context.read<ProductProvider>().menu;
+    camera = context.read<ProductProvider>().camera;
     menuSplitted = menu.split('-');
     _loadData();
   }
@@ -115,7 +124,16 @@ class _ListaPickingState extends State<ListaPicking> {
           ),
           iconTheme: IconThemeData(color: colors.onPrimary),
           actions: [
+            IconButton(
+              onPressed: () {
+                setState(() {
+                  scanMode = !scanMode;
+                });
+              },
+              icon: const Icon(Icons.qr_code)
+            ),
             if (_hasActiveFilters())
+
               Container(
                 margin: const EdgeInsets.only(right: 8),
                 padding: const EdgeInsets.all(4),
@@ -137,7 +155,33 @@ class _ListaPickingState extends State<ListaPicking> {
           ],
         ),
         backgroundColor: Colors.grey.shade200,
-        body: Column(
+        body: scanMode ? Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const Text('Escanee el código QR de alguna orden'),
+            VisibilityDetector(
+              key: const Key('scanner-field-visibility'),
+              onVisibilityChanged: (info) {
+                if (info.visibleFraction > 0) {
+                  focoDeScanner.requestFocus();
+                }
+              },
+              child: TextFormField(
+                focusNode: focoDeScanner,
+                cursorColor: Colors.transparent,
+                decoration: const InputDecoration(
+                  border: UnderlineInputBorder(borderSide: BorderSide.none),
+                ),
+                style: const TextStyle(color: Colors.transparent),
+                autofocus: true,
+                keyboardType: TextInputType.none,
+                controller: textController,
+                onFieldSubmitted: procesarEscaneoUbicacion,
+              ),
+            ),
+          ],
+        ) : Column(
           children: [
             FiltrosPicking(
               usuarios: null,
@@ -326,8 +370,92 @@ class _ListaPickingState extends State<ListaPicking> {
             ),
           ],
         ),
+        floatingActionButton: scanMode ? _buildFloatingActionButton(colors) : null,
       ),
     );
+  }
+
+  void _resetSearch() {
+    focoDeScanner.requestFocus();
+    textController.clear();
+    setState(() {});
+  }
+
+  Widget _buildFloatingActionButton(ColorScheme colors) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        CustomSpeedDialChild(
+          icon: Icons.restore,
+          backgroundColor: colors.primary,
+          foregroundColor: Colors.white,
+          label: 'Reiniciar',
+          onTap: _resetSearch,
+        ),
+        if (camera) ...[
+          CustomSpeedDialChild(
+            icon: Icons.qr_code_scanner_outlined,
+            label: 'Escanear',
+            backgroundColor: colors.primary,
+            foregroundColor: Colors.white,
+            onTap: _scanBarcode,
+          ),
+          const SizedBox(height: 8),
+        ],
+      ],
+    );
+  }
+
+  Future<void> _scanBarcode() async {
+    final code = await SimpleBarcodeScanner.scanBarcode(
+      context,
+      lineColor: '#FFFFFF',
+      cancelButtonText: 'Cancelar',
+      scanType: ScanType.qr,
+      isShowFlashIcon: false,
+    );
+    if (code == '-1') return;
+    if (code != '-1') {
+      try {
+        final ordenObtenida = await _pickingServices.getOrdenesPicking(
+          context, 
+          almacen.almacenId,
+          token, 
+          tipo: menuSplitted[1],
+          pickId: int.tryParse(code.toString())
+        );
+        Provider.of<ProductProvider>(context, listen: false).setOrdenPicking(ordenObtenida[0]);
+        appRouter.push('/pickingInterno');
+        textController.clear();
+        await Future.delayed(const Duration(milliseconds: 100));
+        focoDeScanner.requestFocus();
+      } catch (e) {
+        Carteles.showDialogs(context, 'Error al procesar el escaneo', false, false, false);
+      }
+    }
+    
+    setState(() {});
+  }
+
+  Future<void> procesarEscaneoUbicacion(String value) async {
+    if (value.isEmpty) return;
+    
+    try {
+      final ordenObtenida = await _pickingServices.getOrdenesPicking(
+        context, 
+        almacen.almacenId,
+        token, 
+        tipo: menuSplitted[1],
+        pickId: int.tryParse(value)
+      );
+      Provider.of<ProductProvider>(context, listen: false).setOrdenPicking(ordenObtenida[0]);
+      appRouter.push('/pickingInterno');
+      textController.clear();
+      await Future.delayed(const Duration(milliseconds: 100));
+      focoDeScanner.requestFocus();
+    } catch (e) {
+      Carteles.showDialogs(context, 'Error al procesar el escaneo', false, false, false);
+    }
   }
 
   Color _getStatusColor(String status) {

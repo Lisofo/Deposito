@@ -62,6 +62,7 @@ class AppRouter {
         GoRoute(path: '/pickingCompra', builder: (context, state) => const PickingCompra(),),
         GoRoute(path: '/pickingProductosCompra', builder: (context, state) => const PickingProductsEntrada()),
         GoRoute(path: '/monitor', builder: (context, state) => const MonitorPage()),
+        GoRoute(path: '/qrPage', builder: (context, state) => const QrPage()),
       ],
     );
   }
