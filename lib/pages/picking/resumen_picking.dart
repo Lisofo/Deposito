@@ -238,6 +238,7 @@ class SummaryScreen extends StatelessWidget {
     );
   }
 
+  // En el método _completarPicking de resumen_picking.dart:
   Future<void> _completarPicking(BuildContext context, ProductProvider provider, OrdenPicking ordenPicking, String token) async {
     try {
       final confirm = await showDialog<bool>(
@@ -276,9 +277,13 @@ class SummaryScreen extends StatelessWidget {
       Navigator.of(context).pop();
       
       if (orderProvider.pickId != 0) {
+        // Actualizar el estado en todos los lugares necesarios
+        provider.setOrdenPicking(orderProvider);
         provider.setOrdenPickingInterna(OrdenPicking.empty());
         provider.resetLineasPicking();
         provider.resetCurrentLineIndex();
+        
+        // Forzar navegación limpia
         Navigator.of(context).popUntil((route) => route.settings.name == '/pickingInterno');
         
         if (!Navigator.of(context).canPop()) {
@@ -298,6 +303,7 @@ class SummaryScreen extends StatelessWidget {
     }
   }
 
+  // En el método _pausarPicking de resumen_picking.dart:
   Future<void> _pausarPicking(BuildContext context, ProductProvider provider, OrdenPicking ordenPicking, String token) async {
     try {
       final confirm = await showDialog<bool>(
@@ -327,11 +333,15 @@ class SummaryScreen extends StatelessWidget {
       );
 
       await PickingServices().cerrarTarea(context, ordenPicking.pickId, token);
+      
+      // Actualizar el estado en el provider
+      final updatedOrder = ordenPicking.copyWith(estado: 'PENDIENTE');
+      provider.setOrdenPicking(updatedOrder);
+      provider.setOrdenPickingInterna(updatedOrder);
+      
       Navigator.of(context).pop();
       
-      provider.setOrdenPickingInterna(OrdenPicking.empty());
-      provider.resetLineasPicking();
-      provider.resetCurrentLineIndex();
+      // Volver a la pantalla anterior
       Navigator.of(context).popUntil((route) => route.settings.name == '/pickingInterno');
       
       if (!Navigator.of(context).canPop()) {

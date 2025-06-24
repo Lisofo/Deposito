@@ -93,11 +93,15 @@ class OrdenPicking {
     nombre: json["nombre"] as String? ?? '',
     telefono: json["telefono"] as String? ?? '',
     localidad: json["localidad"] as String? ?? '',
-    porcentajeCompletado: (json["porcentajeCompletado"] is int) ? (json["porcentajeCompletado"] as int).toDouble() : json["porcentajeCompletado"] as double? ?? 0.0,
+    porcentajeCompletado: (json["porcentajeCompletado"] is int) 
+        ? (json["porcentajeCompletado"] as int).toDouble() 
+        : json["porcentajeCompletado"] as double? ?? 0.0,
     creadoPor: json["creadoPor"] as String? ?? '',
     modificadoPor: json["modificadoPor"] as String? ?? '',
     fechaModificadoPor: DateTime.parse(json["fechaModificadoPor"]),
-    lineas: json["lineas"] != null ? List<PickingLinea>.from(json["lineas"].map((x) => PickingLinea.fromJson(x))) : [],
+    lineas: json["lineas"] != null 
+        ? List<PickingLinea>.from(json["lineas"].map((x) => PickingLinea.fromJson(x))) 
+        : [],
   );
 
   Map<String, dynamic> toJson() => {
@@ -158,6 +162,68 @@ class OrdenPicking {
     modificadoPor = '';
     lineas = [];
   }
+
+  OrdenPicking copyWith({
+    int? pickId,
+    int? numeroDocumento,
+    String? serie,
+    int? transaccionId,
+    String? transaccion,
+    String? tipo,
+    int? movimientoId,
+    DateTime? fechaDate,
+    DateTime? fechaDocumento,
+    String? estado,
+    int? almacenIdOrigen,
+    int? almacenIdDestino,
+    String? prioridad,
+    String? comentario,
+    int? cantLineas,
+    int? tInfoEmpresaWsId,
+    int? usuId,
+    int? entidadId,
+    String? codEntidad,
+    String? ruc,
+    String? nombre,
+    String? telefono,
+    String? localidad,
+    double? porcentajeCompletado,
+    String? creadoPor,
+    String? modificadoPor,
+    DateTime? fechaModificadoPor,
+    List<PickingLinea>? lineas,
+  }) {
+    return OrdenPicking(
+      pickId: pickId ?? this.pickId,
+      numeroDocumento: numeroDocumento ?? this.numeroDocumento,
+      serie: serie ?? this.serie,
+      transaccionId: transaccionId ?? this.transaccionId,
+      transaccion: transaccion ?? this.transaccion,
+      tipo: tipo ?? this.tipo,
+      movimientoId: movimientoId ?? this.movimientoId,
+      fechaDate: fechaDate ?? this.fechaDate,
+      fechaDocumento: fechaDocumento ?? this.fechaDocumento,
+      estado: estado ?? this.estado,
+      almacenIdOrigen: almacenIdOrigen ?? this.almacenIdOrigen,
+      almacenIdDestino: almacenIdDestino ?? this.almacenIdDestino,
+      prioridad: prioridad ?? this.prioridad,
+      comentario: comentario ?? this.comentario,
+      cantLineas: cantLineas ?? this.cantLineas,
+      tInfoEmpresaWsId: tInfoEmpresaWsId ?? this.tInfoEmpresaWsId,
+      usuId: usuId ?? this.usuId,
+      entidadId: entidadId ?? this.entidadId,
+      codEntidad: codEntidad ?? this.codEntidad,
+      ruc: ruc ?? this.ruc,
+      nombre: nombre ?? this.nombre,
+      telefono: telefono ?? this.telefono,
+      localidad: localidad ?? this.localidad,
+      porcentajeCompletado: porcentajeCompletado ?? this.porcentajeCompletado,
+      creadoPor: creadoPor ?? this.creadoPor,
+      modificadoPor: modificadoPor ?? this.modificadoPor,
+      fechaModificadoPor: fechaModificadoPor ?? this.fechaModificadoPor,
+      lineas: lineas ?? (this.lineas != null ? List.from(this.lineas!) : null),
+    );
+  }
 }
 
 class PickingLinea {
@@ -198,7 +264,9 @@ class PickingLinea {
     lineaIdOriginal: json["lineaIdOriginal"] as int? ?? 0,
     codItem: json["codItem"] as String? ?? '',
     descripcion: json["descripcion"] as String? ?? '',
-    ubicaciones: json["ubicaciones"] != null ? List<UbicacionePicking>.from(json["ubicaciones"].map((x) => UbicacionePicking.fromJson(x))) : [],
+    ubicaciones: json["ubicaciones"] != null 
+        ? List<UbicacionePicking>.from(json["ubicaciones"].map((x) => UbicacionePicking.fromJson(x))) 
+        : [],
   );
 
   Map<String, dynamic> toJson() => {
@@ -227,6 +295,35 @@ class PickingLinea {
     codItem = '';
     descripcion = '';
     ubicaciones = [];
+  }
+
+  PickingLinea copyWith({
+    int? pickLineaId,
+    int? pickId,
+    int? lineaId,
+    int? itemId,
+    int? cantidadPedida,
+    int? cantidadPickeada,
+    String? tipoLineaAdicional,
+    int? lineaIdOriginal,
+    String? codItem,
+    String? descripcion,
+    List<UbicacionePicking>? ubicaciones,
+  }) {
+    return PickingLinea(
+      pickLineaId: pickLineaId ?? this.pickLineaId,
+      pickId: pickId ?? this.pickId,
+      lineaId: lineaId ?? this.lineaId,
+      itemId: itemId ?? this.itemId,
+      cantidadPedida: cantidadPedida ?? this.cantidadPedida,
+      cantidadPickeada: cantidadPickeada ?? this.cantidadPickeada,
+      tipoLineaAdicional: tipoLineaAdicional ?? this.tipoLineaAdicional,
+      lineaIdOriginal: lineaIdOriginal ?? this.lineaIdOriginal,
+      codItem: codItem ?? this.codItem,
+      descripcion: descripcion ?? this.descripcion,
+      // ignore: unnecessary_null_comparison
+      ubicaciones: ubicaciones ?? (this.ubicaciones != null ? List.from(this.ubicaciones) : []),
+    );
   }
 }
 
@@ -269,7 +366,7 @@ class UbicacionePicking {
     "ExistenciaActual": existenciaActual,
     "ExistenciaMaxima": existenciaMaxima,
     "ExistenciaMinima": existenciaMinima,
-    "fechaBaja": fechaBaja,
+    "fechaBaja": fechaBaja.toIso8601String(),
     "codUbicacion": codUbicacion,
   };
 
@@ -282,5 +379,27 @@ class UbicacionePicking {
     existenciaMinima = 0;
     fechaBaja = DateTime.now();
     codUbicacion = '';
+  }
+
+  UbicacionePicking copyWith({
+    int? itemAlmacenUbicacionId,
+    int? itemId,
+    int? almacenUbicacionId,
+    int? existenciaActual,
+    int? existenciaMaxima,
+    int? existenciaMinima,
+    DateTime? fechaBaja,
+    String? codUbicacion,
+  }) {
+    return UbicacionePicking(
+      itemAlmacenUbicacionId: itemAlmacenUbicacionId ?? this.itemAlmacenUbicacionId,
+      itemId: itemId ?? this.itemId,
+      almacenUbicacionId: almacenUbicacionId ?? this.almacenUbicacionId,
+      existenciaActual: existenciaActual ?? this.existenciaActual,
+      existenciaMaxima: existenciaMaxima ?? this.existenciaMaxima,
+      existenciaMinima: existenciaMinima ?? this.existenciaMinima,
+      fechaBaja: fechaBaja ?? this.fechaBaja,
+      codUbicacion: codUbicacion ?? this.codUbicacion,
+    );
   }
 }

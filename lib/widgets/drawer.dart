@@ -1,9 +1,9 @@
 import 'package:deposito/config/router/router.dart';
 import 'package:deposito/models/menu.dart';
+import 'package:deposito/provider/menu_provider.dart';
 import 'package:deposito/provider/product_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../provider/menu_provider.dart';
 import 'icon_string.dart';
 
 class BotonesDrawer extends StatefulWidget {
@@ -18,6 +18,7 @@ class _BotonesDrawerState extends State<BotonesDrawer> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final ordenProvider = context.read<ProductProvider>();
+    final menuProvider = context.watch<MenuProvider>();
 
     return FutureBuilder(
       future: menuProvider.cargarData(context, ordenProvider.token),
@@ -56,20 +57,41 @@ class _BotonesDrawerState extends State<BotonesDrawer> {
 
 List<Widget> _filaBotones2(List<Opcion> opciones, BuildContext context) {
   final List<Widget> opcionesRet = [];
+  final menuProvider = context.read<MenuProvider>();
+  final productProvider = context.read<ProductProvider>();
+
   for (var opt in opciones) {
+    final isQuickAccess = menuProvider.isQuickAccess(opt.ruta);
+    
     final widgetTemp = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: InkWell(
         onTap: () {
-          print(opt.texto);
-          Provider.of<ProductProvider>(context, listen: false).setMenu(opt.ruta);
-          Provider.of<ProductProvider>(context, listen: false).setTitle(opt.texto);
+          productProvider.setMenu(opt.ruta);
+          productProvider.setTitle(opt.texto);
           appRouter.push(opt.ruta);
+        },
+        onLongPress: () async {
+          if (isQuickAccess) {
+            await menuProvider.removeQuickAccess(opt.ruta);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('${opt.texto} removido de accesos rápidos')),
+            );
+          } else if (menuProvider.quickAccessItems.length < 6) {
+            await menuProvider.addQuickAccess(opt.ruta);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('${opt.texto} agregado a accesos rápidos')),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Máximo 6 accesos rápidos permitidos')),
+            );
+          }
         },
         child: Row(
           children: [
             getIcon(opt.icon, context),
-            const SizedBox(width: 8), // Espacio entre el icono y el texto
+            const SizedBox(width: 8),
             TextButton(
               onPressed: null,
               child: Text(
@@ -77,6 +99,8 @@ List<Widget> _filaBotones2(List<Opcion> opciones, BuildContext context) {
                 style: const TextStyle(color: Colors.black),
               ),
             ),
+            if (isQuickAccess)
+              const Icon(Icons.star, color: Colors.amber, size: 16),
           ],
         ),
       ),

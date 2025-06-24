@@ -1,11 +1,12 @@
 import 'package:deposito/config/router/router.dart';
 import 'package:deposito/config/theme/app_theme.dart';
 import 'package:deposito/config/version_checker.dart';
+import 'package:deposito/provider/menu_provider.dart';
 import 'package:deposito/provider/product_provider.dart';
 import 'package:deposito/provider/theme_provider.dart';
 import 'package:deposito/provider/ubicacion_provider.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart'; // Importa esto para kIsWeb
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
@@ -17,10 +18,8 @@ Future<void> main() async {
   final prefs = await SharedPreferences.getInstance();
   final bool camDisponible = prefs.getBool('cambioVista') ?? false;
   
-  // Inicializa initialLocation con un valor por defecto
   String initialLocation = '/login';
   
-  // Solo verifica la versión si no es web (es decir, es APK/mobile)
   if (!kIsWeb) {
     initialLocation = await VersionChecker.checkVersion();
   }
@@ -30,15 +29,15 @@ Future<void> main() async {
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_)=> ProductProvider()..setCamara(camDisponible),),
-        ChangeNotifierProvider(create: (_) => ThemeProvider(),),
-        ChangeNotifierProvider(create: (_) => UbicacionProvider(),),
+        ChangeNotifierProvider(create: (_) => MenuProvider()),
+        ChangeNotifierProvider(create: (_) => ProductProvider()..setCamara(camDisponible)),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => UbicacionProvider()),
       ],
       child: const MyApp(),
     )
   );
   
-  // También podrías hacer que esto solo se aplique en mobile
   if (!kIsWeb) {
     SystemChrome.setPreferredOrientations(
       [DeviceOrientation.portraitUp],
@@ -62,8 +61,8 @@ class MyApp extends StatelessWidget {
         GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: const [
-        Locale('en', 'US'), // English
-        Locale('es', 'UY'), // Spanish
+        Locale('en', 'US'),
+        Locale('es', 'UY'),
       ],
     );
   }

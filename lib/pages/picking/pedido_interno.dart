@@ -320,7 +320,6 @@ class _PedidoInternoState extends State<PedidoInterno> {
             TextButton(
               onPressed: () async {
                 if (accion == 'iniciar') {
-                  continuar = true;
                   orderProvider = await PickingServices().putOrderPicking(
                     context, 
                     order.pickId, 
@@ -331,13 +330,20 @@ class _PedidoInternoState extends State<PedidoInterno> {
                   final provider = Provider.of<ProductProvider>(context, listen: false);
                   provider.setOrdenPickingInterna(order);
                   provider.setLineasPicking(order.lineas ?? []);
+                  
+                  // Forzar actualización del estado en la UI
+                  setState(() {
+                    order = orderProvider;
+                    continuar = true;
+                  });
+                  
                   Navigator.of(context).pop();
                   
                   if (order.tipo == 'C' || order.tipo == 'TE') {
                     appRouter.push('/pickingCompra');
                   } else {
                     if (valorSwitch) {
-                      // Buscar la primera línea válida (no completada y con stock)
+                      // Buscar la primera línea válida
                       int firstValidIndex = order.lineas!.indexWhere(
                         (linea) => 
                           linea.cantidadPickeada != linea.cantidadPedida &&
@@ -348,12 +354,17 @@ class _PedidoInternoState extends State<PedidoInterno> {
                         provider.setCurrentLineIndex(firstValidIndex);
                         appRouter.push('/pickingProductos');
                       } else {
-                        // Si no hay líneas válidas, ir directamente al resumen
                         appRouter.push('/resumenPicking');
                       }
+                    } else {
+                      // Modo manual - asegurar que el estado se actualice
+                      setState(() {
+                        continuar = true;
+                        valorSwitch = false;
+                      });
                     }
                   }
-                } 
+                }
                 else if (accion == 'finalizar') {
                   final provider = Provider.of<ProductProvider>(context, listen: false);
                   provider.setOrdenPickingInterna(order);
