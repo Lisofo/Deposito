@@ -48,6 +48,7 @@ class AppRouter {
         GoRoute(path: '/picking-V', builder: (context, state) => const ListaPicking()),
         GoRoute(path: '/picking-P', builder: (context, state) => const ListaPicking()),
         GoRoute(path: '/picking-TS', builder: (context, state) => const ListaPicking()),
+        GoRoute(path: '/picking-V,P,TS', builder: (context, state) => const ListaPicking()),
         GoRoute(path: '/pickingInterno', builder: (context, state) => const PedidoInterno()),
         GoRoute(path: '/pickingProductos', builder: (context, state) => const PickingPage()),
         GoRoute(path: '/pickingProductosConteo', builder: (context, state) => const PickingProducts()),

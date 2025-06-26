@@ -35,7 +35,7 @@ class MenuProvider with ChangeNotifier {
   bool get isDataReady => _isDataReady;
 
   Future<void> addQuickAccess(String route) async {
-    if (!_quickAccessItems.contains(route) && _quickAccessItems.length < 6) {
+    if (!_quickAccessItems.contains(route)/* && _quickAccessItems.length < 6*/) {
       _quickAccessItems.add(route);
       await _saveQuickAccess();
       notifyListeners();

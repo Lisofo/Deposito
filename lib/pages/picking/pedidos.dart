@@ -45,6 +45,15 @@ class _ListaPickingState extends State<ListaPicking> {
   String token = '';
   late String menu;
   late List<String> menuSplitted;
+  List<Map<String, String>>? _selectedTipos = [];
+  final List<Map<String, String>> _tipos = [
+    {'value': 'C', 'label': 'Compra'},
+    {'value': 'TE', 'label': 'Remito Entrada'},
+    {'value': 'V', 'label': 'Venta'},
+    {'value': 'TS', 'label': 'Remito Salida'},
+    {'value': 'P', 'label': 'Pedido de venta'},
+    {'value': '', 'label': 'Todos'},
+  ];
 
   @override
   void initState() {
@@ -53,6 +62,13 @@ class _ListaPickingState extends State<ListaPicking> {
     menu = context.read<ProductProvider>().menu;
     camera = context.read<ProductProvider>().camera;
     menuSplitted = menu.split('-');
+    
+    // Parsear los tipos del menú
+    if (menuSplitted.length > 1) {
+      final tiposMenu = menuSplitted[1].replaceAll('/picking-', '').split(',');
+      _selectedTipos = _tipos.where((tipo) => tiposMenu.contains(tipo['value'])).toList();
+    }
+    
     _loadData();
   }
 
@@ -133,7 +149,6 @@ class _ListaPickingState extends State<ListaPicking> {
               icon: const Icon(Icons.qr_code)
             ),
             if (_hasActiveFilters())
-
               Container(
                 margin: const EdgeInsets.only(right: 8),
                 padding: const EdgeInsets.all(4),
@@ -186,9 +201,12 @@ class _ListaPickingState extends State<ListaPicking> {
             FiltrosPicking(
               usuarios: null,
               mostrarFiltroUsuarios: false,
-              mostrarFiltroTipos: false,
+              mostrarFiltroTipos: true,
+              tiposDisponibles: _tipos,
+              selectedTiposIniciales: _selectedTipos,
               onSearch: (fechaDesde, fechaHasta, prioridad, tipos, usuarioCreado, usuarioMod) {
                 setState(() {
+                  _selectedTipos = tipos!;
                   _fechaDesde = fechaDesde;
                   _fechaHasta = fechaHasta;
                   _selectedPrioridad = prioridad;
@@ -354,7 +372,7 @@ class _ListaPickingState extends State<ListaPicking> {
                                             ],
                                           ),
                                           const SizedBox(height: 8),
-                                          Text('Tipo: ${orden.tipo}'),
+                                          Text('Tipo: ${_getTipoLabel(orden.tipo)}'),
                                           Text('Cliente: ${orden.codEntidad} - ${orden.nombre}'),
                                           Text('RUC: ${orden.ruc}'),
                                           Text(orden.transaccion),
@@ -485,5 +503,13 @@ class _ListaPickingState extends State<ListaPicking> {
         ),
       ),
     );
+  }
+
+  String _getTipoLabel(String tipo) {
+    final tipoMap = _tipos.firstWhere(
+      (item) => item['value'] == tipo,
+      orElse: () => {'value': tipo, 'label': tipo},
+    );
+    return tipoMap['label']!;
   }
 }

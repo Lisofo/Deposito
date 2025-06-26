@@ -15,6 +15,7 @@ class OrdenPicking {
   late int transaccionId;
   late String transaccion;
   late String tipo;
+  late String descTipo;
   late int movimientoId;
   late DateTime fechaDate;
   late DateTime fechaDocumento;
@@ -45,6 +46,7 @@ class OrdenPicking {
     required this.transaccionId,
     required this.transaccion,
     required this.tipo,
+    required this.descTipo,
     required this.movimientoId,
     required this.fechaDate,
     required this.fechaDocumento,
@@ -76,6 +78,7 @@ class OrdenPicking {
     transaccionId: json["transaccionId"] as int? ?? 0,
     transaccion: json["transaccion"] as String? ?? '',
     tipo: json["tipo"] as String? ?? '',
+    descTipo: json["descTipo"] as String? ?? '',
     movimientoId: json["movimientoId"] as int? ?? 0,
     fechaDate: DateTime.parse(json["fechaDate"]),
     fechaDocumento: DateTime.parse(json["fechaDocumento"]),
@@ -111,6 +114,7 @@ class OrdenPicking {
     "transaccionId": transaccionId,
     "transaccion": transaccion,
     "tipo": tipo,
+    "descTipo": descTipo,
     "movimientoId": movimientoId,
     "fechaDate": fechaDate.toIso8601String(),
     "fechaDocumento": fechaDocumento.toIso8601String(),
@@ -139,6 +143,7 @@ class OrdenPicking {
     transaccionId = 0;
     transaccion = '';
     tipo = '';
+    descTipo = '';
     movimientoId = 0;
     fechaDate = DateTime.now();
     fechaDocumento = DateTime.now();
@@ -170,6 +175,7 @@ class OrdenPicking {
     int? transaccionId,
     String? transaccion,
     String? tipo,
+    String? descTipo,
     int? movimientoId,
     DateTime? fechaDate,
     DateTime? fechaDocumento,
@@ -200,6 +206,7 @@ class OrdenPicking {
       transaccionId: transaccionId ?? this.transaccionId,
       transaccion: transaccion ?? this.transaccion,
       tipo: tipo ?? this.tipo,
+      descTipo: descTipo ?? this.descTipo,
       movimientoId: movimientoId ?? this.movimientoId,
       fechaDate: fechaDate ?? this.fechaDate,
       fechaDocumento: fechaDocumento ?? this.fechaDocumento,

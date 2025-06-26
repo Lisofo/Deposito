@@ -13,6 +13,7 @@ class FiltrosPicking extends StatefulWidget {
   final bool isFilterExpanded;
   final Function(bool) onToggleFilter;
   final List<Map<String, String>>? tiposDisponibles;
+  final List<Map<String, String>>? selectedTiposIniciales;
   final bool mostrarFiltroUsuarios;
   final bool mostrarFiltroTipos;
   final int cantidadDeOrdenes;
@@ -27,6 +28,7 @@ class FiltrosPicking extends StatefulWidget {
     required this.isFilterExpanded,
     required this.onToggleFilter,
     this.tiposDisponibles,
+    this.selectedTiposIniciales,
     this.mostrarFiltroUsuarios = true,
     this.mostrarFiltroTipos = true,
     this.cantidadDeOrdenes = 0
@@ -58,6 +60,11 @@ class _FiltrosPickingState extends State<FiltrosPicking> {
       {'value': 'P', 'label': 'Pedido de venta'},
       {'value': '', 'label': 'Todos'},
     ];
+    
+    // Inicializar los tipos seleccionados si vienen del padre
+    if (widget.selectedTiposIniciales != null) {
+      _selectedTipos = widget.selectedTiposIniciales;
+    }
   }
 
   bool _hasActiveFilters() {

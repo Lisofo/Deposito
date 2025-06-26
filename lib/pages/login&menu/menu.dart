@@ -111,11 +111,11 @@ class _MenuPageState extends State<MenuPage> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'Versión ${snapshot.data!.version} (Build ${snapshot.data!.buildNumber})',
+                      'Versión ${snapshot.data!.version}',/*(Build ${snapshot.data!.buildNumber})*/
                       style: const TextStyle(color: Colors.white),
                     ),
                     const Text(
-                      '2025.06.25+1',
+                      '2025.06.26+1',
                       style: TextStyle(color: Colors.white),
                     ),
                   ],
@@ -137,16 +137,23 @@ class _MenuPageState extends State<MenuPage> {
     final size = MediaQuery.of(context).size;
     final productProvider = context.read<ProductProvider>();
     final crossAxisCount = size.width > 800 ? 3 : 2;
-    final isMobile = size.width < 799; // Determinar si es móvil
+    // final isMobile = size.width < 799;
 
     final quickAccessRoutes = menuProvider.quickAccessItems;
     final allOptions = menuProvider.opciones.expand((ruta) => ruta.opciones).toList();
-    final quickAccessOptions = quickAccessRoutes.map((route) {
-      return allOptions.firstWhere((opt) => opt.ruta == route);
-    }).whereType<Opcion>().toList();
+    var quickAccessOptions = [];
+    try {
+      quickAccessOptions = quickAccessRoutes.map((route) {
+        return allOptions.firstWhere(
+          (opt) => opt.ruta == route,
+          orElse: () => null,
+        );
+      }).whereType<Opcion>().toList();
+    } catch (e) {
+      return Container();
+    }
 
-    // Widget base sin scroll
-    Widget content = Center(
+    return Center(
       child: ConstrainedBox(
         constraints: BoxConstraints(
           maxWidth: 600,
@@ -175,28 +182,27 @@ class _MenuPageState extends State<MenuPage> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
-              GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(), // Deshabilitar scroll interno
-                crossAxisCount: crossAxisCount,
-                childAspectRatio: 0.9,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                padding: const EdgeInsets.only(bottom: 20),
-                children: quickAccessOptions.map((opt) => 
-                  _buildResponsiveAccessButton(context, opt, productProvider, size)
-                ).toList(),
+              Expanded( // Asegura que el GridView ocupe el espacio restante
+                child: GridView.count(
+                  shrinkWrap: false, // Importante: false para que el GridView gestione su propio scroll
+                  physics: quickAccessOptions.length > 6 
+                    ? const AlwaysScrollableScrollPhysics() // Scroll habilitado en móvil
+                    : const NeverScrollableScrollPhysics(), // Scroll deshabilitado en desktop/tablet
+                  crossAxisCount: crossAxisCount,
+                  childAspectRatio: 1.19,
+                  mainAxisSpacing: 12,
+                  crossAxisSpacing: 12,
+                  padding: const EdgeInsets.only(bottom: 20),
+                  children: quickAccessOptions.map((opt) => 
+                    _buildResponsiveAccessButton(context, opt, productProvider, size)
+                  ).toList(),
+                ),
               ),
             ],
           ),
         ),
       ),
     );
-
-    // Envolver en Scroll solo si es móvil
-    return isMobile 
-      ? SingleChildScrollView(child: content)
-      : content;
   }
 
   Widget _buildResponsiveAccessButton(BuildContext context, Opcion opt, ProductProvider productProvider, Size screenSize) {
@@ -216,7 +222,7 @@ class _MenuPageState extends State<MenuPage> {
         child: InkWell(
           borderRadius: BorderRadius.circular(8),
           onTap: _isNavigating 
-            ? null // Deshabilitar si ya hay una navegación en curso
+            ? null
             : () async {
                 setState(() => _isNavigating = true);
                 try {
@@ -274,9 +280,7 @@ class _MenuPageState extends State<MenuPage> {
         content: const Text(
           'Para agregar o quitar accesos rápidos:\n\n'
           '1. Abre el menú lateral\n'
-          '2. Mantén presionado un ítem del menú\n'
-          '3. Verás un mensaje confirmando la acción\n\n'
-          'Máximo 6 accesos rápidos permitidos.',
+          '2. Mantén presionado un ítem del menú'
         ),
         actions: [
           TextButton(

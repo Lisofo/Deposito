@@ -44,6 +44,7 @@ class _QrPageState extends State<QrPage> {
     });
   }
 
+  // ignore: unused_element
   void _clearQRCode() {
     setState(() {
       _qrData = null;

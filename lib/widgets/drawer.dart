@@ -74,19 +74,19 @@ List<Widget> _filaBotones2(List<Opcion> opciones, BuildContext context) {
         onLongPress: () async {
           if (isQuickAccess) {
             await menuProvider.removeQuickAccess(opt.ruta);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('${opt.texto} removido de accesos rápidos')),
-            );
-          } else if (menuProvider.quickAccessItems.length < 6) {
-            await menuProvider.addQuickAccess(opt.ruta);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('${opt.texto} agregado a accesos rápidos')),
-            );
           } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Máximo 6 accesos rápidos permitidos')),
-            );
+            await menuProvider.addQuickAccess(opt.ruta);
           }
+          // else if (menuProvider.quickAccessItems.length < 6) {
+          //   await menuProvider.addQuickAccess(opt.ruta);
+          //   ScaffoldMessenger.of(context).showSnackBar(
+          //     SnackBar(content: Text('${opt.texto} agregado a accesos rápidos')),
+          //   );
+          // } else {
+          //   ScaffoldMessenger.of(context).showSnackBar(
+          //     const SnackBar(content: Text('Máximo 6 accesos rápidos permitidos')),
+          //   );
+          // }
         },
         child: Row(
           children: [

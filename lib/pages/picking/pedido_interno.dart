@@ -97,10 +97,13 @@ class _PedidoInternoState extends State<PedidoInterno> {
       orderProvider = await PickingServices().putOrderPicking(
         context, 
         order.pickId, 
-        'en proceso', 
+        'en proceso',
+        1, 
         token
       );
       order.estado = orderProvider.estado;
+    } else {
+      await PickingServices().iniciarTrabajo(context, order.pickId, 1, token);
     }
     
     setState(() {
@@ -128,9 +131,12 @@ class _PedidoInternoState extends State<PedidoInterno> {
         context, 
         order.pickId, 
         'en proceso', 
+        2,
         token
       );
       order.estado = orderProvider.estado;
+    } else {
+      await PickingServices().iniciarTrabajo(context, order.pickId, 2, token);
     }
     
     setState(() {
@@ -183,13 +189,13 @@ class _PedidoInternoState extends State<PedidoInterno> {
             style: const TextStyle(color: Colors.white),
           ),
           actions: [
-            IconButton(
-              onPressed: (order.estado == 'CERRADO' || order.estado == 'PENDIENTE') ? null : () async => await volverAPendiente(),
-              icon: Icon(
-                Icons.backspace,
-                color: (order.estado == 'CERRADO' || order.estado == 'PENDIENTE') ? Colors.grey : colors.onPrimary
-              )
-            ),
+            // IconButton(
+            //   onPressed: (order.estado == 'CERRADO' || order.estado == 'PENDIENTE') ? null : () async => await volverAPendiente(),
+            //   icon: Icon(
+            //     Icons.backspace,
+            //     color: (order.estado == 'CERRADO' || order.estado == 'PENDIENTE') ? Colors.grey : colors.onPrimary
+            //   )
+            // ),
             IconButton(onPressed: () => appRouter.push('/qrPage'), icon: const Icon(Icons.qr_code)),
           ],
         ),
@@ -267,7 +273,7 @@ class _PedidoInternoState extends State<PedidoInterno> {
                     const SizedBox(height: 8),
                     Text('Fecha: ${_formatDate(orderProvider.fechaDate)}'),
                     const SizedBox(height: 8),
-                    Text('Tipo: ${(orderProvider.tipo == 'C' || orderProvider.tipo == 'TE') ? 'Entrada' : 'Salida'}'),
+                    Text('Tipo: ${orderProvider.descTipo}'),
                     const SizedBox(height: 8),
                     if (orderProvider.prioridad != '')
                       Text('Prioridad: ${orderProvider.prioridad}'),
@@ -381,40 +387,68 @@ class _PedidoInternoState extends State<PedidoInterno> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            ElevatedButton(
-              onPressed: order.estado == 'CERRADO' ? null : () => _mostrarDialogoConfirmacionModo(false),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: colors.primary,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            if(order.estado == 'CERRADO') ...[
+              ElevatedButton.icon(
+                onPressed: () async {
+                  await PickingServices().imprimirResumen(context, order, token);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colors.primary,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                ),
+                icon: Icon(Icons.receipt_long, color: colors.onPrimary,),
+                label: const Text(
+                  'Imprimir resumen',
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
               ),
-              child: const Text(
-                'Manual',
-                style: TextStyle(color: Colors.white, fontSize: 16),
+              ElevatedButton(
+                onPressed: () async {
+                  await PickingServices().imprimirEtiquetaDeCarga(context, order, token);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colors.primary,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                ),
+                child: Icon(Icons.inventory_2, color: colors.onPrimary,)
               ),
-            ),
+            ] else ...[
+              ElevatedButton(
+                onPressed: order.estado == 'CERRADO' ? null : () => _mostrarDialogoConfirmacionModo(false),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colors.primary,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                ),
+                child: const Text(
+                  'Manual',
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
+              ),
+              
+              ElevatedButton(
+                onPressed: order.estado == 'CERRADO' ? null : () => _mostrarDialogoConfirmacionModo(true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colors.primary,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                ),
+                child: const Text(
+                  'Automático',
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: (order.estado == 'CERRADO' || order.estado == 'PENDIENTE') ? null : () => _mostrarDialogoConfirmacion('finalizar'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: (order.estado == 'CERRADO' || order.estado == 'PENDIENTE') ? Colors.grey : colors.primary,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                ),
+                child: const Text(
+                  'Finalizar',
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
+              ),
+            ]
             
-            ElevatedButton(
-              onPressed: order.estado == 'CERRADO' ? null : () => _mostrarDialogoConfirmacionModo(true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: colors.primary,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              ),
-              child: const Text(
-                'Automático',
-                style: TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: (order.estado == 'CERRADO' || order.estado == 'PENDIENTE') ? null : () => _mostrarDialogoConfirmacion('finalizar'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: (order.estado == 'CERRADO' || order.estado == 'PENDIENTE') ? Colors.grey : colors.primary,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              ),
-              child: const Text(
-                'Finalizar',
-                style: TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            ),
           ],
         ),
       ),
@@ -475,7 +509,7 @@ class _PedidoInternoState extends State<PedidoInterno> {
               onPressed: () async {
                 if (!ejecutando) {
                   ejecutando = true;
-                  orderProvider = await PickingServices().putOrderPicking(context, order.pickId, 'pendiente', token);
+                  orderProvider = await PickingServices().putOrderPicking(context, order.pickId, 'pendiente', 1, token);
                   order.estado = orderProvider.estado;
                   Navigator.of(context).pop();
                   setState(() {

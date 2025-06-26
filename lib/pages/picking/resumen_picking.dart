@@ -270,7 +270,8 @@ class SummaryScreen extends StatelessWidget {
       final orderProvider = await PickingServices().putOrderPicking(
         context, 
         ordenPicking.pickId, 
-        'cerrado', 
+        'cerrado',
+        0,
         token
       );
 

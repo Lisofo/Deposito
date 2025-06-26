@@ -244,11 +244,11 @@ class _LoginState extends State<Login> {
                                       return Column(
                                         children: [
                                           Text(
-                                            'Versión ${snapshot.data!.version} (Build ${snapshot.data!.buildNumber})',
+                                            'Versión ${snapshot.data!.version}',/*(Build ${snapshot.data!.buildNumber})*/
                                             style: const TextStyle(color: Colors.black),
                                           ),
                                           const Text(
-                                            '2025.06.25+1',
+                                            '2025.06.26+1',
                                             style: TextStyle(color: Colors.black),
                                           ),
                                         ],
@@ -455,7 +455,7 @@ class _LoginState extends State<Login> {
                                                 style: const TextStyle(color: Colors.black),
                                               ),
                                               const Text(
-                                                '2025.06.25+1',
+                                                '2025.06.26+1',
                                                 style: TextStyle(color: Colors.black),
                                               ),
                                             ],
