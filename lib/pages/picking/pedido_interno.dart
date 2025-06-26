@@ -22,9 +22,9 @@ class _PedidoInternoState extends State<PedidoInterno> {
   bool ejecutando = false;
   String token = '';
   late Almacen almacen = Almacen.empty();
-  bool valorSwitch = true;
   bool seleccionado = false;
   bool continuar = false;
+  bool? modoAutomatico;
 
   @override
   void initState() {
@@ -39,16 +39,134 @@ class _PedidoInternoState extends State<PedidoInterno> {
   }
 
   void cargarData() async {
-    orderProvider = context.read<ProductProvider>().ordenPicking;
-    token = context.read<ProductProvider>().token;
-    almacen = context.read<ProductProvider>().almacen;
+    final provider = context.read<ProductProvider>();
+    
+    // Resetear modo cuando cambia la orden
+    if (orderProvider.pickId != provider.ordenPicking.pickId) {
+      modoAutomatico = null;
+    }
+
+    orderProvider = provider.ordenPicking;
+    token = provider.token;
+    almacen = provider.almacen;
     order = await PickingServices().getLineasOrder(context, orderProvider.pickId, almacen.almacenId, token);
     
-    
-    // Inicializar el modo en el provider
-    valorSwitch = context.read<ProductProvider>().modoSeleccionUbicacion;
+    continuar = order.estado == 'EN PROCESO';
     
     setState(() {});
+  }
+
+  Future<void> _mostrarDialogoConfirmacionModo(bool esAutomatico) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Confirmar modo de trabajo'),
+          content: Text(
+            esAutomatico 
+              ? '¿Desea trabajar en modo AUTOMÁTICO? El sistema guiará el proceso.'
+              : '¿Desea trabajar en modo MANUAL? Seleccionará los productos a pickear.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Confirmar'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      if (esAutomatico) {
+        await _activarModoAutomatico();
+      } else {
+        await _activarModoManual();
+      }
+    }
+  }
+
+  Future<void> _activarModoManual() async {
+    final provider = context.read<ProductProvider>();
+    
+    if (order.estado == 'PENDIENTE') {
+      orderProvider = await PickingServices().putOrderPicking(
+        context, 
+        order.pickId, 
+        'en proceso', 
+        token
+      );
+      order.estado = orderProvider.estado;
+    }
+    
+    setState(() {
+      continuar = true;
+      modoAutomatico = false;
+    });
+    
+    provider.setOrdenPickingInterna(order);
+    provider.setLineasPicking(order.lineas ?? []);
+    provider.setModoSeleccionUbicacion(false);
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Modo MANUAL activado'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  Future<void> _activarModoAutomatico() async {
+    final provider = context.read<ProductProvider>();
+    
+    if (order.estado == 'PENDIENTE') {
+      orderProvider = await PickingServices().putOrderPicking(
+        context, 
+        order.pickId, 
+        'en proceso', 
+        token
+      );
+      order.estado = orderProvider.estado;
+    }
+    
+    setState(() {
+      continuar = true;
+      modoAutomatico = true;
+    });
+    
+    provider.setOrdenPickingInterna(order);
+    provider.setLineasPicking(order.lineas ?? []);
+    provider.setModoSeleccionUbicacion(true);
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Modo AUTOMÁTICO activado'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+    
+    final linea = order.lineas!.firstWhere(
+      (l) => l.cantidadPickeada < l.cantidadPedida && l.ubicaciones.any((u) => u.existenciaActual > 0),
+      orElse: () => order.lineas!.firstWhere(
+        (l) => l.cantidadPickeada < l.cantidadPedida,
+        orElse: () => order.lineas!.first
+      )
+    );
+    
+    final index = order.lineas!.indexOf(linea);
+    provider.setCurrentLineIndex(index);
+    
+    final ubicacion = linea.ubicaciones.firstWhere(
+      (u) => u.existenciaActual > 0,
+      orElse: () => linea.ubicaciones.first
+    );
+    
+    provider.setUbicacionSeleccionada(ubicacion);
+    appRouter.push('/pickingProductos');
   }
 
   @override
@@ -65,7 +183,14 @@ class _PedidoInternoState extends State<PedidoInterno> {
             style: const TextStyle(color: Colors.white),
           ),
           actions: [
-            IconButton(onPressed: () => appRouter.push('/qrPage'), icon: const Icon(Icons.qr_code))
+            IconButton(
+              onPressed: (order.estado == 'CERRADO' || order.estado == 'PENDIENTE') ? null : () async => await volverAPendiente(),
+              icon: Icon(
+                Icons.backspace,
+                color: (order.estado == 'CERRADO' || order.estado == 'PENDIENTE') ? Colors.grey : colors.onPrimary
+              )
+            ),
+            IconButton(onPressed: () => appRouter.push('/qrPage'), icon: const Icon(Icons.qr_code)),
           ],
         ),
         body: Padding(
@@ -83,6 +208,8 @@ class _PedidoInternoState extends State<PedidoInterno> {
   }
 
   Widget _expanded(ColorScheme colors) {
+    final provider = context.read<ProductProvider>();
+    
     return Expanded(
       child: SingleChildScrollView(
         child: Column(
@@ -158,13 +285,12 @@ class _PedidoInternoState extends State<PedidoInterno> {
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            // En el método _expanded(), modifica el ListView.builder o Column que muestra las líneas:
             Column(
               children: [
                 for (var i = 0; i < order.lineas!.length; i++)...[
                   if (!(order.lineas![i].tipoLineaAdicional == "C" && order.lineas![i].lineaIdOriginal == 0))
                     Card(
-                      color: (valorSwitch || continuar == false) ? Colors.grey.shade300 : Colors.white,
+                      color: (order.estado == 'CERRADO' || (modoAutomatico == true || provider.modoSeleccionUbicacion == true)) ? Colors.grey.shade300 : Colors.white,
                       margin: const EdgeInsets.only(bottom: 8),
                       child: ListTile(
                         leading: const Icon(Icons.inventory),
@@ -179,12 +305,12 @@ class _PedidoInternoState extends State<PedidoInterno> {
                               const Icon(Icons.check_circle, color: Colors.green),
                           ]
                         ),
-                        onTap: (valorSwitch || order.estado == 'CERRADO' || continuar == false) ? null : () {
+                        onTap: (order.estado == 'CERRADO' || (modoAutomatico == true || provider.modoSeleccionUbicacion == true)) ? null : () {
                           if(seleccionado == false) {
                             setState(() {
                               seleccionado = true;
                             });
-                            _seleccionarLineaManual(order.lineas![i], i);
+                            _seleccionarLinea(order.lineas![i], i);
                             setState(() {
                               seleccionado = false;
                             });
@@ -201,13 +327,13 @@ class _PedidoInternoState extends State<PedidoInterno> {
     );
   }
 
-  void _seleccionarLineaManual(PickingLinea linea, int index) {
+  void _seleccionarLinea(PickingLinea linea, int index) {
     final provider = Provider.of<ProductProvider>(context, listen: false);
     
-    provider.setCurrentLineIndex(index); // <-- ESTABLECER ÍNDICE CORRECTO
+    provider.setCurrentLineIndex(index);
     provider.setOrdenPickingInterna(order);
     provider.setLineasPicking(order.lineas ?? []);
-    
+    provider.setModoSeleccionUbicacion(false);
     appRouter.push('/pickingProductos');
   }
 
@@ -250,52 +376,45 @@ class _PedidoInternoState extends State<PedidoInterno> {
       elevation: 0,
       shape: const CircularNotchedRectangle(),
       color: Colors.grey.shade200,
-      child: FittedBox(
-        fit: BoxFit.contain,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8.0),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             ElevatedButton(
-              onPressed: order.estado == 'CERRADO' ? null : () => _mostrarDialogoConfirmacion(order.estado == 'PENDIENTE' ? 'iniciar' : 'continuar'),
+              onPressed: order.estado == 'CERRADO' ? null : () => _mostrarDialogoConfirmacionModo(false),
               style: ElevatedButton.styleFrom(
-                backgroundColor: order.estado == 'CERRADO' ? Colors.grey : colors.primary,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                backgroundColor: colors.primary,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               ),
-              child: Text(
-                order.estado == 'PENDIENTE' ? 'Iniciar' : 'Continuar',
-                style: const TextStyle(color: Colors.white, fontSize: 16),
+              child: const Text(
+                'Manual',
+                style: TextStyle(color: Colors.white, fontSize: 16),
+              ),
+            ),
+            
+            ElevatedButton(
+              onPressed: order.estado == 'CERRADO' ? null : () => _mostrarDialogoConfirmacionModo(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: colors.primary,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              ),
+              child: const Text(
+                'Automático',
+                style: TextStyle(color: Colors.white, fontSize: 16),
               ),
             ),
             ElevatedButton(
               onPressed: (order.estado == 'CERRADO' || order.estado == 'PENDIENTE') ? null : () => _mostrarDialogoConfirmacion('finalizar'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: (order.estado == 'CERRADO' || order.estado == 'PENDIENTE') ? Colors.grey : colors.primary,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               ),
               child: const Text(
                 'Finalizar',
                 style: TextStyle(color: Colors.white, fontSize: 16),
               ),
             ),
-            IconButton(
-              onPressed: (order.estado == 'CERRADO' || order.estado == 'PENDIENTE') ? null : () async => await volverAPendiente(),
-              icon: Icon(
-                Icons.backspace,
-                color: (order.estado == 'CERRADO' || order.estado == 'PENDIENTE') ? Colors.grey : colors.primary
-              )
-            ),
-            if(order.tipo != 'C' && order.tipo != 'TE') ...[
-              Icon(Icons.handyman, color: !valorSwitch ? colors.secondary : colors.onSurface,),
-              Switch(
-                value: valorSwitch,
-                onChanged: (order.estado == 'CERRADO' || continuar == false) ? null : (value) {
-                  valorSwitch = value;
-                  context.read<ProductProvider>().setModoSeleccionUbicacion(value);
-                  setState(() {});
-                },
-              ),
-              Icon(Icons.smart_toy_outlined, color: valorSwitch ? colors.secondary : colors.onSurface,)
-            ]
           ],
         ),
       ),
@@ -319,90 +438,12 @@ class _PedidoInternoState extends State<PedidoInterno> {
             ),
             TextButton(
               onPressed: () async {
-                if (accion == 'iniciar') {
-                  orderProvider = await PickingServices().putOrderPicking(
-                    context, 
-                    order.pickId, 
-                    'en proceso', 
-                    token
-                  );
-                  order.estado = orderProvider.estado;
-                  final provider = Provider.of<ProductProvider>(context, listen: false);
-                  provider.setOrdenPickingInterna(order);
-                  provider.setLineasPicking(order.lineas ?? []);
-                  
-                  // Forzar actualización del estado en la UI
-                  setState(() {
-                    order = orderProvider;
-                    continuar = true;
-                  });
-                  
-                  Navigator.of(context).pop();
-                  
-                  if (order.tipo == 'C' || order.tipo == 'TE') {
-                    appRouter.push('/pickingCompra');
-                  } else {
-                    if (valorSwitch) {
-                      // Buscar la primera línea válida
-                      int firstValidIndex = order.lineas!.indexWhere(
-                        (linea) => 
-                          linea.cantidadPickeada != linea.cantidadPedida &&
-                          linea.ubicaciones.any((ubic) => ubic.existenciaActual > 0)
-                      );
-                      
-                      if (firstValidIndex != -1) {
-                        provider.setCurrentLineIndex(firstValidIndex);
-                        appRouter.push('/pickingProductos');
-                      } else {
-                        appRouter.push('/resumenPicking');
-                      }
-                    } else {
-                      // Modo manual - asegurar que el estado se actualice
-                      setState(() {
-                        continuar = true;
-                        valorSwitch = false;
-                      });
-                    }
-                  }
-                }
-                else if (accion == 'finalizar') {
+                if (accion == 'finalizar') {
                   final provider = Provider.of<ProductProvider>(context, listen: false);
                   provider.setOrdenPickingInterna(order);
                   provider.setLineasPicking(order.lineas ?? []);
                   Navigator.of(context).pop();
                   appRouter.push('/resumenPicking');
-                } 
-                else if (accion == 'continuar') {
-                  final provider = Provider.of<ProductProvider>(context, listen: false);
-                  provider.setOrdenPickingInterna(order);
-                  provider.setLineasPicking(order.lineas ?? []);
-                  Navigator.of(context).pop();
-                  
-                  if (order.tipo == 'C' || order.tipo == 'TE') {
-                    appRouter.push('/pickingCompra');
-                  } else {
-                    if (valorSwitch && continuar) {
-                      // Buscar la primera línea válida (no completada y con stock)
-                      int firstValidIndex = order.lineas!.indexWhere(
-                        (linea) => 
-                          linea.cantidadPickeada != linea.cantidadPedida &&
-                          linea.ubicaciones.any((ubic) => ubic.existenciaActual > 0)
-                      );
-                      
-                      if (firstValidIndex != -1) {
-                        provider.setCurrentLineIndex(firstValidIndex);
-                        appRouter.push('/pickingProductos');
-                      } else {
-                        // Si no hay líneas válidas, ir directamente al resumen
-                        appRouter.push('/resumenPicking');
-                      }
-                    } else {
-                      await PickingServices().iniciarTrabajo(context, orderProvider.pickId, token);
-                      setState(() {
-                        continuar = true;
-                      });
-                    }
-                  }
                 }
                 setState(() {});
               },
@@ -437,7 +478,10 @@ class _PedidoInternoState extends State<PedidoInterno> {
                   orderProvider = await PickingServices().putOrderPicking(context, order.pickId, 'pendiente', token);
                   order.estado = orderProvider.estado;
                   Navigator.of(context).pop();
-                  setState(() {});
+                  setState(() {
+                    continuar = false;
+                    modoAutomatico = null;
+                  });
                   ejecutando = false;
                 }
                 setState(() {});

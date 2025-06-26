@@ -16,6 +16,8 @@ class MenuPage extends StatefulWidget {
 }
 
 class _MenuPageState extends State<MenuPage> {
+  bool _isNavigating = false; // Flag para controlar navegaciones simultáneas
+
   @override
   void initState() {
     super.initState();
@@ -113,7 +115,7 @@ class _MenuPageState extends State<MenuPage> {
                       style: const TextStyle(color: Colors.white),
                     ),
                     const Text(
-                      '2025.06.23+1',
+                      '2025.06.25+1',
                       style: TextStyle(color: Colors.white),
                     ),
                   ],
@@ -135,6 +137,7 @@ class _MenuPageState extends State<MenuPage> {
     final size = MediaQuery.of(context).size;
     final productProvider = context.read<ProductProvider>();
     final crossAxisCount = size.width > 800 ? 3 : 2;
+    final isMobile = size.width < 799; // Determinar si es móvil
 
     final quickAccessRoutes = menuProvider.quickAccessItems;
     final allOptions = menuProvider.opciones.expand((ruta) => ruta.opciones).toList();
@@ -142,54 +145,58 @@ class _MenuPageState extends State<MenuPage> {
       return allOptions.firstWhere((opt) => opt.ruta == route);
     }).whereType<Opcion>().toList();
 
-    return SingleChildScrollView( // Restauramos el scroll vertical
-      child: Center(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxWidth: 600,
-            minHeight: MediaQuery.of(context).size.height, // Aseguramos altura mínima
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const Text(
-                  'Accesos Rápidos',
-                  style: TextStyle(
-                    fontSize: 20.0,
-                    fontWeight: FontWeight.bold,
-                  ),
+    // Widget base sin scroll
+    Widget content = Center(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: 600,
+          minHeight: MediaQuery.of(context).size.height,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const Text(
+                'Accesos Rápidos',
+                style: TextStyle(
+                  fontSize: 20.0,
+                  fontWeight: FontWeight.bold,
                 ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Mantén presionado un ítem del menú para agregarlo aquí',
-                  style: TextStyle(
-                    fontSize: 12.0,
-                    color: Colors.grey,
-                  ),
-                  textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Mantén presionado un ítem del menú para agregarlo aquí',
+                style: TextStyle(
+                  fontSize: 12.0,
+                  color: Colors.grey,
                 ),
-                const SizedBox(height: 16),
-                GridView.count(
-                  shrinkWrap: true,
-                  physics: const ClampingScrollPhysics(), // Física de scroll adecuada
-                  crossAxisCount: crossAxisCount,
-                  childAspectRatio: 0.9,
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                  padding: const EdgeInsets.only(bottom: 20), // Espacio inferior
-                  children: quickAccessOptions.map((opt) => 
-                    _buildResponsiveAccessButton(context, opt, productProvider, size)
-                  ).toList(),
-                ),
-              ],
-            ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(), // Deshabilitar scroll interno
+                crossAxisCount: crossAxisCount,
+                childAspectRatio: 0.9,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                padding: const EdgeInsets.only(bottom: 20),
+                children: quickAccessOptions.map((opt) => 
+                  _buildResponsiveAccessButton(context, opt, productProvider, size)
+                ).toList(),
+              ),
+            ],
           ),
         ),
       ),
     );
+
+    // Envolver en Scroll solo si es móvil
+    return isMobile 
+      ? SingleChildScrollView(child: content)
+      : content;
   }
 
   Widget _buildResponsiveAccessButton(BuildContext context, Opcion opt, ProductProvider productProvider, Size screenSize) {
@@ -208,11 +215,20 @@ class _MenuPageState extends State<MenuPage> {
         ),
         child: InkWell(
           borderRadius: BorderRadius.circular(8),
-          onTap: () {
-            productProvider.setMenu(opt.ruta);
-            productProvider.setTitle(opt.texto);
-            appRouter.push(opt.ruta);
-          },
+          onTap: _isNavigating 
+            ? null // Deshabilitar si ya hay una navegación en curso
+            : () async {
+                setState(() => _isNavigating = true);
+                try {
+                  productProvider.setMenu(opt.ruta);
+                  productProvider.setTitle(opt.texto);
+                  await appRouter.push(opt.ruta);
+                } finally {
+                  if (mounted) {
+                    setState(() => _isNavigating = false);
+                  }
+                }
+              },
           child: Padding(
             padding: const EdgeInsets.all(8.0),
             child: Column(

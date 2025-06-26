@@ -81,11 +81,12 @@ class _SeleccionAlmacenState extends State<SeleccionAlmacen> {
                   leading: CircleAvatar(child: Text(almacen.codAlmacen, style: const TextStyle(fontSize: 14))),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () async {
+                    final listaUbicaciones = await AlmacenServices().getUbicacionDeAlmacen(context, almacen.almacenId, token, visualizacion: 'F');
                     productProvider.setAlmacen(almacen);
                     productProvider.setAlmacenNombre(almacen.descripcion);
+                    productProvider.setListaDeUbicaciones(listaUbicaciones);
                     // Cambiar el tema usando el color del almacén seleccionado
                     Provider.of<ThemeProvider>(context, listen: false).setThemeFromAlmacen(almacen);
-                    productProvider.setListaDeUbicaciones(await AlmacenServices().getUbicacionDeAlmacen(context, almacen.almacenId, token, visualizacion: 'F'));
       
                     appRouter.push('/menu');
                   },

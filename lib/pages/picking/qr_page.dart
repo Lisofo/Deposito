@@ -80,28 +80,7 @@ class _QrPageState extends State<QrPage> {
                   size: 200.0,
                   backgroundColor: Colors.white,
                 ),
-                const SizedBox(height: 30),
-                ElevatedButton(
-                  onPressed: _clearQRCode,
-                  child: const Text('Cerrar QR'),
-                ),
-              ] else ...[
-                const Text(
-                  'Presiona el botón para generar un código QR',
-                  style: TextStyle(fontSize: 18),
-                ),
-                const SizedBox(height: 30),
-                ElevatedButton(
-                  onPressed: _generateQRCode,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-                  ),
-                  child: const Text(
-                    'Generar QR',
-                    style: TextStyle(fontSize: 18),
-                  ),
-                ),
-              ],
+              ]
             ],
           ),
         ),

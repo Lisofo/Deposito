@@ -173,7 +173,8 @@ class PickingServices {
   Future putOrderPicking (BuildContext context, int pickId, String estado, String token) async {
     String link = '$apirUrl/api/v1/ordenpicking/$pickId';
     var data = {
-      "estado": estado
+      "estado": estado,
+      // "tareaId": tareaId
     };
     try {
       var headers = {'Authorization': token};

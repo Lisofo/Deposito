@@ -285,6 +285,7 @@ class _ListaPickingState extends State<ListaPicking> {
                                   child: InkWell(
                                     onTap: () {
                                       Provider.of<ProductProvider>(context, listen: false).setOrdenPicking(orden);
+                                      Provider.of<ProductProvider>(context, listen: false).setModoSeleccionUbicacion(true);
                                       appRouter.push('/pickingInterno');
                                     },
                                     borderRadius: BorderRadius.circular(8),
