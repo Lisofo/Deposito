@@ -253,6 +253,7 @@ class PickingLinea {
   late int lineaIdOriginal;
   late String codItem;
   late String descripcion;
+  late String fotosUrl;
   late List<UbicacionePicking> ubicaciones;
 
   PickingLinea({
@@ -266,6 +267,7 @@ class PickingLinea {
     required this.lineaIdOriginal,
     required this.codItem,
     required this.descripcion,
+    required this.fotosUrl,
     required this.ubicaciones,
   });
 
@@ -280,6 +282,7 @@ class PickingLinea {
     lineaIdOriginal: json["lineaIdOriginal"] as int? ?? 0,
     codItem: json["codItem"] as String? ?? '',
     descripcion: json["descripcion"] as String? ?? '',
+    fotosUrl: json["fotosUrl"] as String? ?? '',
     ubicaciones: json["ubicaciones"] != null 
         ? List<UbicacionePicking>.from(json["ubicaciones"].map((x) => UbicacionePicking.fromJson(x))) 
         : [],
@@ -296,6 +299,7 @@ class PickingLinea {
     "lineaIdOriginal": lineaIdOriginal,
     "codItem": codItem,
     "descripcion": descripcion,
+    "fotosUrl": fotosUrl,
     "ubicaciones": List<dynamic>.from(ubicaciones.map((x) => x.toJson())),
   };
 
@@ -310,6 +314,7 @@ class PickingLinea {
     lineaIdOriginal = 0;
     codItem = '';
     descripcion = '';
+    fotosUrl = '';
     ubicaciones = [];
   }
 
@@ -324,6 +329,7 @@ class PickingLinea {
     int? lineaIdOriginal,
     String? codItem,
     String? descripcion,
+    String? fotosUrl,
     List<UbicacionePicking>? ubicaciones,
   }) {
     return PickingLinea(
@@ -337,6 +343,7 @@ class PickingLinea {
       lineaIdOriginal: lineaIdOriginal ?? this.lineaIdOriginal,
       codItem: codItem ?? this.codItem,
       descripcion: descripcion ?? this.descripcion,
+      fotosUrl: fotosUrl ?? this.fotosUrl,
       // ignore: unnecessary_null_comparison
       ubicaciones: ubicaciones ?? (this.ubicaciones != null ? List.from(this.ubicaciones) : []),
     );

@@ -130,43 +130,47 @@ class _PickingPageState extends State<PickingPage> {
         final currentLineIndex = provider.currentLineIndex;
         final selectedLine = (currentLineIndex >= 0 && currentLineIndex < lineas.length) ? lineas[currentLineIndex] : null;
         
-        // Si no hay línea seleccionada o no hay ubicaciones, muestra un mensaje alternativo
         final ubicacionTexto = selectedLine?.ubicaciones.isNotEmpty == true 
             ? selectedLine!.ubicaciones[0].codUbicacion 
             : 'Ubicación no disponible';
 
-        return Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (provider.modoSeleccionUbicacion && lineas.isNotEmpty && selectedLine != null)
-              Text(
-                'Dirijase a la ubicación $ubicacionTexto', 
-                style: const TextStyle(fontSize: 18),
-              ),
-            const SizedBox(height: 20),
-            if (provider.modoSeleccionUbicacion == false && lineas.isNotEmpty && selectedLine != null)
-              _buildUbicacionSelector(selectedLine),
-            VisibilityDetector(
-              key: const Key('scanner-field-visibility'),
-              onVisibilityChanged: (info) {
-                if (info.visibleFraction > 0) {
-                  focoDeScanner.requestFocus();
-                }
-              },
-              child: TextFormField(
-                focusNode: focoDeScanner,
-                cursorColor: Colors.transparent,
-                decoration: const InputDecoration(
-                  border: UnderlineInputBorder(borderSide: BorderSide.none),
+        return SingleChildScrollView( // <- Añade esto
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (provider.modoSeleccionUbicacion && lineas.isNotEmpty && selectedLine != null)
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Text(
+                    'Dirijase a la ubicación $ubicacionTexto', 
+                    style: const TextStyle(fontSize: 18),
+                  ),
                 ),
-                style: const TextStyle(color: Colors.transparent),
-                autofocus: true,
-                keyboardType: TextInputType.none,
-                controller: textController,
-                onFieldSubmitted: procesarEscaneoUbicacion,
+              const SizedBox(height: 20),
+              if (provider.modoSeleccionUbicacion == false && lineas.isNotEmpty && selectedLine != null)
+                _buildUbicacionSelector(selectedLine),
+              VisibilityDetector(
+                key: const Key('scanner-field-visibility'),
+                onVisibilityChanged: (info) {
+                  if (info.visibleFraction > 0) {
+                    focoDeScanner.requestFocus();
+                  }
+                },
+                child: TextFormField(
+                  focusNode: focoDeScanner,
+                  cursorColor: Colors.transparent,
+                  decoration: const InputDecoration(
+                    border: UnderlineInputBorder(borderSide: BorderSide.none),
+                  ),
+                  style: const TextStyle(color: Colors.transparent),
+                  autofocus: true,
+                  keyboardType: TextInputType.none,
+                  controller: textController,
+                  onFieldSubmitted: procesarEscaneoUbicacion,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         );
       },
     );
@@ -175,26 +179,22 @@ class _PickingPageState extends State<PickingPage> {
   Widget _buildUbicacionSelector(PickingLinea line) {
     return Consumer<ProductProvider>(
       builder: (context, provider, child) {
-        // Get the currently selected ubicacion
-        final selectedUbicacion = ubiSeleccionada;
-        
-        // Find if the selected ubicacion exists in the current line's ubicaciones
-        final validSelectedUbicacion = selectedUbicacion.almacenUbicacionId != 0 
-            ? line.ubicaciones.firstWhere(
-                (u) => u.almacenUbicacionId == selectedUbicacion.almacenUbicacionId,
-                orElse: () => UbicacionePicking.empty(),
-              )
-            : null;
-
-        // Use null if the selected ubicacion is not in the current line's ubicaciones
-        final initialValue = validSelectedUbicacion?.almacenUbicacionId != 0 
-            ? null
-            : null;
+        // Verificar si la ubicación seleccionada existe en las ubicaciones de la línea
+        UbicacionePicking? selectedValue;
+        if (ubiSeleccionada.almacenUbicacionId != 0) {
+          selectedValue = line.ubicaciones.firstWhere(
+            (u) => u.almacenUbicacionId == ubiSeleccionada.almacenUbicacionId,
+            orElse: () => UbicacionePicking.empty(),
+          );
+          if (selectedValue.almacenUbicacionId == 0) {
+            selectedValue = null;
+          }
+        }
 
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: DropdownButtonFormField<UbicacionePicking>(
-            value: initialValue,
+            value: selectedValue,
             decoration: const InputDecoration(
               labelText: 'Seleccionar Ubicación',
               border: OutlineInputBorder(),
@@ -207,10 +207,12 @@ class _PickingPageState extends State<PickingPage> {
             }).toList(),
             onChanged: (ubicacion) {
               if (ubicacion != null) {
-                ubiSeleccionada = ubicacion;
-                setState(() {});
+                setState(() {
+                  ubiSeleccionada = ubicacion;
+                });
               }
             },
+            validator: (value) => value == null ? 'Seleccione una ubicación' : null,
           ),
         );
       },
@@ -247,6 +249,9 @@ class _PickingPageState extends State<PickingPage> {
           );
         
           if (ubicacion.almacenUbicacionId != 0) {
+            setState(() {
+              ubiSeleccionada = ubicacion; // <- Actualiza la ubicación seleccionada
+            });
             provider.setUbicacionSeleccionada(ubicacion);
             provider.setCurrentLineIndex(currentLineIndex);
             Navigator.of(context).push(
@@ -281,7 +286,6 @@ class _PickingPageState extends State<PickingPage> {
     try {
       final currentLine = lineas[currentLineIndex];
       
-      // Si no hay ubicaciones, avanzar a la siguiente línea
       if (currentLine.ubicaciones.isEmpty) {
         _handleEmptyLocations(provider);
         return;
@@ -293,6 +297,9 @@ class _PickingPageState extends State<PickingPage> {
       );
       
       if (ubicacion.almacenUbicacionId != 0) {
+        setState(() {
+          ubiSeleccionada = ubicacion; // <- Actualiza la ubicación seleccionada
+        });
         provider.setUbicacionSeleccionada(ubicacion);
         provider.setCurrentLineIndex(currentLineIndex);
         Navigator.of(context).push(

@@ -3,7 +3,9 @@
 import 'package:deposito/config/router/pages.dart';
 import 'package:deposito/config/router/router.dart';
 import 'package:deposito/models/almacen.dart';
+import 'package:deposito/models/entrega.dart';
 import 'package:deposito/models/orden_picking.dart';
+import 'package:deposito/services/entrega_services.dart';
 import 'package:deposito/services/picking_services.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -21,6 +23,7 @@ class _SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
   final PickingServices _pickingServices = PickingServices();
   late Almacen almacen = Almacen.empty();
   final GlobalKey<RefreshIndicatorState> _refreshIndicatorKey = GlobalKey<RefreshIndicatorState>();
+  final entregaServices = EntregaServices();
 
 
   bool _isLoading = true;
@@ -32,6 +35,7 @@ class _SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
     super.initState();
     token = context.read<ProductProvider>().token;
     camera = context.read<ProductProvider>().camera;
+    almacen = context.read<ProductProvider>().almacen;
     
     _loadData();
   }
@@ -118,12 +122,21 @@ class _SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
                       ),
                     ),
                     Padding(
-                      padding: const EdgeInsets.all(16.0),
+                      padding: const EdgeInsets.all(8.0),
                       child: ElevatedButton(
                         onPressed: _ordenesSeleccionadas.isNotEmpty
-                          ? () {
-                              productProvider.setOrdenesExpedicion(_ordenesSeleccionadas);
-                              appRouter.push('/salidaBultos');
+                          ? () async {
+                              Entrega entrega = Entrega.empty();
+                              int? statusCode;
+                              List<int> pickIds = _ordenesSeleccionadas.map((orden) => orden.pickId).toList();
+                              await entregaServices.postEntrega(context, pickIds, token);
+                              statusCode = await entregaServices.getStatusCode();
+                              await entregaServices.resetStatusCode();
+                              if(statusCode == 1) {
+                                productProvider.setOrdenesExpedicion(_ordenesSeleccionadas);
+                                productProvider.setEntrega(entrega);
+                                appRouter.push('/salidaBultos');
+                              }
                             }
                           : null,
                         style: ElevatedButton.styleFrom(
@@ -132,7 +145,7 @@ class _SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
                         ),
                         child: const Text(
                           'Siguiente',
-                          style: TextStyle(color: Colors.white, fontSize: 24),
+                          style: TextStyle(color: Colors.white, fontSize: 16),
                         ),
                       ),
                     ),

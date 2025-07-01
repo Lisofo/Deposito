@@ -216,14 +216,32 @@ class PickingServices {
     }
   }
 
-  Future<Map<String, dynamic>> patchPicking(BuildContext context, int pickId, String codItem, int almacenUbicacionId, int conteo, int pickLineaId, String token) async {
+  Future<Map<String, dynamic>> patchPicking(
+    BuildContext context,
+    int pickId,
+    String codItem,
+    int almacenUbicacionId,
+    int pickLineaId,
+    String token,
+    {int? diferencia, int? conteo,}) async {
     String link = '$apirUrl/api/v1/ordenpicking/$pickId/items';
-    var data = {
-      "codItem": codItem,
-      "almacenUbicacionId": almacenUbicacionId,
-      "conteo": conteo,
-      "pickLineaId": pickLineaId
-    };
+    var data = {};
+
+    if(diferencia != null) {
+      data = {
+        "codItem": codItem,
+        "almacenUbicacionId": almacenUbicacionId,
+        "diferencia": diferencia,
+        "pickLineaId": pickLineaId
+      };
+    } else {
+      data = {
+        "codItem": codItem,
+        "almacenUbicacionId": almacenUbicacionId,
+        "conteo": conteo,
+        "pickLineaId": pickLineaId
+      };
+    }
     
     try {
       var headers = {'Authorization': token};

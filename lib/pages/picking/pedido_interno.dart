@@ -50,6 +50,9 @@ class _PedidoInternoState extends State<PedidoInterno> {
     token = provider.token;
     almacen = provider.almacen;
     order = await PickingServices().getLineasOrder(context, orderProvider.pickId, almacen.almacenId, token);
+    if(order.pickId != 0) {
+      orderProvider.estado = order.estado;
+    }
     
     continuar = order.estado == 'EN PROCESO';
     
@@ -209,122 +212,124 @@ class _PedidoInternoState extends State<PedidoInterno> {
   Widget _expanded(ColorScheme colors) {
     final provider = context.read<ProductProvider>();
     
-    return RefreshIndicator(
-      onRefresh: () async {
-        await cargarData();
-      },
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            SizedBox(
-                              width: 48,
-                              height: 48,
-                              child: CircularProgressIndicator(
-                                value: order.porcentajeCompletado / 100,
-                                strokeWidth: 5,
-                                backgroundColor: Colors.grey[400],
-                                color: order.porcentajeCompletado == 100.0 ? Colors.green : colors.secondary,
+    return Expanded(
+      child: RefreshIndicator(
+        onRefresh: () async {
+          await cargarData();
+        },
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              SizedBox(
+                                width: 48,
+                                height: 48,
+                                child: CircularProgressIndicator(
+                                  value: order.porcentajeCompletado / 100,
+                                  strokeWidth: 5,
+                                  backgroundColor: Colors.grey[400],
+                                  color: order.porcentajeCompletado == 100.0 ? Colors.green : colors.secondary,
+                                ),
                               ),
+                              Text(
+                                '${order.porcentajeCompletado.toStringAsFixed(order.porcentajeCompletado % 1 == 0 ? 0 : 0)}%',
+                                style: const TextStyle(
+                                  fontSize: 12, 
+                                  fontWeight: FontWeight.bold
+                                ),
+                              )
+                            ],
+                          ),
+                          Text(
+                            '${orderProvider.numeroDocumento} - ${orderProvider.serie}',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
                             ),
-                            Text(
-                              '${order.porcentajeCompletado.toStringAsFixed(order.porcentajeCompletado % 1 == 0 ? 0 : 0)}%',
-                              style: const TextStyle(
-                                fontSize: 12, 
-                                fontWeight: FontWeight.bold
-                              ),
-                            )
-                          ],
-                        ),
-                        Text(
-                          '${orderProvider.numeroDocumento} - ${orderProvider.serie}',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
                           ),
-                        ),
-                        Chip(
-                          label: Text(
-                            orderProvider.estado,
-                            style: const TextStyle(color: Colors.white),
+                          Chip(
+                            label: Text(
+                              orderProvider.estado,
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                            backgroundColor: _getStatusColor(orderProvider.estado),
                           ),
-                          backgroundColor: _getStatusColor(orderProvider.estado),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text('Cliente/Proveedor: ${orderProvider.nombre}'),
-                    const SizedBox(height: 8),
-                    Text('Fecha: ${_formatDate(orderProvider.fechaDate)}'),
-                    const SizedBox(height: 8),
-                    Text('Tipo: ${orderProvider.descTipo}'),
-                    const SizedBox(height: 8),
-                    if (orderProvider.prioridad != '')
-                      Text('Prioridad: ${orderProvider.prioridad}'),
-                    const SizedBox(height: 8,),
-                    Text(orderProvider.transaccion),
-                    const SizedBox(height: 8,),
-                    Text("Fecha última mod.: ${_formatDate(order.fechaModificadoPor)}"),
-                  ],
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text('Cliente/Proveedor: ${orderProvider.nombre}'),
+                      const SizedBox(height: 8),
+                      Text('Fecha: ${_formatDate(orderProvider.fechaDate)}'),
+                      const SizedBox(height: 8),
+                      Text('Tipo: ${orderProvider.descTipo}'),
+                      const SizedBox(height: 8),
+                      if (orderProvider.prioridad != '')
+                        Text('Prioridad: ${orderProvider.prioridad}'),
+                      const SizedBox(height: 8,),
+                      Text(orderProvider.transaccion),
+                      const SizedBox(height: 8,),
+                      Text("Fecha última mod.: ${_formatDate(order.fechaModificadoPor)}"),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Productos a ${(orderProvider.tipo == 'C' || orderProvider.tipo == 'TE') ? 'recibir' : 'preparar'}:',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Column(
-              children: [
-                for (var i = 0; i < order.lineas!.length; i++)...[
-                  if (!(order.lineas![i].tipoLineaAdicional == "C" && order.lineas![i].lineaIdOriginal == 0))
-                    Card(
-                      color: (order.estado == 'CERRADO' || (modoAutomatico == true || provider.modoSeleccionUbicacion == true)) ? Colors.grey.shade300 : Colors.white,
-                      margin: const EdgeInsets.only(bottom: 8),
-                      child: ListTile(
-                        leading: const Icon(Icons.inventory),
-                        title: Text(order.lineas![i].descripcion),
-                        subtitle: Text('Código: ${order.lineas![i].codItem}'),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text('${order.lineas![i].cantidadPickeada} / ${order.lineas![i].cantidadPedida} unid.'),
-                            const SizedBox(width: 8),
-                            if(order.lineas![i].cantidadPickeada == order.lineas![i].cantidadPedida)
-                              const Icon(Icons.check_circle, color: Colors.green),
-                          ]
+              const SizedBox(height: 16),
+              Text(
+                'Productos a ${(orderProvider.tipo == 'C' || orderProvider.tipo == 'TE') ? 'recibir' : 'preparar'}:',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Column(
+                children: [
+                  for (var i = 0; i < order.lineas!.length; i++)...[
+                    if (!(order.lineas![i].tipoLineaAdicional == "C" && order.lineas![i].lineaIdOriginal == 0))
+                      Card(
+                        color: (order.estado == 'CERRADO' || (modoAutomatico == true || provider.modoSeleccionUbicacion == true)) ? Colors.grey.shade300 : Colors.white,
+                        margin: const EdgeInsets.only(bottom: 8),
+                        child: ListTile(
+                          leading: const Icon(Icons.inventory),
+                          title: Text(order.lineas![i].descripcion),
+                          subtitle: Text('Código: ${order.lineas![i].codItem}'),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text('${order.lineas![i].cantidadPickeada} / ${order.lineas![i].cantidadPedida} unid.'),
+                              const SizedBox(width: 8),
+                              if(order.lineas![i].cantidadPickeada == order.lineas![i].cantidadPedida)
+                                const Icon(Icons.check_circle, color: Colors.green),
+                            ]
+                          ),
+                          onTap: (order.estado == 'CERRADO' || (modoAutomatico == true || provider.modoSeleccionUbicacion == true)) ? null : () {
+                            if(seleccionado == false) {
+                              setState(() {
+                                seleccionado = true;
+                              });
+                              _seleccionarLinea(order.lineas![i], i);
+                              setState(() {
+                                seleccionado = false;
+                              });
+                            }
+                          },
                         ),
-                        onTap: (order.estado == 'CERRADO' || (modoAutomatico == true || provider.modoSeleccionUbicacion == true)) ? null : () {
-                          if(seleccionado == false) {
-                            setState(() {
-                              seleccionado = true;
-                            });
-                            _seleccionarLinea(order.lineas![i], i);
-                            setState(() {
-                              seleccionado = false;
-                            });
-                          }
-                        },
                       ),
-                    ),
-                ]
-              ],
-            ),            
-          ],
+                  ]
+                ],
+              ),            
+            ],
+          ),
         ),
       ),
     );

@@ -89,10 +89,13 @@ class _SalidaBultosScreenState extends State<SalidaBultosScreen> {
   @override
   Widget build(BuildContext context) {
     final productProvider = Provider.of<ProductProvider>(context);
+    final colors = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Salida por Bultos'),
+        backgroundColor: colors.primary,
+        title: Text('Salida por Bultos', style: TextStyle(color: colors.onPrimary),),
+        iconTheme: IconThemeData(color: colors.onPrimary),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -130,14 +133,6 @@ class _SalidaBultosScreenState extends State<SalidaBultosScreen> {
                           _cargarLineasOrden(nuevaOrden);
                         }
                       },
-                      // onChanged: _bultos.isNotEmpty ? null : (OrdenPicking? nuevaOrden) {
-                      //   if (nuevaOrden != null) {
-                      //     setState(() {
-                      //       _ordenSeleccionada = nuevaOrden;
-                      //     });
-                      //     _cargarLineasOrden(nuevaOrden);
-                      //   }
-                      // },
                       decoration: const InputDecoration(
                         border: OutlineInputBorder(),
                       ),
@@ -174,24 +169,24 @@ class _SalidaBultosScreenState extends State<SalidaBultosScreen> {
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                       _isLoadingLineas
-                          ? const Center(child: CircularProgressIndicator())
-                          : _lineasOrdenSeleccionada.isEmpty
-                              ? const Text('No hay productos en esta orden')
-                              : Column(
-                                  children: _lineasOrdenSeleccionada.map((linea) {
-                                    return ListTile(
-                                      title: Text('${linea.codItem} - ${linea.descripcion}'),
-                                      subtitle: Text('Pickeado: ${linea.cantidadPickeada}/${linea.cantidadPedida}'),
-                                    );
-                                  }).toList(),
-                                ),
+                        ? const Center(child: CircularProgressIndicator())
+                        : _lineasOrdenSeleccionada.isEmpty
+                            ? const Text('No hay productos en esta orden')
+                            : Column(
+                                children: _lineasOrdenSeleccionada
+                                    .where((linea) => linea.cantidadPickeada != 0) // Filtramos las líneas
+                                    .map((linea) {
+                                      return ListTile(
+                                        title: Text('${linea.codItem} - ${linea.descripcion}'),
+                                        subtitle: Text('Pickeado: ${linea.cantidadPickeada}/${linea.cantidadPedida}'),
+                                      );
+                                    }).toList(),
+                              ),
                     ],
                   ),
                 ),
               ),
-
             const SizedBox(height: 20),
-
             // Botón para crear nuevo bulto
             if (_ordenSeleccionada != null && !_isLoadingLineas)
               ElevatedButton(
@@ -224,7 +219,7 @@ class _SalidaBultosScreenState extends State<SalidaBultosScreen> {
                             return Padding(
                               padding: const EdgeInsets.only(right: 8.0),
                               child: ChoiceChip(
-                                label: Text(bulto.nombre),
+                                label: Text(bulto.nombre, style: const TextStyle(fontSize: 30),),
                                 selected: _bultoActual == bulto,
                                 onSelected: (selected) {
                                   setState(() {

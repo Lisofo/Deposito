@@ -2,6 +2,7 @@
 
 import 'package:deposito/models/almacen.dart';
 import 'package:deposito/models/client.dart';
+import 'package:deposito/models/entrega.dart';
 import 'package:deposito/models/linea.dart';
 import 'package:deposito/models/orden_picking.dart';
 import 'package:deposito/models/pedido.dart';
@@ -116,6 +117,14 @@ class ProductProvider with ChangeNotifier {
 
   List<OrdenPicking> _ordenesExpedicion = [];
   List<OrdenPicking> get ordenesExpedicion => _ordenesExpedicion;
+
+  Entrega _entrega = Entrega.empty();
+  Entrega get entrega => _entrega;
+
+  void setEntrega (Entrega entrega) {
+    _entrega = entrega;
+    notifyListeners();
+  }
 
   void setOrdenesExpedicion (List<OrdenPicking> ordenes) {
     _ordenesExpedicion = ordenes;

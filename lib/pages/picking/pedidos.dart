@@ -1,3 +1,4 @@
+import 'package:deposito/config/router/pages.dart';
 import 'package:deposito/widgets/carteles.dart';
 import 'package:deposito/widgets/custom_speed_dial.dart';
 import 'package:deposito/widgets/filtros_picking.dart';
@@ -7,9 +8,7 @@ import 'package:intl/intl.dart';
 import 'package:deposito/config/router/router.dart';
 import 'package:deposito/models/almacen.dart';
 import 'package:deposito/models/orden_picking.dart';
-import 'package:deposito/provider/product_provider.dart';
 import 'package:deposito/services/picking_services.dart';
-import 'package:provider/provider.dart';
 import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
@@ -61,6 +60,7 @@ class _ListaPickingState extends State<ListaPicking> {
     token = context.read<ProductProvider>().token;
     menu = context.read<ProductProvider>().menu;
     camera = context.read<ProductProvider>().camera;
+    almacen = context.read<ProductProvider>().almacen;
     menuSplitted = menu.split('-');
     
     // Parsear los tipos del menú
@@ -444,7 +444,9 @@ class _ListaPickingState extends State<ListaPicking> {
           pickId: int.tryParse(code.toString())
         );
         Provider.of<ProductProvider>(context, listen: false).setOrdenPicking(ordenObtenida[0]);
-        appRouter.push('/pickingInterno');
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (context) => const PedidoInterno())
+        );
         textController.clear();
         await Future.delayed(const Duration(milliseconds: 100));
         focoDeScanner.requestFocus();
