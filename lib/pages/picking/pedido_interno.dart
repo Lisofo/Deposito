@@ -38,7 +38,7 @@ class _PedidoInternoState extends State<PedidoInterno> {
     cargarData();
   }
 
-  void cargarData() async {
+  Future<void> cargarData() async {
     final provider = context.read<ProductProvider>();
     
     // Resetear modo cuando cambia la orden
@@ -189,13 +189,6 @@ class _PedidoInternoState extends State<PedidoInterno> {
             style: const TextStyle(color: Colors.white),
           ),
           actions: [
-            // IconButton(
-            //   onPressed: (order.estado == 'CERRADO' || order.estado == 'PENDIENTE') ? null : () async => await volverAPendiente(),
-            //   icon: Icon(
-            //     Icons.backspace,
-            //     color: (order.estado == 'CERRADO' || order.estado == 'PENDIENTE') ? Colors.grey : colors.onPrimary
-            //   )
-            // ),
             IconButton(onPressed: () => appRouter.push('/qrPage'), icon: const Icon(Icons.qr_code)),
           ],
         ),
@@ -216,8 +209,12 @@ class _PedidoInternoState extends State<PedidoInterno> {
   Widget _expanded(ColorScheme colors) {
     final provider = context.read<ProductProvider>();
     
-    return Expanded(
+    return RefreshIndicator(
+      onRefresh: () async {
+        await cargarData();
+      },
       child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

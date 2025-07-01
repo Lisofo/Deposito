@@ -105,12 +105,22 @@ class PickingProductsState extends State<PickingProducts> {
         token
       );
 
-      // 2. Extraer la nueva existenciaActual de la respuesta
+      // 2. Actualizar la orden completa
+      final updatedOrder = await pickingServices.getLineasOrder(
+        context, 
+        currentLine.pickId, 
+        provider.almacen.almacenId, 
+        token
+      );
+      
+      provider.setOrdenPickingInterna(updatedOrder);
+
+      // 3. Extraer la nueva existenciaActual de la respuesta
       final nuevaExistencia = response['ubicaciones']
           .firstWhere((u) => u['almacenUbicacionId'] == ubicacionSeleccionada.almacenUbicacionId)
           ['existenciaActual'];
 
-      // 3. Actualizar TODAS las ubicaciones con el mismo itemAlmacenUbicacionId
+      // 4. Actualizar TODAS las ubicaciones con el mismo itemAlmacenUbicacionId
       _actualizarExistenciasEnTodasLasLineas(
         provider,
         ubicacionSeleccionada.itemAlmacenUbicacionId,

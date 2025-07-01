@@ -29,3 +29,4 @@ export 'package:deposito/provider/product_provider.dart';
 export 'package:go_router/go_router.dart';
 export 'package:provider/provider.dart';
 export 'package:deposito/pages/picking/qr_page.dart';
+export 'package:deposito/pages/expedicion/seleccion_ordenes_page.dart';

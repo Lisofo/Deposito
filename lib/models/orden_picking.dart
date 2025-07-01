@@ -231,6 +231,15 @@ class OrdenPicking {
       lineas: lineas ?? (this.lineas != null ? List.from(this.lineas!) : null),
     );
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is OrdenPicking && other.pickId == pickId;
+  }
+
+  @override
+  int get hashCode => pickId.hashCode;
 }
 
 class PickingLinea {

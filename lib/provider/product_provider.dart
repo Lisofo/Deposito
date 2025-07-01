@@ -114,6 +114,14 @@ class ProductProvider with ChangeNotifier {
   List<UbicacionAlmacen> _listaDeUbicacionesXAlmacen = [];
   List<UbicacionAlmacen> get listaDeUbicacionesXAlmacen => _listaDeUbicacionesXAlmacen;
 
+  List<OrdenPicking> _ordenesExpedicion = [];
+  List<OrdenPicking> get ordenesExpedicion => _ordenesExpedicion;
+
+  void setOrdenesExpedicion (List<OrdenPicking> ordenes) {
+    _ordenesExpedicion = ordenes;
+    notifyListeners();
+  }
+
   void setListaDeUbicaciones (List<UbicacionAlmacen> lista) {
     _listaDeUbicacionesXAlmacen = lista;
     notifyListeners();

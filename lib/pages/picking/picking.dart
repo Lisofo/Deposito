@@ -3,6 +3,7 @@ import 'package:deposito/config/router/router.dart';
 import 'package:deposito/models/almacen.dart';
 import 'package:deposito/models/orden_picking.dart';
 import 'package:deposito/provider/product_provider.dart';
+import 'package:deposito/services/picking_services.dart';
 import 'package:deposito/widgets/carteles.dart';
 import 'package:deposito/widgets/custom_speed_dial.dart';
 import 'package:flutter/material.dart';
@@ -41,14 +42,23 @@ class _PickingPageState extends State<PickingPage> {
     token = productProvider.token;
     focoDeScanner.requestFocus();
     camera = productProvider.camera;
+    
     try {
       setState(() {
         isLoading = true;
         _error = null;
       });
       
-      // final ordenPicking = productProvider.ordenPickingInterna;
-      // final lines = ordenPicking.lineas;
+      // Actualizar datos de la orden de picking
+      final pickingServices = PickingServices();
+      final updatedOrder = await pickingServices.getLineasOrder(
+        context, 
+        productProvider.ordenPickingInterna.pickId, 
+        almacen.almacenId, 
+        token
+      );
+      
+      productProvider.setOrdenPickingInterna(updatedOrder);
       
       setState(() {
         isLoading = false;
