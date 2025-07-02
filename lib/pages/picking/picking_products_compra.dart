@@ -30,6 +30,7 @@ class PickingProductsEntradaState extends State<PickingProductsEntrada> {
   TextEditingController textController = TextEditingController();
   late UbicacionAlmacen ubicacionSeleccionada = UbicacionAlmacen.empty();
   late bool camera = false;
+  bool _isPatching = false;
 
   @override
   void initState() {
@@ -48,6 +49,8 @@ class PickingProductsEntradaState extends State<PickingProductsEntrada> {
     for (var controller in _quantityControllers.values) {
       controller.dispose();
     }
+    focoDeScanner.dispose();
+    textController.dispose();
     super.dispose();
   }
 
@@ -74,8 +77,10 @@ class PickingProductsEntradaState extends State<PickingProductsEntrada> {
 
       setState(() {
         for (int i = 0; i < ordenPicking.lineas!.length; i++) {
-          _quantityControllers[i] = TextEditingController(text: '0');
-          _previousQuantities[i] = 0;
+          _quantityControllers[i] = TextEditingController(
+            text: ordenPicking.lineas![i].cantidadPickeada.toString()
+          );
+          _previousQuantities[i] = ordenPicking.lineas![i].cantidadPickeada;
         }
         _isLoading = false;
       });
@@ -88,38 +93,71 @@ class PickingProductsEntradaState extends State<PickingProductsEntrada> {
   }
 
   void _incrementProductQuantity(int index) async {
+    if (_isPatching) return;
+    
+    final provider = Provider.of<ProductProvider>(context, listen: false);
+    final currentLine = provider.ordenPickingInterna.lineas![index];
     final currentQuantity = int.tryParse(_quantityControllers[index]?.text ?? '0') ?? 0;
     
-    setState(() {
-      _quantityControllers[index]?.text = (currentQuantity + 1).toString();
-    });
-
-    // Hacer PATCH con diferencia +1
-    await _patchSingleLine(index, currentQuantity + 1);
+    if (currentQuantity < currentLine.cantidadPedida) {
+      setState(() {
+        _quantityControllers[index]?.text = (currentQuantity + 1).toString();
+      });
+      
+      final success = await _patchSingleLine(index, currentQuantity + 1);
+      if (!success) {
+        _showSingleSnackBar('Error al actualizar la cantidad', backgroundColor: Colors.red);
+        setState(() {
+          _quantityControllers[index]?.text = currentLine.cantidadPickeada.toString();
+        });
+      }
+    } else {
+      _showSingleSnackBar(
+        'Ya has alcanzado la cantidad máxima para este producto',
+        backgroundColor: Colors.orange
+      );
+    }
   }
 
   void _decrementProductQuantity(int index) async {
+    if (_isPatching) return;
+    
+    final provider = Provider.of<ProductProvider>(context, listen: false);
+    final currentLine = provider.ordenPickingInterna.lineas![index];
     final currentQuantity = int.tryParse(_quantityControllers[index]?.text ?? '0') ?? 0;
     if (currentQuantity > 0) {
       setState(() {
         _quantityControllers[index]?.text = (currentQuantity - 1).toString();
       });
-
-      // Hacer PATCH con diferencia -1
-      await _patchSingleLine(index, currentQuantity - 1);
+      
+      final success = await _patchSingleLine(index, currentQuantity - 1);
+      if (!success) {
+        _showSingleSnackBar('Error al actualizar la cantidad', backgroundColor: Colors.red);
+        setState(() {
+          _quantityControllers[index]?.text = currentLine.cantidadPickeada.toString();
+        });
+      }
     }
   }
 
   void _updateProductQuantity(int index, String value) async {
+    final provider = Provider.of<ProductProvider>(context, listen: false);
+    final currentLine = provider.ordenPickingInterna.lineas![index];
     final newQuantity = int.tryParse(value) ?? 0;
-    if (newQuantity >= 0) {
+    
+    if (newQuantity >= 0 && newQuantity <= currentLine.cantidadPedida) {
       setState(() {
         _quantityControllers[index]?.text = value;
       });
-
-      // Hacer PATCH cuando se presiona Enter
+      
       if (focoDeScanner.hasFocus) {
-        await _patchSingleLine(index, newQuantity);
+        final success = await _patchSingleLine(index, newQuantity);
+        if (!success) {
+          _showSingleSnackBar('Error al actualizar la cantidad', backgroundColor: Colors.red);
+          setState(() {
+            _quantityControllers[index]?.text = _previousQuantities[index].toString();
+          });
+        }
       }
     } else if (value.isNotEmpty) {
       _quantityControllers[index]?.text = '0';
@@ -251,14 +289,20 @@ class PickingProductsEntradaState extends State<PickingProductsEntrada> {
     return picked / line.cantidadPedida;
   }
 
-  Future<void> _patchSingleLine(int index, int newQuantity) async {
+  Future<bool> _patchSingleLine(int index, int newQuantity) async {
+    if (_isPatching) return false;
+
+    setState(() {
+      _isPatching = true;
+    });
+
     try {
       final provider = Provider.of<ProductProvider>(context, listen: false);
       final pickingServices = PickingServices();
       final line = provider.ordenPickingInterna.lineas![index];
       final diferencia = newQuantity - (_previousQuantities[index] ?? 0);
       
-      await pickingServices.patchPicking(
+      final response = await pickingServices.patchPicking(
         context,
         line.pickId,
         line.codItem,
@@ -267,7 +311,12 @@ class PickingProductsEntradaState extends State<PickingProductsEntrada> {
         provider.token,
         diferencia: diferencia,
       );
-      
+
+      // Actualizar con la respuesta del servidor
+      final cantidadPickeadaActualizada = response['cantidadPickeada'];
+      line.cantidadPickeada = cantidadPickeadaActualizada;
+      _previousQuantities[index] = cantidadPickeadaActualizada;
+
       // Actualizar la línea en el provider
       final updatedLine = PickingLinea(
         pickLineaId: line.pickLineaId,
@@ -275,7 +324,7 @@ class PickingProductsEntradaState extends State<PickingProductsEntrada> {
         lineaId: line.lineaId,
         itemId: line.itemId,
         cantidadPedida: line.cantidadPedida,
-        cantidadPickeada: newQuantity,
+        cantidadPickeada: cantidadPickeadaActualizada,
         tipoLineaAdicional: line.tipoLineaAdicional,
         lineaIdOriginal: line.lineaIdOriginal,
         codItem: line.codItem,
@@ -285,18 +334,15 @@ class PickingProductsEntradaState extends State<PickingProductsEntrada> {
       );
       
       provider.updateLineaPicking(index, updatedLine);
-      _previousQuantities[index] = newQuantity;
-      
+      provider.ordenPickingInterna.lineas![index] = updatedLine;
+
+      return true;
     } catch (e) {
       print('Error en patchSingleLine: $e');
-      _showSingleSnackBar(
-        'Error al actualizar la línea',
-        backgroundColor: Colors.red
-      );
-      // Revertir el cambio en la UI si falla el PATCH
-      final currentQuantity = _previousQuantities[index] ?? 0;
+      return false;
+    } finally {
       setState(() {
-        _quantityControllers[index]?.text = currentQuantity.toString();
+        _isPatching = false;
       });
     }
   }
@@ -445,10 +491,13 @@ class PickingProductsEntradaState extends State<PickingProductsEntrada> {
                             onChanged: (value) => _updateProductQuantity(index, value),
                             onEditingComplete: () async {
                               final newQuantity = int.tryParse(_quantityControllers[index]?.text ?? '0') ?? 0;
-                              final diferencia = newQuantity - (_previousQuantities[index] ?? 0);
-                              
-                              if (diferencia != 0) {
-                                await _patchSingleLine(index, newQuantity);
+                              if (newQuantity != _previousQuantities[index]) {
+                                final success = await _patchSingleLine(index, newQuantity);
+                                if (!success) {
+                                  setState(() {
+                                    _quantityControllers[index]?.text = _previousQuantities[index].toString();
+                                  });
+                                }
                               }
                               FocusScope.of(context).requestFocus(focoDeScanner);
                             },
@@ -471,16 +520,17 @@ class PickingProductsEntradaState extends State<PickingProductsEntrada> {
   }
 
   Future<void> procesarEscaneoUbicacion(String value) async {
-    if (value.isEmpty) return;
+    if (_isPatching || value.isEmpty) return;
+    
     late List<Product> productos = [];
     final provider = Provider.of<ProductProvider>(context, listen: false);
     
     try {
+      var trimmedValue = value.trim();
       productos = await ProductServices().getProductByName(
         context, '', '2', 
         provider.almacen.almacenId.toString(), 
-        value,
-        '0', 
+        trimmedValue, '0', 
         provider.token
       );
       
@@ -491,13 +541,25 @@ class PickingProductsEntradaState extends State<PickingProductsEntrada> {
         for (int i = 0; i < provider.ordenPickingInterna.lineas!.length; i++) {
           final line = provider.ordenPickingInterna.lineas![i];
           if (producto.raiz == line.codItem) {
-            final currentQuantity = int.tryParse(_quantityControllers[i]?.text ?? '0') ?? 0;
+            // Incrementamos directamente en 1 sin esperar la respuesta del patch
             setState(() {
-              _quantityControllers[i]?.text = (currentQuantity + 1).toString();
+              _quantityControllers[i]?.text = (int.tryParse(_quantityControllers[i]?.text ?? '0') ?? 0 + 1).toString();
             });
             
+            // Ejecutamos el patch en segundo plano
+            _patchSingleLine(i, int.tryParse(_quantityControllers[i]?.text ?? '0') ?? 0).then((success) {
+              if (!success) {
+                _showSingleSnackBar('Error al registrar el producto', backgroundColor: Colors.red);
+                // Si falla, restauramos el valor anterior
+                setState(() {
+                  _quantityControllers[i]?.text = (int.tryParse(_quantityControllers[i]?.text ?? '0') ?? 0 - 1).toString();
+                });
+              } else {
+                _showSingleSnackBar('Producto registrado correctamente');
+              }
+            });
+
             productoEncontrado = true;
-            await _patchSingleLine(i, currentQuantity + 1);
             break;
           }
         }
@@ -524,6 +586,8 @@ class PickingProductsEntradaState extends State<PickingProductsEntrada> {
   }
 
   Future<void> _scanBarcode() async {
+    if (_isPatching) return;
+    
     late List<Product> productos = [];
     final provider = Provider.of<ProductProvider>(context, listen: false);
     
@@ -552,13 +616,25 @@ class PickingProductsEntradaState extends State<PickingProductsEntrada> {
         for (int i = 0; i < provider.ordenPickingInterna.lineas!.length; i++) {
           final line = provider.ordenPickingInterna.lineas![i];
           if (producto.raiz == line.codItem) {
-            final currentQuantity = int.tryParse(_quantityControllers[i]?.text ?? '0') ?? 0;
+            // Incrementamos directamente en 1 sin esperar la respuesta del patch
             setState(() {
-              _quantityControllers[i]?.text = (currentQuantity + 1).toString();
+              _quantityControllers[i]?.text = (int.tryParse(_quantityControllers[i]?.text ?? '0') ?? 0 + 1).toString();
+            });
+            
+            // Ejecutamos el patch en segundo plano
+            _patchSingleLine(i, int.tryParse(_quantityControllers[i]?.text ?? '0') ?? 0).then((success) {
+              if (!success) {
+                _showSingleSnackBar('Error al registrar el producto', backgroundColor: Colors.red);
+                // Si falla, restauramos el valor anterior
+                setState(() {
+                  _quantityControllers[i]?.text = (int.tryParse(_quantityControllers[i]?.text ?? '0') ?? 0 - 1).toString();
+                });
+              } else {
+                _showSingleSnackBar('Producto registrado correctamente');
+              }
             });
 
             productoEncontrado = true;
-            await _patchSingleLine(i, currentQuantity + 1);
             break;
           }
         }

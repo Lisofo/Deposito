@@ -1,4 +1,10 @@
+import 'package:deposito/models/forma_envio.dart';
+import 'package:deposito/models/modo_envio.dart';
+import 'package:deposito/models/tipo_bulto.dart';
 import 'package:deposito/provider/product_provider.dart';
+import 'package:deposito/services/entrega_services.dart';
+import 'package:deposito/services/product_services.dart';
+import 'package:deposito/widgets/carteles.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:deposito/models/orden_picking.dart';
@@ -8,51 +14,68 @@ class SalidaBultosScreen extends StatefulWidget {
   const SalidaBultosScreen({super.key});
 
   @override
-  _SalidaBultosScreenState createState() => _SalidaBultosScreenState();
+  SalidaBultosScreenState createState() => SalidaBultosScreenState();
 }
 
-class _SalidaBultosScreenState extends State<SalidaBultosScreen> {
+class SalidaBultosScreenState extends State<SalidaBultosScreen> {
   final List<Bulto> _bultos = [];
   late List<OrdenPicking> _ordenes = [];
   OrdenPicking? _ordenSeleccionada;
   List<PickingLinea> _lineasOrdenSeleccionada = [];
   Bulto? _bultoActual;
   final TextEditingController _codigoController = TextEditingController();
-  final TextEditingController _cantidadController = TextEditingController();
   final PickingServices _pickingServices = PickingServices();
   bool _isLoadingLineas = false;
+  late String token;
+  FocusNode focoDeScanner = FocusNode();
 
   // Datos para envíos
-  final List<String> _empresasEnvio = ['OCA', 'Andreani', 'Correo Argentino', 'DHL'];
-  final List<String> _transportistas = ['Juan Pérez', 'María Gómez', 'Carlos Rodríguez', 'Transporte Express'];
+  late List<FormaEnvio> empresasEnvio = [];
+  late List<FormaEnvio> transportistas = [];
+  late List<FormaEnvio> formasEnvio = [];
+  late List<TipoBulto> tipoBultos = [];
+  late List<ModoEnvio> modoEnvios = [];
 
   @override
   void initState() {
     super.initState();
     _cargarDatosIniciales();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        focoDeScanner.requestFocus();
+      }
+    });
   }
 
   @override
   void dispose() {
     _codigoController.dispose();
-    _cantidadController.dispose();
+    focoDeScanner.dispose();
     super.dispose();
   }
 
   Future<void> _cargarDatosIniciales() async {
+    token = context.read<ProductProvider>().token;
     final productProvider = Provider.of<ProductProvider>(context, listen: false);
+    formasEnvio = await EntregaServices().formaEnvio(context, token);
+    tipoBultos = await EntregaServices().tipoBulto(context, token);
+    modoEnvios = await EntregaServices().modoEnvio(context, token);
+    
+    for (var forma in formasEnvio) {
+      if(forma.tr != null) {
+        transportistas.add(forma);
+      } else {
+        empresasEnvio.add(forma);
+      }
+    }
+
     setState(() {
       _ordenes = productProvider.ordenesExpedicion;
-      // if (_ordenes.isNotEmpty) {
-      //   _ordenSeleccionada = _ordenes.first;
-      //   _cargarLineasOrden(_ordenSeleccionada!);
-      // }
     });
   }
 
   Future<void> _cargarLineasOrden(OrdenPicking orden) async {
     if (orden.lineas != null && orden.lineas!.isNotEmpty) {
-      // Si ya tenemos las líneas, no hacemos la llamada
       setState(() {
         _lineasOrdenSeleccionada = orden.lineas!;
       });
@@ -74,7 +97,6 @@ class _SalidaBultosScreenState extends State<SalidaBultosScreen> {
       if (ordenCompleta != null) {
         setState(() {
           _lineasOrdenSeleccionada = ordenCompleta.lineas ?? [];
-          // Actualizamos la orden en la lista local con las líneas obtenidas
           final index = _ordenes.indexWhere((o) => o.pickId == orden.pickId);
           if (index != -1) {
             _ordenes[index] = ordenCompleta;
@@ -83,300 +105,163 @@ class _SalidaBultosScreenState extends State<SalidaBultosScreen> {
       }
     } finally {
       setState(() => _isLoadingLineas = false);
+      if (mounted) {
+        focoDeScanner.requestFocus();
+      }
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final productProvider = Provider.of<ProductProvider>(context);
-    final colors = Theme.of(context).colorScheme;
+  int _getCantidadVerificada(String codigoRaiz) {
+    return _bultos.fold(0, (total, bulto) {
+      return total + bulto.contenido
+          .where((item) => item.codigoRaiz == codigoRaiz)
+          .fold(0, (sum, item) => sum + item.cantidad);
+    });
+  }
 
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: colors.primary,
-        title: Text('Salida por Bultos', style: TextStyle(color: colors.onPrimary),),
-        iconTheme: IconThemeData(color: colors.onPrimary),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Dropdown para seleccionar orden
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Seleccionar Orden:',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    DropdownButtonFormField<OrdenPicking>(
-                      value: _ordenSeleccionada,
-                      items: _ordenes.map((OrdenPicking orden) {
-                        return DropdownMenuItem<OrdenPicking>(
-                          value: orden,
-                          child: Text('${orden.serie}-${orden.numeroDocumento} - ${orden.nombre}'),
-                        );
-                      }).toList(),
-                      onChanged: (OrdenPicking? nuevaOrden) {
-                        if (nuevaOrden != null) {
-                          setState(() {
-                            _ordenSeleccionada = nuevaOrden;
-                          });
-                          _cargarLineasOrden(nuevaOrden);
-                        }
-                      },
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                      ),
-                      isExpanded: true,
-                    ),
-                  ],
-                ),
-              ),
+  Future<void> procesarEscaneoUbicacion(String value) async {
+    if (value.isEmpty || _bultoActual == null) return;
+    
+    try {
+      final provider = Provider.of<ProductProvider>(context, listen: false);  
+      final productos = await ProductServices().getProductByName(
+        context, 
+        '', 
+        '2', 
+        provider.almacen.almacenId.toString(), 
+        value, 
+        '0', 
+        provider.token
+      );
+      
+      if (productos.isEmpty) {
+        Carteles.showDialogs(context, 'Producto no encontrado', false, false, false);
+        return;
+      }
+
+      final producto = productos[0];
+      final linea = _lineasOrdenSeleccionada.firstWhere(
+        (linea) => linea.codItem == producto.raiz,
+        orElse: () => PickingLinea.empty(),
+      );
+      
+      if (linea.codItem == '') {
+        Carteles.showDialogs(context, 'Producto no encontrado en la orden', false, false, false);
+        return;
+      }
+      
+      final cantidadVerificadaTotal = _getCantidadVerificada(linea.codItem);
+      if (cantidadVerificadaTotal >= linea.cantidadPickeada) {
+        Carteles.showDialogs(
+          context, 
+          'Ya se verificó la cantidad máxima para este producto en todos los bultos', 
+          false, 
+          false, 
+          false
+        );
+        return;
+      }
+      
+      setState(() {
+        final index = _bultoActual!.contenido.indexWhere(
+          (item) => item.codigo == value || item.codigoRaiz == linea.codItem
+        );
+        
+        if (index != -1) {
+          final nuevaCantidadTotal = cantidadVerificadaTotal + 1;
+          if (nuevaCantidadTotal > linea.cantidadPickeada) {
+            Carteles.showDialogs(
+              context, 
+              'No puede superar la cantidad total pickeada ($nuevaCantidadTotal/${linea.cantidadPickeada})', 
+              false, 
+              false, 
+              false
+            );
+            return;
+          }
+          
+          _bultoActual!.contenido[index].cantidad += 1;
+        } else {
+          final nuevaCantidadTotal = cantidadVerificadaTotal + 1;
+          if (nuevaCantidadTotal > linea.cantidadPickeada) {
+            Carteles.showDialogs(
+              context, 
+              'No puede superar la cantidad total pickeada ($nuevaCantidadTotal/${linea.cantidadPickeada})', 
+              false, 
+              false, 
+              false
+            );
+            return;
+          }
+          
+          _bultoActual!.contenido.add(
+            BultoItem(
+              codigo: value,
+              codigoRaiz: linea.codItem,
+              cantidad: 1,
+              descripcion: linea.descripcion,
+              cantidadMaxima: linea.cantidadPickeada,
             ),
-
-            const SizedBox(height: 20),
-
-            // Resumen de la orden seleccionada
-            if (_ordenSeleccionada != null)
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Detalles de la Orden:',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Text('Cliente: ${_ordenSeleccionada!.nombre}'),
-                      Text('Tipo: ${_ordenSeleccionada!.descTipo}'),
-                      const SizedBox(height: 10),
-                      const Text(
-                        'Productos:',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      _isLoadingLineas
-                        ? const Center(child: CircularProgressIndicator())
-                        : _lineasOrdenSeleccionada.isEmpty
-                            ? const Text('No hay productos en esta orden')
-                            : Column(
-                                children: _lineasOrdenSeleccionada
-                                    .where((linea) => linea.cantidadPickeada != 0) // Filtramos las líneas
-                                    .map((linea) {
-                                      return ListTile(
-                                        title: Text('${linea.codItem} - ${linea.descripcion}'),
-                                        subtitle: Text('Pickeado: ${linea.cantidadPickeada}/${linea.cantidadPedida}'),
-                                      );
-                                    }).toList(),
-                              ),
-                    ],
-                  ),
-                ),
-              ),
-            const SizedBox(height: 20),
-            // Botón para crear nuevo bulto
-            if (_ordenSeleccionada != null && !_isLoadingLineas)
-              ElevatedButton(
-                onPressed: _mostrarDialogoTipoBulto,
-                child: const Text('Crear Nuevo Bulto'),
-              ),
-
-            const SizedBox(height: 20),
-
-            // Lista de bultos
-            if (_bultos.isNotEmpty)
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Bultos',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: _bultos.map((bulto) {
-                            return Padding(
-                              padding: const EdgeInsets.only(right: 8.0),
-                              child: ChoiceChip(
-                                label: Text(bulto.nombre, style: const TextStyle(fontSize: 30),),
-                                selected: _bultoActual == bulto,
-                                onSelected: (selected) {
-                                  setState(() {
-                                    _bultoActual = selected ? bulto : null;
-                                  });
-                                },
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-            // Contenido del bulto actual
-            if (_bultoActual != null)
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Bulto: ${_bultoActual!.nombre} (${_bultoActual!.tipo})',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      TextField(
-                        controller: _codigoController,
-                        decoration: const InputDecoration(
-                          labelText: 'Escanear código',
-                          border: OutlineInputBorder(),
-                          suffixIcon: Icon(Icons.barcode_reader),
-                        ),
-                        onChanged: (value) {
-                          productProvider.setItem(value);
-                        },
-                      ),
-                      const SizedBox(height: 10),
-                      TextField(
-                        controller: _cantidadController,
-                        decoration: const InputDecoration(
-                          labelText: 'Cantidad',
-                          border: OutlineInputBorder(),
-                        ),
-                        keyboardType: TextInputType.number,
-                      ),
-                      const SizedBox(height: 10),
-                      ElevatedButton(
-                        onPressed: _agregarProductoABulto,
-                        child: const Text('Agregar al Bulto'),
-                      ),
-                      const SizedBox(height: 20),
-                      const Text(
-                        'Contenido del bulto:',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      ..._bultoActual!.contenido.map((item) {
-                        return ListTile(
-                          title: Text(item.codigo),
-                          subtitle: Text('Cantidad: ${item.cantidad}'),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.edit),
-                                onPressed: () => _editarCantidadItem(item),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.delete, color: Colors.red),
-                                onPressed: () => _eliminarItem(item),
-                              ),
-                            ],
-                          ),
-                        );
-                      }),
-                    ],
-                  ),
-                ),
-              ),
-
-            // Botón para cerrar bultos
-            if (_bultos.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 20.0),
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  onPressed: _mostrarDialogoCierreBultos,
-                  child: const Text('Cerrar Bultos y Seleccionar Envío'),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
+          );
+        }
+      });
+      
+      _codigoController.clear();
+      if (mounted) {
+        FocusScope.of(context).requestFocus(focoDeScanner);
+      }
+    } catch (e) {
+      Carteles.showDialogs(context, 'Error al procesar el escaneo: ${e.toString()}', false, false, false);
+      if (mounted) {
+        FocusScope.of(context).requestFocus(focoDeScanner);
+      }
+    }
   }
 
   void _mostrarDialogoTipoBulto() {
-    String? tipoSeleccionado;
+    if (tipoBultos.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No hay tipos de bulto disponibles')),
+      );
+      return;
+    }
+
+    TipoBulto? tipoSeleccionado;
 
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Seleccionar tipo de bulto'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              RadioListTile<String>(
-                title: const Text('Caja'),
-                value: 'Caja',
-                groupValue: tipoSeleccionado,
-                onChanged: (String? value) {
-                  tipoSeleccionado = value;
-                  Navigator.of(context).pop();
-                  _crearNuevoBulto(value!);
-                },
-              ),
-              RadioListTile<String>(
-                title: const Text('Bolsa'),
-                value: 'Bolsa',
-                groupValue: tipoSeleccionado,
-                onChanged: (String? value) {
-                  tipoSeleccionado = value;
-                  Navigator.of(context).pop();
-                  _crearNuevoBulto(value!);
-                },
-              ),
-              RadioListTile<String>(
-                title: const Text('Retiro en mano'),
-                value: 'Retiro en mano',
-                groupValue: tipoSeleccionado,
-                onChanged: (String? value) {
-                  tipoSeleccionado = value;
-                  Navigator.of(context).pop();
-                  _crearNuevoBulto(value!);
-                },
-              ),
-            ],
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: tipoBultos.map((tipo) {
+                return RadioListTile<TipoBulto>(
+                  title: Text(tipo.descripcion),
+                  value: tipo,
+                  groupValue: tipoSeleccionado,
+                  onChanged: (TipoBulto? value) {
+                    tipoSeleccionado = value;
+                    Navigator.of(context).pop();
+                    if (value != null) {
+                      _crearNuevoBulto(value.descripcion, tipoBultoId: value.tipoBultoId);
+                    }
+                  },
+                );
+              }).toList(),
+            ),
           ),
         );
       },
     );
   }
 
-  void _crearNuevoBulto(String tipo) {
+  void _crearNuevoBulto(String tipoDescripcion, {int? tipoBultoId}) {
     final nuevoBulto = Bulto(
       nombre: 'Bulto ${_bultos.length + 1}',
-      tipo: tipo,
+      tipo: tipoDescripcion,
+      tipoBultoId: tipoBultoId,
       contenido: [],
     );
 
@@ -386,29 +271,15 @@ class _SalidaBultosScreenState extends State<SalidaBultosScreen> {
     });
   }
 
-  void _agregarProductoABulto() {
-    if (_codigoController.text.isEmpty || _cantidadController.text.isEmpty) return;
-
-    setState(() {
-      _bultoActual!.contenido.add(
-        BultoItem(
-          codigo: _codigoController.text,
-          cantidad: int.parse(_cantidadController.text),
-        ),
-      );
-      _codigoController.clear();
-      _cantidadController.clear();
-    });
-  }
-
   void _eliminarItem(BultoItem item) {
     setState(() {
-      _bultoActual!.contenido.remove(item);
+      _bultoActual?.contenido.remove(item);
     });
   }
 
   void _editarCantidadItem(BultoItem item) {
     final controller = TextEditingController(text: item.cantidad.toString());
+    final cantidadEnOtrosBultos = _getCantidadVerificada(item.codigoRaiz) - item.cantidad;
 
     showDialog(
       context: context,
@@ -429,6 +300,15 @@ class _SalidaBultosScreenState extends State<SalidaBultosScreen> {
               child: const Text('Guardar'),
               onPressed: () {
                 final nuevaCantidad = int.tryParse(controller.text) ?? item.cantidad;
+                final totalProyectado = cantidadEnOtrosBultos + nuevaCantidad;
+                
+                if (totalProyectado > item.cantidadMaxima) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('No puede superar ${item.cantidadMaxima} (Total actual: $totalProyectado)')),
+                  );
+                  return;
+                }
+                
                 setState(() {
                   item.cantidad = nuevaCantidad;
                 });
@@ -502,10 +382,10 @@ class _SalidaBultosScreenState extends State<SalidaBultosScreen> {
                         isExpanded: true,
                         value: empresaEnvio,
                         hint: const Text('Seleccione empresa'),
-                        items: _empresasEnvio.map((String value) {
-                          return DropdownMenuItem<String>(
-                            value: value,
-                            child: Text(value),
+                        items: empresasEnvio.map((FormaEnvio value) {
+                          return DropdownMenuItem(
+                            value: value.codFormaEnvio,
+                            child: Text(value.descripcion.toString()),
                           );
                         }).toList(),
                         onChanged: (String? newValue) {
@@ -520,10 +400,10 @@ class _SalidaBultosScreenState extends State<SalidaBultosScreen> {
                         isExpanded: true,
                         value: transportista,
                         hint: const Text('Seleccione transportista'),
-                        items: _transportistas.map((String value) {
-                          return DropdownMenuItem<String>(
-                            value: value,
-                            child: Text(value),
+                        items: transportistas.map((FormaEnvio value) {
+                          return DropdownMenuItem(
+                            value: value.codFormaEnvio,
+                            child: Text(value.descripcion.toString()),
                           );
                         }).toList(),
                         onChanged: (String? newValue) {
@@ -555,7 +435,6 @@ class _SalidaBultosScreenState extends State<SalidaBultosScreen> {
                       return;
                     }
                     
-                    // Aquí puedes procesar el cierre de bultos
                     String mensaje = '${selecciones.where((s) => s).length} bultos cerrados para envío por $metodoEnvio';
                     if (metodoEnvio == 'Correo') {
                       mensaje += '\nEmpresa: $empresaEnvio\nTransportista: $transportista';
@@ -588,34 +467,291 @@ class _SalidaBultosScreenState extends State<SalidaBultosScreen> {
               child: const Text('OK'),
               onPressed: () {
                 Navigator.of(context).pop();
-                // Opcional: Navegar a otra pantalla o resetear el estado
               },
             ),
           ],
         );
       },
     );
-  }  
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: colors.primary,
+        title: Text('Salida por Bultos', style: TextStyle(color: colors.onPrimary)),
+        iconTheme: IconThemeData(color: colors.onPrimary),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Seleccionar Orden:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    DropdownButtonFormField<OrdenPicking>(
+                      value: _ordenSeleccionada,
+                      items: _ordenes.map((OrdenPicking orden) {
+                        return DropdownMenuItem<OrdenPicking>(
+                          value: orden,
+                          child: Text('${orden.serie}-${orden.numeroDocumento} - ${orden.nombre}'),
+                        );
+                      }).toList(),
+                      onChanged: (OrdenPicking? nuevaOrden) {
+                        if (nuevaOrden != null) {
+                          setState(() {
+                            _ordenSeleccionada = nuevaOrden;
+                          });
+                          _cargarLineasOrden(nuevaOrden);
+                        }
+                      },
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                      ),
+                      isExpanded: true,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            if (_ordenSeleccionada != null)
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Detalles de la Orden:',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text('Cliente: ${_ordenSeleccionada!.nombre}'),
+                      Text('Tipo: ${_ordenSeleccionada!.descTipo}'),
+                      const SizedBox(height: 10),
+                      const Text(
+                        'Productos:',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      _isLoadingLineas
+                        ? const Center(child: CircularProgressIndicator())
+                        : _lineasOrdenSeleccionada.isEmpty
+                            ? const Text('No hay productos en esta orden')
+                            : Column(
+                                children: _lineasOrdenSeleccionada
+                                    .where((linea) => linea.cantidadPickeada != 0)
+                                    .map((linea) {
+                                      final cantidadVerificada = _getCantidadVerificada(linea.codItem);
+                                      return ListTile(
+                                        title: Text('${linea.codItem} - ${linea.descripcion}'),
+                                        subtitle: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text('Pickeado: ${linea.cantidadPickeada}/${linea.cantidadPedida}'),
+                                            Text('Verificado: $cantidadVerificada/${linea.cantidadPickeada}'),
+                                          ],
+                                        ),
+                                        trailing: cantidadVerificada >= linea.cantidadPickeada
+                                            ? const Icon(Icons.check_circle, color: Colors.green)
+                                            : null,
+                                      );
+                                    }).toList(),
+                              ),
+                    ],
+                  ),
+                ),
+              ),
+            const SizedBox(height: 20),
+            
+            if (_ordenSeleccionada != null && !_isLoadingLineas)
+              ElevatedButton(
+                onPressed: _mostrarDialogoTipoBulto,
+                child: const Text('Crear Nuevo Bulto'),
+              ),
+
+            const SizedBox(height: 20),
+
+            if (_bultos.isNotEmpty)
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Bultos',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: _bultos.map((bulto) {
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 8.0),
+                              child: ChoiceChip(
+                                label: Text(bulto.nombre, style: const TextStyle(fontSize: 30)),
+                                selected: _bultoActual == bulto,
+                                onSelected: (selected) {
+                                  setState(() {
+                                    _bultoActual = selected ? bulto : null;
+                                  });
+                                },
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+            if (_bultoActual != null)
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Bulto: ${_bultoActual!.nombre} (${_bultoActual!.tipo})',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        focusNode: focoDeScanner,
+                        controller: _codigoController,
+                        decoration: const InputDecoration(
+                          labelText: 'Escanear código de producto',
+                          border: OutlineInputBorder(),
+                          suffixIcon: Icon(Icons.barcode_reader),
+                        ),
+                        onSubmitted: (value) async {
+                          await procesarEscaneoUbicacion(value);
+                          _codigoController.clear();
+                          FocusScope.of(context).requestFocus(focoDeScanner);
+                        },
+                        autofocus: true,
+                      ),
+                      const SizedBox(height: 20),
+                      const Text(
+                        'Contenido del bulto:',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      ..._bultoActual!.contenido.map((item) {
+                        final cantidadTotal = _getCantidadVerificada(item.codigoRaiz);
+                        return ListTile(
+                          title: Text('${item.codigo} - ${item.descripcion}'),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('En este bulto: ${item.cantidad}'),
+                              Text('Total verificado: $cantidadTotal/${item.cantidadMaxima}'),
+                            ],
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (cantidadTotal >= item.cantidadMaxima)
+                                const Icon(Icons.check_circle, color: Colors.green),
+                              IconButton(
+                                icon: const Icon(Icons.edit),
+                                onPressed: () => _editarCantidadItem(item),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete, color: Colors.red),
+                                onPressed: () => _eliminarItem(item),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+              ),
+
+            if (_bultos.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 20.0),
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                  onPressed: _mostrarDialogoCierreBultos,
+                  child: const Text('Cerrar Bultos y Seleccionar Envío'),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class Bulto {
   String nombre;
   String tipo;
+  int? tipoBultoId;
   List<BultoItem> contenido;
 
   Bulto({
     required this.nombre,
     required this.tipo,
+    this.tipoBultoId,
     required this.contenido,
   });
 }
 
 class BultoItem {
   String codigo;
+  String codigoRaiz;
   int cantidad;
+  String descripcion;
+  int cantidadMaxima;
 
   BultoItem({
     required this.codigo,
+    required this.codigoRaiz,
     required this.cantidad,
+    required this.descripcion,
+    required this.cantidadMaxima,
   });
+
+  factory BultoItem.empty() => BultoItem(
+    codigo: '',
+    codigoRaiz: '',
+    cantidad: 0,
+    descripcion: '',
+    cantidadMaxima: 0,
+  );
 }

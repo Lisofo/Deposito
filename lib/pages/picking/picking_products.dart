@@ -116,7 +116,7 @@ class PickingProductsState extends State<PickingProducts> {
   }
 
   void _incrementProductQuantity() async {
-    if (_isPatching) return; // Evitar acción durante patch
+    if (_isPatching) return;
     
     final provider = Provider.of<ProductProvider>(context, listen: false);
     final currentLine = provider.ordenPickingInterna.lineas![provider.currentLineIndex];
@@ -131,7 +131,7 @@ class PickingProductsState extends State<PickingProducts> {
       if (!success) {
         _showSingleSnackBar('Error al actualizar la cantidad', backgroundColor: Colors.red);
         setState(() {
-          _quantityController.text = currentQuantity.toString();
+          _quantityController.text = currentLine.cantidadPickeada.toString();
         });
       }
     } else {
@@ -143,8 +143,10 @@ class PickingProductsState extends State<PickingProducts> {
   }
 
   void _decrementProductQuantity() async {
-    if (_isPatching) return; // Evitar acción durante patch
+    if (_isPatching) return;
     
+    final provider = Provider.of<ProductProvider>(context, listen: false);
+    final currentLine = provider.ordenPickingInterna.lineas![provider.currentLineIndex];
     final currentQuantity = int.tryParse(_quantityController.text) ?? 0;
     if (currentQuantity > 0) {
       setState(() {
@@ -155,7 +157,7 @@ class PickingProductsState extends State<PickingProducts> {
       if (!success) {
         _showSingleSnackBar('Error al actualizar la cantidad', backgroundColor: Colors.red);
         setState(() {
-          _quantityController.text = currentQuantity.toString();
+          _quantityController.text = currentLine.cantidadPickeada.toString();
         });
       }
     }
@@ -176,7 +178,7 @@ class PickingProductsState extends State<PickingProducts> {
         if (!success) {
           _showSingleSnackBar('Error al actualizar la cantidad', backgroundColor: Colors.red);
           setState(() {
-            _quantityController.text = _previousQuantity.toString();
+            _quantityController.text = currentLine.cantidadPickeada.toString();
           });
         }
       }
@@ -351,12 +353,12 @@ class PickingProductsState extends State<PickingProducts> {
   }
 
   double _calculateProgress(PickingLinea line) {
-    int? totalPicked = int.tryParse(_quantityController.text) ?? 0;
+    int totalPicked = int.tryParse(_quantityController.text) ?? 0;
     return totalPicked / line.cantidadPedida;
   }
 
   Future<bool> _patchCurrentLine() async {
-    if (_isPatching) return false; // Evitar múltiples patches simultáneos
+    if (_isPatching) return false;
 
     setState(() {
       _isPatching = true;
@@ -382,15 +384,17 @@ class PickingProductsState extends State<PickingProducts> {
         diferencia: diferencia,
       );
 
+      // Solo actualizamos currentLine.cantidadPickeada con la respuesta del servidor
+      // pero mantenemos el incremento de 1 en la interfaz
+      currentLine.cantidadPickeada = response['cantidadPickeada'];
+      _previousQuantity = currentLine.cantidadPickeada;
+
       final updatedOrder = await pickingServices.getLineasOrder(
         context, 
         currentLine.pickId, 
         provider.almacen.almacenId, 
         token
       );
-      //ToDo actualizar cantidadPickeada en pantalla con lo que me trae el patch
-      // currentLine.cantidadPickeada = response['cantidadPickeada'];
-      
       
       provider.setOrdenPickingInterna(updatedOrder);
 
@@ -404,7 +408,6 @@ class PickingProductsState extends State<PickingProducts> {
         nuevaExistencia
       );
 
-      _previousQuantity = newQuantity;
       _saveProcessedLine();
 
       return true;
@@ -526,7 +529,6 @@ class PickingProductsState extends State<PickingProducts> {
   }
 
   Widget _buildProductInfo(PickingLinea line) {
-    print(line.cantidadPickeada);
     return Card(
       margin: const EdgeInsets.all(16),
       child: Padding(
@@ -564,7 +566,7 @@ class PickingProductsState extends State<PickingProducts> {
   }
 
   Future<void> procesarEscaneoUbicacion(String value) async {
-    if (_isPatching || value.isEmpty) return; // Evitar acción durante patch
+    if (_isPatching || value.isEmpty) return;
     
     late List<Product> productos = [];
     final provider = Provider.of<ProductProvider>(context, listen: false);
@@ -583,20 +585,23 @@ class PickingProductsState extends State<PickingProducts> {
       if(provider.ubicacionSeleccionada?.existenciaActual == 0) return;
 
       if (mismoProducto) {
-        final currentQuantity = int.tryParse(_quantityController.text) ?? 0;
+        // Incrementamos directamente en 1 sin esperar la respuesta del patch
         setState(() {
-          _quantityController.text = (currentQuantity + 1).toString();
+          _quantityController.text = (int.tryParse(_quantityController.text) ?? 0 + 1).toString();
         });
         
-        final success = await _patchCurrentLine();
-        if (success) {
-          _showSingleSnackBar('Producto registrado correctamente');
-        } else {
-          _showSingleSnackBar('Error al registrar el producto', backgroundColor: Colors.red);
-          setState(() {
-            _quantityController.text = currentQuantity.toString();
-          });
-        }
+        // Ejecutamos el patch en segundo plano
+        _patchCurrentLine().then((success) {
+          if (!success) {
+            _showSingleSnackBar('Error al registrar el producto', backgroundColor: Colors.red);
+            // Si falla, restauramos el valor anterior
+            setState(() {
+              _quantityController.text = (int.tryParse(_quantityController.text) ?? 0 - 1).toString();
+            });
+          } else {
+            _showSingleSnackBar('Producto registrado correctamente');
+          }
+        });
       } else {
         _showSingleSnackBar(
           'Producto no encontrado: $value',
@@ -613,7 +618,7 @@ class PickingProductsState extends State<PickingProducts> {
   }
 
   Future<void> _scanBarcode() async {
-    if (_isPatching) return; // Evitar acción durante patch
+    if (_isPatching) return;
     
     late List<Product> productos = [];
     final provider = Provider.of<ProductProvider>(context, listen: false);
@@ -636,20 +641,23 @@ class PickingProductsState extends State<PickingProducts> {
       if(provider.ubicacionSeleccionada?.existenciaActual == 0) return;
 
       if (mismoProducto) {
-        final currentQuantity = int.tryParse(_quantityController.text) ?? 0;
+        // Incrementamos directamente en 1 sin esperar la respuesta del patch
         setState(() {
-          _quantityController.text = (currentQuantity + 1).toString();
+          _quantityController.text = (int.tryParse(_quantityController.text) ?? 0 + 1).toString();
         });
         
-        final success = await _patchCurrentLine();
-        if (success) {
-          _showSingleSnackBar('Producto registrado correctamente');
-        } else {
-          _showSingleSnackBar('Error al registrar el producto', backgroundColor: Colors.red);
-          setState(() {
-            _quantityController.text = currentQuantity.toString();
-          });
-        }
+        // Ejecutamos el patch en segundo plano
+        _patchCurrentLine().then((success) {
+          if (!success) {
+            _showSingleSnackBar('Error al registrar el producto', backgroundColor: Colors.red);
+            // Si falla, restauramos el valor anterior
+            setState(() {
+              _quantityController.text = (int.tryParse(_quantityController.text) ?? 0 - 1).toString();
+            });
+          } else {
+            _showSingleSnackBar('Producto registrado correctamente');
+          }
+        });
       } else {
         _showSingleSnackBar(
           'Producto no encontrado: $barcodeScanRes',
@@ -740,15 +748,16 @@ class PickingProductsState extends State<PickingProducts> {
                         onEditingComplete: () async {
                           if (_isPatching) return;
                           
+                          final provider = Provider.of<ProductProvider>(context, listen: false);
+                          final currentLine = provider.ordenPickingInterna.lineas![provider.currentLineIndex];
                           final newQuantity = int.tryParse(_quantityController.text) ?? 0;
-                          final diferencia = newQuantity - _previousQuantity;
                           
-                          if (diferencia != 0) {
+                          if (newQuantity != currentLine.cantidadPickeada) {
                             final success = await _patchCurrentLine();
                             if (!success) {
                               _showSingleSnackBar('Error al actualizar la cantidad', backgroundColor: Colors.red);
                               setState(() {
-                                _quantityController.text = _previousQuantity.toString();
+                                _quantityController.text = currentLine.cantidadPickeada.toString();
                               });
                             }
                           }

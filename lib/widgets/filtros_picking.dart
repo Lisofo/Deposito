@@ -45,7 +45,8 @@ class _FiltrosPickingState extends State<FiltrosPicking> {
   List<Map<String, String>>? _selectedTipos = [];
   Usuario? _selectedUsuarioCreado;
   Usuario? _selectedUsuarioMod;
-
+  final FocusNode _nombreFocusNode = FocusNode();
+  final FocusNode _numeroDocFocusNode = FocusNode();
   final List<String> _prioridades = ['ALTA', 'NORMAL', 'BAJA', 'TODAS'];
   late List<Map<String, String>> _tipos;
 
@@ -61,10 +62,27 @@ class _FiltrosPickingState extends State<FiltrosPicking> {
       {'value': '', 'label': 'Todos'},
     ];
     
-    // Inicializar los tipos seleccionados si vienen del padre
     if (widget.selectedTiposIniciales != null) {
       _selectedTipos = widget.selectedTiposIniciales;
     }
+
+    _nombreFocusNode.addListener(() {
+      if (!_nombreFocusNode.hasFocus) {
+        _handleSearch();
+      }
+    });
+    _numeroDocFocusNode.addListener(() {
+      if (!_numeroDocFocusNode.hasFocus) {
+        _handleSearch();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _nombreFocusNode.dispose();
+    _numeroDocFocusNode.dispose();
+    super.dispose();
   }
 
   bool _hasActiveFilters() {
@@ -94,6 +112,18 @@ class _FiltrosPickingState extends State<FiltrosPicking> {
         }
       });
     }
+  }
+
+  void _handleSearch() {
+    widget.onSearch(
+      _fechaDesde, 
+      _fechaHasta, 
+      _selectedPrioridad, 
+      _selectedTipos ?? [],
+      _selectedUsuarioCreado, 
+      _selectedUsuarioMod
+    );
+    widget.onToggleFilter(false); // Cerrar los filtros después de buscar
   }
 
   @override
@@ -164,22 +194,26 @@ class _FiltrosPickingState extends State<FiltrosPicking> {
                             Expanded(
                               child: TextField(
                                 controller: widget.nombreController,
+                                focusNode: _nombreFocusNode,
                                 decoration: const InputDecoration(
                                   labelText: 'Cliente/Proveedor',
                                   border: OutlineInputBorder(),
                                   suffixIcon: Icon(Icons.search),
                                 ),
+                                onSubmitted: (value) => _handleSearch(),
                               ),
                             ),
                             const SizedBox(width: 10),
                             Expanded(
                               child: TextField(
                                 controller: widget.numeroDocController,
+                                focusNode: _numeroDocFocusNode,
                                 decoration: const InputDecoration(
                                   labelText: 'Número de documento',
                                   border: OutlineInputBorder(),
                                   suffixIcon: Icon(Icons.search),
                                 ),
+                                onSubmitted: (value) => _handleSearch(),
                               ),
                             ),
                           ],
@@ -386,16 +420,7 @@ class _FiltrosPickingState extends State<FiltrosPicking> {
                         ],
                         const SizedBox(height: 10),
                         ElevatedButton(
-                          onPressed: () {
-                            widget.onSearch(
-                              _fechaDesde, 
-                              _fechaHasta, 
-                              _selectedPrioridad, 
-                              _selectedTipos ?? [], // Provide empty list if null
-                              _selectedUsuarioCreado, 
-                              _selectedUsuarioMod
-                            );
-                          },
+                          onPressed: _handleSearch,
                           style: ElevatedButton.styleFrom(
                             minimumSize: const Size(double.infinity, 50),
                             backgroundColor: colors.primary,
