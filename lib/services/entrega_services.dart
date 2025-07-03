@@ -3,6 +3,7 @@ import 'package:deposito/models/entrega.dart';
 import 'package:deposito/models/forma_envio.dart';
 import 'package:deposito/models/modo_envio.dart';
 import 'package:deposito/models/tipo_bulto.dart';
+import 'package:deposito/models/bulto.dart';
 import 'package:deposito/widgets/carteles.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -12,18 +13,19 @@ class EntregaServices {
   late String apirUrl = ConfigEnv.APIURL;
   late int? statusCode;
 
-  Future<int?> getStatusCode () async {
+  Future<int?> getStatusCode() async {
     return statusCode;
   }
 
-  Future<void> resetStatusCode () async {
+  Future<void> resetStatusCode() async {
     statusCode = null;
   }
 
-  Future postEntrega(BuildContext context, List<int> pickIds, String token) async {
+  Future<Entrega> postEntrega(BuildContext context, List<int> pickIds, int almacenId, String token) async {
     String link = '$apirUrl/api/v1/entrega';
     var data = {
-      "pickIds": pickIds
+      "pickIds": pickIds,
+      "almacenId": almacenId,
     };
 
     try {
@@ -34,7 +36,7 @@ class EntregaServices {
           method: 'POST',
           headers: headers,
         ),
-        data: data
+        data: data,
       );
       statusCode = 1;
       final Entrega entrega = Entrega.fromJson(resp.data);
@@ -42,10 +44,11 @@ class EntregaServices {
     } catch (e) {
       statusCode = 0;
       errorManagment(e, context);
+      return Entrega.empty();
     }
   }
 
-  Future formaEnvio(BuildContext context, String token) async {
+  Future<List<FormaEnvio>> formaEnvio(BuildContext context, String token) async {
     String link = '$apirUrl/api/v1/entrega/formasEnvio';
 
     try {
@@ -63,10 +66,11 @@ class EntregaServices {
     } catch (e) {
       statusCode = 0;
       errorManagment(e, context);
+      return [];
     }
   }
 
-  Future modoEnvio(BuildContext context, String token) async {
+  Future<List<ModoEnvio>> modoEnvio(BuildContext context, String token) async {
     String link = '$apirUrl/api/v1/entrega/modosEnvio';
 
     try {
@@ -84,10 +88,11 @@ class EntregaServices {
     } catch (e) {
       statusCode = 0;
       errorManagment(e, context);
+      return [];
     }
   }
 
-  Future tipoBulto(BuildContext context, String token) async {
+  Future<List<TipoBulto>> tipoBulto(BuildContext context, String token) async {
     String link = '$apirUrl/api/v1/entrega/tiposBulto';
 
     try {
@@ -105,6 +110,201 @@ class EntregaServices {
     } catch (e) {
       statusCode = 0;
       errorManagment(e, context);
+      return [];
+    }
+  }
+
+  Future<List<Entrega>> getEntregas(BuildContext context, String token) async {
+    String link = '$apirUrl/api/v1/entrega';
+
+    try {
+      var headers = {'Authorization': token};
+      var resp = await _dio.request(
+        link,
+        options: Options(
+          method: 'GET',
+          headers: headers,
+        ),
+      );
+      statusCode = 1;
+      final List<dynamic> entregasList = resp.data;
+      return entregasList.map((obj) => Entrega.fromJson(obj)).toList();
+    } catch (e) {
+      statusCode = 0;
+      errorManagment(e, context);
+      return [];
+    }
+  }
+
+  Future<Entrega> patchEntregaEstado(BuildContext context, int entregaId, String estado, String token) async {
+    String link = '$apirUrl/api/v1/entrega/$entregaId';
+    var data = {
+      "estado": estado,
+    };
+
+    try {
+      var headers = {'Authorization': token};
+      var resp = await _dio.request(
+        link,
+        options: Options(
+          method: 'PATCH',
+          headers: headers,
+        ),
+        data: data,
+      );
+      statusCode = 1;
+      return Entrega.fromJson(resp.data);
+    } catch (e) {
+      statusCode = 0;
+      errorManagment(e, context);
+      return Entrega.empty();
+    }
+  }
+
+  Future<List<Bulto>> getBultosEntrega(BuildContext context, int entregaId, String token) async {
+    String link = '$apirUrl/api/v1/entrega/$entregaId/bultos';
+
+    try {
+      var headers = {'Authorization': token};
+      var resp = await _dio.request(
+        link,
+        options: Options(
+          method: 'GET',
+          headers: headers,
+        ),
+      );
+      statusCode = 1;
+      final List<dynamic> bultosList = resp.data;
+      return bultosList.map((obj) => Bulto.fromJson(obj)).toList();
+    } catch (e) {
+      statusCode = 0;
+      errorManagment(e, context);
+      return [];
+    }
+  }
+
+  Future<Bulto> postBultoEntrega(BuildContext context, int entregaId, int tipoBultoId, String token) async {
+    String link = '$apirUrl/api/v1/entrega/$entregaId/bultos';
+    var data = {
+      "tipoBultoId": tipoBultoId,
+    };
+
+    try {
+      var headers = {'Authorization': token};
+      var resp = await _dio.request(
+        link,
+        options: Options(
+          method: 'POST',
+          headers: headers,
+        ),
+        data: data,
+      );
+      statusCode = 1;
+      return Bulto.fromJson(resp.data);
+    } catch (e) {
+      statusCode = 0;
+      errorManagment(e, context);
+      return Bulto.empty();
+    }
+  }
+
+  Future<Bulto> putBultoEntrega(
+    BuildContext context,
+    int entregaId,
+    int bultoId,
+    int clienteId,
+    int modoEnvioId,
+    int agenciaTrId,
+    int agenciaUFId,
+    String direccion,
+    String localidad,
+    String telefono,
+    String comentarioEnvio,
+    String comentario,
+    String token,
+  ) async {
+    String link = '$apirUrl/api/v1/entrega/$entregaId/bultos/$bultoId';
+    var data = {
+      "clienteId": clienteId,
+      "modoEnvioId": modoEnvioId,
+      "agenciaTrId": agenciaTrId,
+      "agenciaUFId": agenciaUFId,
+      "direccion": direccion,
+      "localidad": localidad,
+      "telefono": telefono,
+      "comentarioEnvio": comentarioEnvio,
+      "comentario": comentario,
+    };
+
+    try {
+      var headers = {'Authorization': token};
+      var resp = await _dio.request(
+        link,
+        options: Options(
+          method: 'PUT',
+          headers: headers,
+        ),
+        data: data,
+      );
+      statusCode = 1;
+      return Bulto.fromJson(resp.data);
+    } catch (e) {
+      statusCode = 0;
+      errorManagment(e, context);
+      return Bulto.empty();
+    }
+  }
+
+  Future<List<BultoItem>> getItemsBulto(BuildContext context, int entregaId, int bultoId, String token) async {
+    String link = '$apirUrl/api/v1/entrega/$entregaId/bultos/$bultoId/items';
+
+    try {
+      var headers = {'Authorization': token};
+      var resp = await _dio.request(
+        link,
+        options: Options(
+          method: 'GET',
+          headers: headers,
+        ),
+      );
+      statusCode = 1;
+      final List<dynamic> itemsList = resp.data;
+      return itemsList.map((obj) => BultoItem.fromJson(obj)).toList();
+    } catch (e) {
+      statusCode = 0;
+      errorManagment(e, context);
+      return [];
+    }
+  }
+
+  Future<void> patchItemBulto(
+    BuildContext context,
+    int entregaId,
+    int bultoId,
+    int pickLineaId,
+    int conteo,
+    String token,
+  ) async {
+    String link = '$apirUrl/api/v1/entrega/$entregaId/bultos/$bultoId/items';
+    var data = {
+      "pickLineaId": pickLineaId,
+      "conteo": conteo,
+    };
+
+    try {
+      var headers = {'Authorization': token};
+      await _dio.request(
+        link,
+        options: Options(
+          method: 'PATCH',
+          headers: headers,
+        ),
+        data: data,
+      );
+      statusCode = 1;
+    } catch (e) {
+      statusCode = 0;
+      errorManagment(e, context);
     }
   }
 
@@ -113,11 +313,11 @@ class EntregaServices {
       if (e.response != null) {
         final responseData = e.response!.data;
         if (responseData != null) {
-          if(e.response!.statusCode == 403){
+          if (e.response!.statusCode == 403) {
             Carteles.showErrorDialog(context, 'Error: ${e.response!.data['message']}');
-          }else if(e.response!.statusCode! >= 500) {
+          }else if (e.response!.statusCode! >= 500) {
             Carteles.showErrorDialog(context, 'Error: No se pudo completar la solicitud');
-          } else{
+          } else {
             final errors = responseData['errors'] as List<dynamic>;
             final errorMessages = errors.map((error) {
               return "Error: ${error['message']}";
@@ -129,7 +329,7 @@ class EntregaServices {
         }
       } else {
         Carteles.showErrorDialog(context, 'Error: No se pudo completar la solicitud');
-      } 
+      }
     }
   }
 }

@@ -30,3 +30,5 @@ export 'package:go_router/go_router.dart';
 export 'package:provider/provider.dart';
 export 'package:deposito/pages/picking/qr_page.dart';
 export 'package:deposito/pages/expedicion/seleccion_ordenes_page.dart';
+export 'package:deposito/pages/expedicion/despacho.dart';
+export 'package:deposito/pages/expedicion/salida_bultos_page.dart';

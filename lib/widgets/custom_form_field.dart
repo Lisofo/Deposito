@@ -55,7 +55,7 @@ class CustomTextFormField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final border = OutlineInputBorder(borderRadius: BorderRadius.circular(20));
+    final border = OutlineInputBorder(borderRadius: BorderRadius.circular(5));
 
     return TextFormField(
       keyboardType: keyboard,

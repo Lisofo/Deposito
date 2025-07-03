@@ -9,17 +9,19 @@ class CustomDropdownFormMenu extends StatelessWidget {
   final Function(dynamic)? onSaved;
   final Function()? onTap;
   final dynamic value;
+  final bool isExpanded;
 
   const CustomDropdownFormMenu(
-      {super.key, this.items,
-      required this.onChanged,
-      this.hint,
-      this.errorMessage,
-      this.validator,
-      this.onSaved,
-      this.onTap,
-      this.value});
-
+    {super.key, this.items,
+    required this.onChanged,
+    this.hint,
+    this.errorMessage,
+    this.validator,
+    this.onSaved,
+    this.onTap,
+    this.value,
+    this.isExpanded = false}
+  );
   @override
   Widget build(BuildContext context) {
     final border = OutlineInputBorder(borderRadius: BorderRadius.circular(20));
@@ -30,14 +32,13 @@ class CustomDropdownFormMenu extends StatelessWidget {
       decoration: InputDecoration(
         enabledBorder: border,
         focusedBorder: border.copyWith(),
-        errorBorder:
-            border.copyWith(borderSide: BorderSide(color: Colors.red.shade800)),
-        focusedErrorBorder:
-            border.copyWith(borderSide: BorderSide(color: Colors.red.shade800)),
+        errorBorder: border.copyWith(borderSide: BorderSide(color: Colors.red.shade800)),
+        focusedErrorBorder: border.copyWith(borderSide: BorderSide(color: Colors.red.shade800)),
         isDense: true,
         hintText: hint,
         errorText: errorMessage,
       ),
+      isExpanded: isExpanded,
       validator: validator,
       onSaved: onSaved,
       onTap: onTap,

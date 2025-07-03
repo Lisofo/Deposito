@@ -30,6 +30,8 @@ final _icons = <String, IconData>{
   'exit_to_app' : Icons.exit_to_app,
   'dashboard' : Icons.dashboard,
   'monitor' : Icons.monitor,
+  'handshake' : Icons.handshake,
+  'shopping_bag' : Icons.shopping_bag,
 };
 
 Icon getIcon(String iconName,BuildContext context) {

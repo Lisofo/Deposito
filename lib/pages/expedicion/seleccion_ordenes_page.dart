@@ -219,7 +219,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
                           Entrega entrega = Entrega.empty();
                           int? statusCode;
                           List<int> pickIds = _ordenesSeleccionadas.map((orden) => orden.pickId).toList();
-                          await entregaServices.postEntrega(context, pickIds, token);
+                          await entregaServices.postEntrega(context, pickIds, almacen.almacenId, token);
                           statusCode = await entregaServices.getStatusCode();
                           await entregaServices.resetStatusCode();
                           if(statusCode == 1) {
@@ -247,6 +247,9 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
 
   Widget _buildOrdenItem(OrdenPicking orden) {
     final isSelected = _ordenesSeleccionadas.contains(orden);
+    final colors = Theme.of(context).colorScheme;
+    final width = MediaQuery.of(context).size.width;
+    final isMobile = width < 800;
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
@@ -283,43 +286,141 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
                       _manteneFocoScanner();
                     },
                   ),
-                  Expanded(
-                    child: Text(
-                      '${orden.serie}-${orden.numeroDocumento}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                  Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      SizedBox(
+                        width: 48,
+                        height: 48,
+                        child: CircularProgressIndicator(
+                          value: orden.porcentajeCompletado / 100,
+                          strokeWidth: 5,
+                          backgroundColor: Colors.grey[400],
+                          color: orden.porcentajeCompletado == 100.0 ? Colors.green : colors.secondary,
+                        ),
                       ),
+                      Text(
+                        '${orden.porcentajeCompletado.toStringAsFixed(orden.porcentajeCompletado % 1 == 0 ? 0 : 0)}%',
+                        style: const TextStyle(
+                          fontSize: 12, 
+                          fontWeight: FontWeight.bold
+                        ),
+                      )
+                    ],
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Doc: ${orden.numeroDocumento} ${orden.serie ?? ''}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
                     ),
                   ),
-                  Column(
-                    children: [
-                      Chip(
-                        label: Text(
-                          '${orden.porcentajeCompletado.toStringAsFixed(0)}%',
-                          style: const TextStyle(color: Colors.white),
+                  const Spacer(),
+                  if(!isMobile)
+                    Expanded(
+                      flex: 10,
+                      child: SizedBox(
+                        width: MediaQuery.of(context).size.width * 0.8,
+                        child: Wrap(
+                          spacing: 16,
+                          runSpacing: 8,
+                          alignment: WrapAlignment.center,
+                          children: [
+                            _infoBox('Tipo:', orden.descTipo),
+                            _infoBox('Fecha:', DateFormat('dd/MM/yyyy').format(orden.fechaDate)),
+                            _infoBox('Cliente:', '${orden.codEntidad} - ${orden.nombre}'),
+                            _infoBox('Creado por:', orden.creadoPor),
+                            _infoBox('RUC:', orden.ruc),
+                            _infoBox(
+                              'Última modificación por:',
+                              orden.modificadoPor,
+                            ),
+                            _infoBox("Fecha última modificación:", DateFormat('dd/MM/yyyy HH:mm').format(orden.fechaDate))
+                          ],
                         ),
-                        backgroundColor: orden.porcentajeCompletado == 100 ? Colors.green : Colors.orange,
                       ),
+                    ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: _getStatusColor(orden.estado),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          orden.estado,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      Text(orden.prioridad),
                       Text('PickId: ${orden.pickId}'),
+                      Text('Líneas: ${orden.cantLineas ?? 0}'),
                     ],
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
-              Text('Cliente: ${orden.nombre}'),
-              const SizedBox(height: 8),
-              Text('Tipo: ${orden.descTipo}'),
-              Text('Cliente: ${orden.codEntidad} - ${orden.nombre}'),
-              Text('RUC: ${orden.ruc}'),
-              Text(orden.transaccion),
-              Text('Fecha: ${DateFormat('dd/MM/yyyy').format(orden.fechaDate)}'),
-              Text("Fecha última mod.: ${DateFormat('dd/MM/yyyy HH:mm').format(orden.fechaDate)}"),
+              if(isMobile)
+              Wrap(
+                spacing: 16,
+                runSpacing: 8,
+                children: [
+                  _infoBox('Tipo:', (orden.descTipo)),
+                  _infoBox('Fecha:', DateFormat('dd/MM/yyyy').format(orden.fechaDate)),
+                  _infoBox('Cliente:', '${orden.codEntidad} - ${orden.nombre}'),
+                  _infoBox('Creado por:', orden.creadoPor),
+                  _infoBox('RUC:', orden.ruc),
+                  _infoBox(
+                    'Última modificación por:',
+                    orden.modificadoPor,
+                  ),
+                  _infoBox("Fecha última modificación:", DateFormat('dd/MM/yyyy HH:mm').format(orden.fechaDate))
+                ],
+              ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Widget _infoBox(String label, String value) {
+    return SizedBox(
+      width: 360, // ajustá este valor para lograr alineación visual entre columnas
+      child: RichText(
+        text: TextSpan(
+          style: const TextStyle(color: Colors.black, fontSize: 14),
+          children: [
+            TextSpan(
+              text: '$label ',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            TextSpan(text: value),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toUpperCase()) {
+      case 'PENDIENTE':
+        return Colors.orange;
+      case 'EN PROCESO':
+        return Colors.blue;
+      case 'CERRADO':
+        return Colors.green;
+      case 'CANCELADO':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
   }
 
   Future<void> procesarEscaneoUbicacion(String value) async {

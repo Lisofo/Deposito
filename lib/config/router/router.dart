@@ -1,5 +1,3 @@
-import 'package:deposito/pages/expedicion/salida_bultos_page.dart';
-
 import 'pages.dart';
 
 class AppRouter {
@@ -68,6 +66,7 @@ class AppRouter {
         GoRoute(path: '/qrPage', builder: (context, state) => const QrPage()),
         GoRoute(path: '/expedicionPaquetes', builder: (context, state) => const SeleccionOrdenesScreen()),
         GoRoute(path: '/salidaBultos', builder: (context, state) => const SalidaBultosScreen()),
+        GoRoute(path: '/expedicionDespacho', builder: (context, state) => const DespachoPage()),
       ],
     );
   }

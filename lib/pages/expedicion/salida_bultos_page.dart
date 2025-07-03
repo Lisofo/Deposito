@@ -1,3 +1,4 @@
+import 'package:deposito/models/bulto.dart';
 import 'package:deposito/models/forma_envio.dart';
 import 'package:deposito/models/modo_envio.dart';
 import 'package:deposito/models/tipo_bulto.dart';
@@ -5,6 +6,9 @@ import 'package:deposito/provider/product_provider.dart';
 import 'package:deposito/services/entrega_services.dart';
 import 'package:deposito/services/product_services.dart';
 import 'package:deposito/widgets/carteles.dart';
+import 'package:deposito/widgets/custom_form_field.dart';
+import 'package:deposito/widgets/icon_string.dart';
+import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:deposito/models/orden_picking.dart';
@@ -24,6 +28,7 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
   List<PickingLinea> _lineasOrdenSeleccionada = [];
   Bulto? _bultoActual;
   final TextEditingController _codigoController = TextEditingController();
+  final TextEditingController _comentarioController = TextEditingController();
   final PickingServices _pickingServices = PickingServices();
   bool _isLoadingLineas = false;
   late String token;
@@ -62,15 +67,23 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
     modoEnvios = await EntregaServices().modoEnvio(context, token);
     
     for (var forma in formasEnvio) {
-      if(forma.tr != null) {
+      if(forma.tr == true) {
         transportistas.add(forma);
-      } else {
+        transportistas.sort((a, b) => a.descripcion!.compareTo(b.descripcion.toString()));
+      } 
+      if (forma.envio == true) {
         empresasEnvio.add(forma);
+        empresasEnvio.sort((a, b) => a.descripcion!.compareTo(b.descripcion.toString()));
       }
     }
 
     setState(() {
       _ordenes = productProvider.ordenesExpedicion;
+      
+      if (_ordenes.length == 1) {
+        _ordenSeleccionada = _ordenes[0];
+        _cargarLineasOrden(_ordenSeleccionada!);
+      }
     });
   }
 
@@ -113,9 +126,8 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
 
   int _getCantidadVerificada(String codigoRaiz) {
     return _bultos.fold(0, (total, bulto) {
-      return total + bulto.contenido
-          .where((item) => item.codigoRaiz == codigoRaiz)
-          .fold(0, (sum, item) => sum + item.cantidad);
+      final bultoItems = bulto.contenido.where((item) => item.codigoRaiz == codigoRaiz);
+      return total + bultoItems.fold(0, (sum, item) => sum + item.cantidad);
     });
   }
 
@@ -201,6 +213,9 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
               cantidad: 1,
               descripcion: linea.descripcion,
               cantidadMaxima: linea.cantidadPickeada,
+              bultoId: 0,
+              bultoLinId: 0,
+              pickLineaId: 0
             ),
           );
         }
@@ -226,8 +241,6 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
       return;
     }
 
-    TipoBulto? tipoSeleccionado;
-
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -237,16 +250,12 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: tipoBultos.map((tipo) {
-                return RadioListTile<TipoBulto>(
+                return ListTile(
+                  leading: getIcon(tipo.icon, context),
                   title: Text(tipo.descripcion),
-                  value: tipo,
-                  groupValue: tipoSeleccionado,
-                  onChanged: (TipoBulto? value) {
-                    tipoSeleccionado = value;
+                  onTap: () {
                     Navigator.of(context).pop();
-                    if (value != null) {
-                      _crearNuevoBulto(value.descripcion, tipoBultoId: value.tipoBultoId);
-                    }
+                    _crearNuevoBulto(tipo);
                   },
                 );
               }).toList(),
@@ -257,11 +266,16 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
     );
   }
 
-  void _crearNuevoBulto(String tipoDescripcion, {int? tipoBultoId}) {
+  void _crearNuevoBulto(TipoBulto tipoBulto) {
     final nuevoBulto = Bulto(
-      nombre: 'Bulto ${_bultos.length + 1}',
-      tipo: tipoDescripcion,
-      tipoBultoId: tipoBultoId,
+      bultoId: 0,
+      entregaId: 0,
+      fechaDate: DateTime.now(),
+      fechaBulto: DateTime.now(),
+      estado: 'PENDIENTE',
+      almacenId: Provider.of<ProductProvider>(context, listen: false).almacen.almacenId,
+      tipoBultoId: tipoBulto.tipoBultoId,
+      armadoPorUsuId: Provider.of<ProductProvider>(context, listen: false).uId,
       contenido: [],
     );
 
@@ -304,7 +318,7 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
                 
                 if (totalProyectado > item.cantidadMaxima) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('No puede superar ${item.cantidadMaxima} (Total actual: $totalProyectado)')),
+                    SnackBar(content: Text('No puede superar ${item.cantidadMaxima} (Total actual: $totalProyectado')),
                   );
                   return;
                 }
@@ -323,15 +337,16 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
 
   void _mostrarDialogoCierreBultos() {
     final List<bool> selecciones = List.filled(_bultos.length, false);
-    String? metodoEnvio;
-    String? empresaEnvio;
+    ModoEnvio? metodoEnvio;
+    FormaEnvio? empresaEnvioSeleccionada;
     String? transportista;
+    _comentarioController.text = '';
 
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return StatefulBuilder(
-          builder: (context, setState) {
+          builder: (context, setStateDialog) {
             return AlertDialog(
               title: const Text('Seleccionar bultos y método de envío'),
               content: SingleChildScrollView(
@@ -342,77 +357,107 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
                     ..._bultos.asMap().entries.map((entry) {
                       final index = entry.key;
                       final bulto = entry.value;
+                      final tipoBulto = tipoBultos.firstWhere(
+                        (t) => t.tipoBultoId == bulto.tipoBultoId,
+                        orElse: () => TipoBulto.empty()
+                      );
                       return CheckboxListTile(
-                        title: Text('${bulto.nombre} (${bulto.tipo})'),
+                        title: Text('Bulto ${index + 1} (${tipoBulto.descripcion})'),
                         value: selecciones[index],
                         onChanged: (value) {
-                          setState(() {
+                          setStateDialog(() {
                             selecciones[index] = value!;
                           });
                         },
                       );
                     }),
+                    
                     const SizedBox(height: 20),
                     const Text('Método de envío:'),
-                    DropdownButton<String>(
+                    DropdownButtonFormField<ModoEnvio>(
                       isExpanded: true,
                       value: metodoEnvio,
                       hint: const Text('Seleccione método'),
-                      items: ['Correo', 'Transporte', 'Retiro en local'].map((String value) {
-                        return DropdownMenuItem<String>(
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder()
+                      ),
+                      items: modoEnvios.map((value) {
+                        return DropdownMenuItem(
                           value: value,
-                          child: Text(value),
+                          child: Text(value.descripcion),
                         );
                       }).toList(),
-                      onChanged: (String? newValue) {
-                        setState(() {
+                      onChanged: (ModoEnvio? newValue) {
+                        setStateDialog(() {
                           metodoEnvio = newValue;
-                          if (newValue != 'Correo') {
-                            empresaEnvio = null;
+                          if (newValue?.modoEnvioId != 2) {
+                            empresaEnvioSeleccionada = null;
                             transportista = null;
                           }
                         });
                       },
                     ),
                     
-                    if (metodoEnvio == 'Correo') ...[
-                      const SizedBox(height: 20),
-                      const Text('Empresa de envío:'),
-                      DropdownButton<String>(
-                        isExpanded: true,
-                        value: empresaEnvio,
-                        hint: const Text('Seleccione empresa'),
-                        items: empresasEnvio.map((FormaEnvio value) {
-                          return DropdownMenuItem(
-                            value: value.codFormaEnvio,
-                            child: Text(value.descripcion.toString()),
-                          );
-                        }).toList(),
-                        onChanged: (String? newValue) {
-                          setState(() {
-                            empresaEnvio = newValue;
-                          });
-                        },
-                      ),
-                      const SizedBox(height: 10),
+                    if (metodoEnvio?.modoEnvioId == 2) ...[
+                      const SizedBox(height: 10),                    
                       const Text('Transportista:'),
-                      DropdownButton<String>(
+                      DropdownButtonFormField<String>(
                         isExpanded: true,
                         value: transportista,
                         hint: const Text('Seleccione transportista'),
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder()
+                        ),
                         items: transportistas.map((FormaEnvio value) {
                           return DropdownMenuItem(
-                            value: value.codFormaEnvio,
+                            value: value.descripcion,
                             child: Text(value.descripcion.toString()),
                           );
                         }).toList(),
                         onChanged: (String? newValue) {
-                          setState(() {
+                          setStateDialog(() {
                             transportista = newValue;
                           });
                         },
                       ),
+                      const SizedBox(height: 10),
+                      const Text('Empresa de envío:'),
+                      DropdownSearch<FormaEnvio>(
+                        popupProps: const PopupProps.menu(
+                          showSearchBox: true,
+                          searchDelay: Duration.zero,
+                          searchFieldProps: TextFieldProps(
+                            decoration: InputDecoration(
+                              hintText: "Buscar empresa...",
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.search),
+                            ),
+                          ),
+                        ),
+                        items: empresasEnvio,
+                        itemAsString: (FormaEnvio item) => item.descripcion.toString(),
+                        selectedItem: empresaEnvioSeleccionada,
+                        onChanged: (FormaEnvio? newValue) {
+                          setStateDialog(() {
+                            empresaEnvioSeleccionada = newValue;
+                          });
+                        },
+                        dropdownDecoratorProps: const DropDownDecoratorProps(
+                          dropdownSearchDecoration: InputDecoration(
+                            hintText: "Seleccione empresa",
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        compareFn: (item, selectedItem) => item.codFormaEnvio == selectedItem.codFormaEnvio,
+                      ),
                     ],
+                    const SizedBox(height: 10),
+                    CustomTextFormField(
+                      controller: _comentarioController,
+                      minLines: 1,
+                      maxLines: 5,
+                      hint: 'Comentario',
+                    ),
                   ],
                 ),
               ),
@@ -423,28 +468,39 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
                 ),
                 TextButton(
                   child: const Text('Confirmar'),
-                  onPressed: () {
-                    if (metodoEnvio == null || !selecciones.contains(true)) {
+                  onPressed: () async {
+                    final bultosSeleccionados = selecciones.where((s) => s).length;
+                    
+                    if (metodoEnvio == null || bultosSeleccionados == 0) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Debe seleccionar al menos un bulto y un método de envío')),
+                      );
                       return;
                     }
                     
-                    if (metodoEnvio == 'Correo' && (empresaEnvio == null || transportista == null)) {
+                    if (metodoEnvio?.modoEnvioId == 2 && (empresaEnvioSeleccionada == null || transportista == null)) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('Para envío por correo debe seleccionar empresa y transportista')),
                       );
                       return;
                     }
                     
-                    String mensaje = '${selecciones.where((s) => s).length} bultos cerrados para envío por $metodoEnvio';
-                    if (metodoEnvio == 'Correo') {
-                      mensaje += '\nEmpresa: $empresaEnvio\nTransportista: $transportista';
-                    }
+                    Navigator.of(context).pop();
                     
                     _mostrarDialogo(
                       'Bultos cerrados',
-                      mensaje,
+                      '$bultosSeleccionados bultos cerrados para ${metodoEnvio?.descripcion}'
+                      '${metodoEnvio?.modoEnvioId == 2 ? '\nEmpresa: ${empresaEnvioSeleccionada?.descripcion}\nTransportista: $transportista' : '\nEn el ${metodoEnvio?.codModoEnvio}'}',
                     );
-                    Navigator.of(context).pop();
+                    
+                    setState(() {
+                      _bultos.removeWhere((bulto) => selecciones[_bultos.indexOf(bulto)]);
+                      if (_bultos.isEmpty) {
+                        _bultoActual = null;
+                      } else if (_bultoActual != null && !_bultos.contains(_bultoActual)) {
+                        _bultoActual = _bultos.first;
+                      }
+                    });
                   },
                 ),
               ],
@@ -478,6 +534,7 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final isWideScreen = MediaQuery.of(context).size.width > 800;
 
     return Scaffold(
       appBar: AppBar(
@@ -512,138 +569,219 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
                           child: Text('${orden.serie}-${orden.numeroDocumento} - ${orden.nombre}'),
                         );
                       }).toList(),
-                      onChanged: (OrdenPicking? nuevaOrden) {
+                      onChanged: _ordenes.length > 1 ? (OrdenPicking? nuevaOrden) {
                         if (nuevaOrden != null) {
                           setState(() {
                             _ordenSeleccionada = nuevaOrden;
                           });
                           _cargarLineasOrden(nuevaOrden);
                         }
-                      },
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
+                      } : null,
+                      decoration: InputDecoration(
+                        border: const OutlineInputBorder(),
+                        enabled: _ordenes.length > 1
                       ),
                       isExpanded: true,
+                      disabledHint: _ordenSeleccionada != null 
+                          ? Text('${_ordenSeleccionada!.numeroDocumento}-${_ordenSeleccionada!.serie} - ${_ordenSeleccionada!.nombre}')
+                          : null,
                     ),
                   ],
                 ),
               ),
             ),
-
-            const SizedBox(height: 20),
-
-            if (_ordenSeleccionada != null)
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
+            const SizedBox(height: 20),            
+            if (_ordenSeleccionada != null) ...[
+              const SizedBox(height: 20),
+              isWideScreen
+                ? Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Detalles de la Orden:',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
+                      Expanded(
+                        flex: 1,
+                        child: _buildProductosSection(),
                       ),
-                      const SizedBox(height: 10),
-                      Text('Cliente: ${_ordenSeleccionada!.nombre}'),
-                      Text('Tipo: ${_ordenSeleccionada!.descTipo}'),
-                      const SizedBox(height: 10),
-                      const Text(
-                        'Productos:',
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        flex: 1,
+                        child: _buildBultosSection(),
                       ),
-                      _isLoadingLineas
-                        ? const Center(child: CircularProgressIndicator())
-                        : _lineasOrdenSeleccionada.isEmpty
-                            ? const Text('No hay productos en esta orden')
-                            : Column(
-                                children: _lineasOrdenSeleccionada
-                                    .where((linea) => linea.cantidadPickeada != 0)
-                                    .map((linea) {
-                                      final cantidadVerificada = _getCantidadVerificada(linea.codItem);
-                                      return ListTile(
-                                        title: Text('${linea.codItem} - ${linea.descripcion}'),
-                                        subtitle: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text('Pickeado: ${linea.cantidadPickeada}/${linea.cantidadPedida}'),
-                                            Text('Verificado: $cantidadVerificada/${linea.cantidadPickeada}'),
-                                          ],
-                                        ),
-                                        trailing: cantidadVerificada >= linea.cantidadPickeada
-                                            ? const Icon(Icons.check_circle, color: Colors.green)
-                                            : null,
-                                      );
-                                    }).toList(),
-                              ),
+                    ],
+                  )
+                : Column(
+                    children: [
+                      _buildProductosSection(),
+                      const SizedBox(height: 20),
+                      _buildBultosSection(),
                     ],
                   ),
-                ),
-              ),
-            const SizedBox(height: 20),
-            
+            ],
+          ],
+        ),
+      ),
+      bottomNavigationBar: BottomAppBar(
+        notchMargin: 10,
+        elevation: 0,
+        shape: const CircularNotchedRectangle(),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
             if (_ordenSeleccionada != null && !_isLoadingLineas)
               ElevatedButton(
-                onPressed: _mostrarDialogoTipoBulto,
-                child: const Text('Crear Nuevo Bulto'),
-              ),
-
-            const SizedBox(height: 20),
-
-            if (_bultos.isNotEmpty)
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Bultos',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: _bultos.map((bulto) {
-                            return Padding(
-                              padding: const EdgeInsets.only(right: 8.0),
-                              child: ChoiceChip(
-                                label: Text(bulto.nombre, style: const TextStyle(fontSize: 30)),
-                                selected: _bultoActual == bulto,
-                                onSelected: (selected) {
-                                  setState(() {
-                                    _bultoActual = selected ? bulto : null;
-                                  });
-                                },
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      ),
-                    ],
-                  ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colors.primary,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 ),
+                onPressed: _mostrarDialogoTipoBulto,
+                child: Text('Crear Nuevo Bulto', style: TextStyle(color: colors.onPrimary)),
               ),
+            if (_bultos.isNotEmpty)
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colors.primary,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                ),
+                onPressed: _mostrarDialogoCierreBultos,
+                child: Text('Cerrar Bultos y Seleccionar Envío', style: TextStyle(color: colors.onPrimary)),
+              ), 
+          ],
+        ),
+      ),
+    );
+  }
 
-            if (_bultoActual != null)
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
+  Widget _buildProductosSection() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Detalles de la Orden:',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text('Cliente: ${_ordenSeleccionada!.nombre}'),
+            Text('Tipo: ${_ordenSeleccionada!.descTipo}'),
+            const SizedBox(height: 10),
+            const Text(
+              'Productos:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            _isLoadingLineas
+              ? const Center(child: CircularProgressIndicator())
+              : _lineasOrdenSeleccionada.isEmpty
+                  ? const Text('No hay productos en esta orden')
+                  : ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 300),
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: _lineasOrdenSeleccionada.where((linea) => linea.cantidadPickeada != 0).length,
+                        itemBuilder: (context, index) {
+                          final linea = _lineasOrdenSeleccionada.where((linea) => linea.cantidadPickeada != 0).toList()[index];
+                          final cantidadVerificada = _getCantidadVerificada(linea.codItem);
+                          return ListTile(
+                            title: Text('${linea.codItem} - ${linea.descripcion}'),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Pickeado: ${linea.cantidadPickeada}/${linea.cantidadPedida}'),
+                                Text('Verificado: $cantidadVerificada/${linea.cantidadPickeada}'),
+                              ],
+                            ),
+                            trailing: cantidadVerificada >= linea.cantidadPickeada
+                                ? const Icon(Icons.check_circle, color: Colors.green)
+                                : null,
+                          );
+                        },
+                      ),
+                    ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBultosSection() {
+    return Column(
+      children: [
+        if (_bultos.isNotEmpty)
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Bultos',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: _bultos.map((bulto) {
+                        final tipoBulto = tipoBultos.firstWhere(
+                          (t) => t.tipoBultoId == bulto.tipoBultoId,
+                          orElse: () => TipoBulto.empty()
+                        );
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8.0),
+                          child: ChoiceChip(
+                            avatar: getIcon(tipoBulto.icon, context),
+                            label: Text('Bulto ${_bultos.indexOf(bulto) + 1}', style: const TextStyle(fontSize: 22)),
+                            selected: _bultoActual == bulto,
+                            onSelected: (selected) {
+                              setState(() {
+                                _bultoActual = selected ? bulto : null;
+                              });
+                            },
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  if (_bultoActual != null)
+                  Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Bulto: ${_bultoActual!.nombre} (${_bultoActual!.tipo})',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          // Aquí está el cambio principal
+                          Builder(
+                            builder: (context) {
+                              final tipoBulto = tipoBultos.firstWhere(
+                                (t) => t.tipoBultoId == _bultoActual!.tipoBultoId,
+                                orElse: () => TipoBulto.empty()
+                              );
+                              return Text(
+                                'Bulto ${_bultos.indexOf(_bultoActual!) + 1} - ${tipoBulto.descripcion}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              );
+                            },
+                          ),
+                          ElevatedButton.icon(
+                            icon: const Icon(Icons.delete, size: 20),
+                            label: const Text('Eliminar'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            ),
+                            onPressed: () => _eliminarBulto(_bultoActual!),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 10),
                       TextField(
@@ -666,92 +804,80 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
                         'Contenido del bulto:',
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
-                      ..._bultoActual!.contenido.map((item) {
-                        final cantidadTotal = _getCantidadVerificada(item.codigoRaiz);
-                        return ListTile(
-                          title: Text('${item.codigo} - ${item.descripcion}'),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('En este bulto: ${item.cantidad}'),
-                              Text('Total verificado: $cantidadTotal/${item.cantidadMaxima}'),
-                            ],
-                          ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (cantidadTotal >= item.cantidadMaxima)
-                                const Icon(Icons.check_circle, color: Colors.green),
-                              IconButton(
-                                icon: const Icon(Icons.edit),
-                                onPressed: () => _editarCantidadItem(item),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxHeight: 300),
+                        child: ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: _bultoActual!.contenido.length,
+                          itemBuilder: (context, index) {
+                            final item = _bultoActual!.contenido[index];
+                            final cantidadTotal = _getCantidadVerificada(item.codigoRaiz);
+                            return ListTile(
+                              title: Text('${item.codigo} - ${item.descripcion}'),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('En este bulto: ${item.cantidad}'),
+                                  Text('Total verificado: $cantidadTotal/${item.cantidadMaxima}'),
+                                ],
                               ),
-                              IconButton(
-                                icon: const Icon(Icons.delete, color: Colors.red),
-                                onPressed: () => _eliminarItem(item),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (cantidadTotal >= item.cantidadMaxima)
+                                    const Icon(Icons.check_circle, color: Colors.green),
+                                  IconButton(
+                                    icon: const Icon(Icons.edit),
+                                    onPressed: () => _editarCantidadItem(item),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete, color: Colors.red),
+                                    onPressed: () => _eliminarItem(item),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                        );
-                      }),
+                            );
+                          },
+                        ),
+                      ),
                     ],
                   ),
-                ),
+                ],
               ),
+            ),
+          ),
+      ],
+    );
+  }
 
-            if (_bultos.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 20.0),
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  onPressed: _mostrarDialogoCierreBultos,
-                  child: const Text('Cerrar Bultos y Seleccionar Envío'),
-                ),
-              ),
-          ],
-        ),
+  void _eliminarBulto(Bulto bulto) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirmar eliminación'),
+        content: const Text('¿Estás seguro que deseas eliminar este bulto?'),
+        actions: [
+          TextButton(
+            child: const Text('Cancelar'),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          TextButton(
+            child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
+            onPressed: () {
+              Navigator.of(context).pop();
+              setState(() {
+                _bultos.remove(bulto);
+                if (_bultoActual == bulto) {
+                  _bultoActual = _bultos.isNotEmpty ? _bultos.first : null;
+                }
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Bulto eliminado')),
+              );
+            },
+          ),
+        ],
       ),
     );
   }
-}
-
-class Bulto {
-  String nombre;
-  String tipo;
-  int? tipoBultoId;
-  List<BultoItem> contenido;
-
-  Bulto({
-    required this.nombre,
-    required this.tipo,
-    this.tipoBultoId,
-    required this.contenido,
-  });
-}
-
-class BultoItem {
-  String codigo;
-  String codigoRaiz;
-  int cantidad;
-  String descripcion;
-  int cantidadMaxima;
-
-  BultoItem({
-    required this.codigo,
-    required this.codigoRaiz,
-    required this.cantidad,
-    required this.descripcion,
-    required this.cantidadMaxima,
-  });
-
-  factory BultoItem.empty() => BultoItem(
-    codigo: '',
-    codigoRaiz: '',
-    cantidad: 0,
-    descripcion: '',
-    cantidadMaxima: 0,
-  );
 }

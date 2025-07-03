@@ -56,4 +56,9 @@ class FormaEnvio {
     envio;
     fechabaja = DateTime.now();
   }
+
+  @override
+  String toString() {
+    return descripcion.toString();
+  }
 }
