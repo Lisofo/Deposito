@@ -1,5 +1,6 @@
 import 'package:deposito/config/router/pages.dart';
 import 'package:deposito/models/bulto.dart';
+import 'package:deposito/services/entrega_services.dart';
 import 'package:flutter/material.dart';
 
 class DespachoPage extends StatefulWidget {
@@ -14,11 +15,12 @@ class DespachoPageState extends State<DespachoPage> {
   List<Bulto> bultos = [];
   final TextEditingController _retiraController = TextEditingController();
   final TextEditingController _comentarioController = TextEditingController();
+  String token = '';
 
   @override
   void initState() {
     super.initState();
-    _precargarBultos();
+    loadData();
   }
 
   @override
@@ -26,6 +28,18 @@ class DespachoPageState extends State<DespachoPage> {
     _retiraController.dispose();
     _comentarioController.dispose();
     super.dispose();
+  }
+
+  loadData() async {
+    final productProvider = Provider.of<ProductProvider>(context, listen: false);
+    token = productProvider.token;
+    bultos = await EntregaServices().getBultos(context, token);
+    for (var bulto in bultos) {
+      print(bulto.bultoId);
+    }
+    setState(() {
+      
+    });
   }
 
   void _precargarBultos() {

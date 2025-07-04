@@ -209,6 +209,7 @@ class _MenuPageState extends State<MenuPage> {
     final buttonSize = screenSize.width > 800 ? 85.0 : 80.0;
     final iconSize = screenSize.width > 800 ? 26.0 : 24.0;
     final fontSize = screenSize.width > 800 ? 13.0 : 12.0;
+    final colors = Theme.of(context).colorScheme;
 
     return SizedBox(
       width: buttonSize,
@@ -244,7 +245,7 @@ class _MenuPageState extends State<MenuPage> {
                   width: iconSize,
                   height: iconSize,
                   alignment: Alignment.center,
-                  child: getIcon(opt.icon, context),
+                  child: getIcon(opt.icon, context, colors.secondary),
                 ),
                 const SizedBox(height: 6),
                 Text(

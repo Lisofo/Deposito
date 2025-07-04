@@ -34,10 +34,10 @@ final _icons = <String, IconData>{
   'shopping_bag' : Icons.shopping_bag,
 };
 
-Icon getIcon(String iconName,BuildContext context) {
-  final colors = Theme.of(context).colorScheme;
+Icon getIcon(String iconName, BuildContext context, Color colors) {
+  // final colors = Theme.of(context).colorScheme;
   return Icon(
     _icons[iconName],
-    color: colors.secondary
+    color: colors
   );
 }

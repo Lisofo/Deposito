@@ -59,6 +59,7 @@ List<Widget> _filaBotones2(List<Opcion> opciones, BuildContext context) {
   final List<Widget> opcionesRet = [];
   final menuProvider = context.read<MenuProvider>();
   final productProvider = context.read<ProductProvider>();
+  final colors = Theme.of(context).colorScheme;
 
   for (var opt in opciones) {
     final isQuickAccess = menuProvider.isQuickAccess(opt.ruta);
@@ -90,7 +91,7 @@ List<Widget> _filaBotones2(List<Opcion> opciones, BuildContext context) {
         },
         child: Row(
           children: [
-            getIcon(opt.icon, context),
+            getIcon(opt.icon, context, colors.secondary),
             const SizedBox(width: 8),
             TextButton(
               onPressed: null,

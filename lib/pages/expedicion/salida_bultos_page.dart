@@ -1,4 +1,5 @@
 import 'package:deposito/models/bulto.dart';
+import 'package:deposito/models/entrega.dart';
 import 'package:deposito/models/forma_envio.dart';
 import 'package:deposito/models/modo_envio.dart';
 import 'package:deposito/models/tipo_bulto.dart';
@@ -13,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:deposito/models/orden_picking.dart';
 import 'package:deposito/services/picking_services.dart';
+import 'package:intl/intl.dart';
 
 class SalidaBultosScreen extends StatefulWidget {
   const SalidaBultosScreen({super.key});
@@ -22,10 +24,8 @@ class SalidaBultosScreen extends StatefulWidget {
 }
 
 class SalidaBultosScreenState extends State<SalidaBultosScreen> {
-  final List<Bulto> _bultos = [];
-  late List<OrdenPicking> _ordenes = [];
+  
   OrdenPicking? _ordenSeleccionada;
-  List<PickingLinea> _lineasOrdenSeleccionada = [];
   Bulto? _bultoActual;
   final TextEditingController _codigoController = TextEditingController();
   final TextEditingController _comentarioController = TextEditingController();
@@ -33,6 +33,7 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
   bool _isLoadingLineas = false;
   late String token;
   FocusNode focoDeScanner = FocusNode();
+  Entrega entrega = Entrega.empty();
 
   // Datos para envíos
   late List<FormaEnvio> empresasEnvio = [];
@@ -40,6 +41,10 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
   late List<FormaEnvio> formasEnvio = [];
   late List<TipoBulto> tipoBultos = [];
   late List<ModoEnvio> modoEnvios = [];
+  late List<OrdenPicking> _ordenes = [];
+  final List<Bulto> _bultos = [];
+  final List<Bulto> _bultosCerrados = [];
+  List<PickingLinea> _lineasOrdenSeleccionada = [];
 
   @override
   void initState() {
@@ -60,12 +65,31 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
   }
 
   Future<void> _cargarDatosIniciales() async {
-    token = context.read<ProductProvider>().token;
     final productProvider = Provider.of<ProductProvider>(context, listen: false);
+    token = productProvider.token;
+    entrega = productProvider.entrega;
+    
+    // Load initial data
     formasEnvio = await EntregaServices().formaEnvio(context, token);
     tipoBultos = await EntregaServices().tipoBulto(context, token);
     modoEnvios = await EntregaServices().modoEnvio(context, token);
     
+    // Load existing bultos for this delivery
+    if (entrega.entregaId != 0) {
+      final bultosExistentes = await EntregaServices().getBultosEntrega(
+        context, 
+        entrega.entregaId, 
+        token
+      );
+      
+      setState(() {
+        _bultos.addAll(bultosExistentes);
+        if (_bultos.isNotEmpty) {
+          _bultoActual = _bultos.first;
+        }
+      });
+    }
+
     for (var forma in formasEnvio) {
       if(forma.tr == true) {
         transportistas.add(forma);
@@ -131,6 +155,18 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
     });
   }
 
+  bool _validarCompletitudProductos() {
+    for (final linea in _lineasOrdenSeleccionada) {
+      if (linea.cantidadPickeada == 0) continue;
+      
+      final cantidadVerificada = _getCantidadVerificada(linea.codItem);
+      if (cantidadVerificada < linea.cantidadPickeada) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   Future<void> procesarEscaneoUbicacion(String value) async {
     if (value.isEmpty || _bultoActual == null) return;
     
@@ -174,52 +210,83 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
         return;
       }
       
-      setState(() {
-        final index = _bultoActual!.contenido.indexWhere(
-          (item) => item.codigo == value || item.codigoRaiz == linea.codItem
-        );
+      // Verificar si el item ya existe en el bulto
+      final index = _bultoActual!.contenido.indexWhere(
+        (item) => item.codigo == value || item.codigoRaiz == linea.codItem
+      );
+      
+      if (index != -1) {
+        // Item existente - incrementar cantidad
+        final nuevaCantidadTotal = cantidadVerificadaTotal + 1;
+        if (nuevaCantidadTotal > linea.cantidadPickeada) {
+          Carteles.showDialogs(
+            context, 
+            'No puede superar la cantidad total pickeada ($nuevaCantidadTotal/${linea.cantidadPickeada})', 
+            false, 
+            false, 
+            false
+          );
+          return;
+        }
         
-        if (index != -1) {
-          final nuevaCantidadTotal = cantidadVerificadaTotal + 1;
-          if (nuevaCantidadTotal > linea.cantidadPickeada) {
-            Carteles.showDialogs(
-              context, 
-              'No puede superar la cantidad total pickeada ($nuevaCantidadTotal/${linea.cantidadPickeada})', 
-              false, 
-              false, 
-              false
-            );
-            return;
-          }
-          
-          _bultoActual!.contenido[index].cantidad += 1;
-        } else {
-          final nuevaCantidadTotal = cantidadVerificadaTotal + 1;
-          if (nuevaCantidadTotal > linea.cantidadPickeada) {
-            Carteles.showDialogs(
-              context, 
-              'No puede superar la cantidad total pickeada ($nuevaCantidadTotal/${linea.cantidadPickeada})', 
-              false, 
-              false, 
-              false
-            );
-            return;
-          }
-          
-          _bultoActual!.contenido.add(
-            BultoItem(
-              codigo: value,
-              codigoRaiz: linea.codItem,
-              cantidad: 1,
-              descripcion: linea.descripcion,
-              cantidadMaxima: linea.cantidadPickeada,
-              bultoId: 0,
-              bultoLinId: 0,
-              pickLineaId: 0
-            ),
+        // Primero actualizar en el servidor
+        if (_bultoActual!.bultoId != 0) {
+          await EntregaServices().patchItemBulto(
+            context,
+            entrega.entregaId,
+            _bultoActual!.bultoId,
+            _bultoActual!.contenido[index].pickLineaId,
+            _bultoActual!.contenido[index].cantidad + 1,
+            token,
           );
         }
-      });
+        
+        // Luego actualizar localmente
+        setState(() {
+          _bultoActual!.contenido[index].cantidad += 1;
+        });
+      } else {
+        // Nuevo item
+        final nuevaCantidadTotal = cantidadVerificadaTotal + 1;
+        if (nuevaCantidadTotal > linea.cantidadPickeada) {
+          Carteles.showDialogs(
+            context, 
+            'No puede superar la cantidad total pickeada ($nuevaCantidadTotal/${linea.cantidadPickeada})', 
+            false, 
+            false, 
+            false
+          );
+          return;
+        }
+        
+        // Primero crear en el servidor si el bulto existe
+        if (_bultoActual!.bultoId != 0) {
+          await EntregaServices().patchItemBulto(
+            context,
+            entrega.entregaId,
+            _bultoActual!.bultoId,
+            linea.pickLineaId,
+            1, // Cantidad inicial
+            token,
+          );
+        }
+        
+        // Luego crear localmente
+        final nuevoItem = BultoItem(
+          codigo: value,
+          codigoRaiz: linea.codItem,
+          cantidad: 1,
+          descripcion: linea.descripcion,
+          cantidadMaxima: linea.cantidadPickeada,
+          bultoId: _bultoActual!.bultoId,
+          bultoLinId: 0,
+          pickLineaId: linea.pickLineaId
+        );
+        
+        setState(() {
+          _bultoActual!.contenido.add(nuevoItem);
+        });
+      }
       
       _codigoController.clear();
       if (mounted) {
@@ -234,6 +301,7 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
   }
 
   void _mostrarDialogoTipoBulto() {
+    final colors = Theme.of(context).colorScheme;
     if (tipoBultos.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('No hay tipos de bulto disponibles')),
@@ -251,7 +319,7 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
               mainAxisSize: MainAxisSize.min,
               children: tipoBultos.map((tipo) {
                 return ListTile(
-                  leading: getIcon(tipo.icon, context),
+                  leading: getIcon(tipo.icon, context, colors.secondary),
                   title: Text(tipo.descripcion),
                   onTap: () {
                     Navigator.of(context).pop();
@@ -266,29 +334,54 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
     );
   }
 
-  void _crearNuevoBulto(TipoBulto tipoBulto) {
-    final nuevoBulto = Bulto(
-      bultoId: 0,
-      entregaId: 0,
-      fechaDate: DateTime.now(),
-      fechaBulto: DateTime.now(),
-      estado: 'PENDIENTE',
-      almacenId: Provider.of<ProductProvider>(context, listen: false).almacen.almacenId,
-      tipoBultoId: tipoBulto.tipoBultoId,
-      armadoPorUsuId: Provider.of<ProductProvider>(context, listen: false).uId,
-      contenido: [],
-    );
+  Future<void> _crearNuevoBulto(TipoBulto tipoBulto) async {
+    try {
+      final nuevoBulto = await EntregaServices().postBultoEntrega(
+        context,
+        entrega.entregaId,
+        tipoBulto.tipoBultoId,
+        token,
+      );
 
-    setState(() {
-      _bultos.add(nuevoBulto);
-      _bultoActual = nuevoBulto;
-    });
+      if (nuevoBulto.bultoId != 0) {
+        setState(() {
+          _bultos.add(nuevoBulto);
+          _bultoActual = nuevoBulto;
+        });
+      }
+    } catch (e) {
+      Carteles.showDialogs(context, 'Error al crear el bulto', false, false, false);
+    }
   }
 
-  void _eliminarItem(BultoItem item) {
+  void _eliminarItem(BultoItem item) async {
+    final pickLineaId = item.pickLineaId;
+    final cantidadOriginal = item.cantidad;
+    
     setState(() {
       _bultoActual?.contenido.remove(item);
     });
+
+    // Si el bulto está guardado, actualizar el servidor
+    if (_bultoActual?.bultoId != null && _bultoActual!.bultoId != 0) {
+      try {
+        await EntregaServices().patchItemBulto(
+          context,
+          entrega.entregaId,
+          _bultoActual!.bultoId,
+          pickLineaId,
+          0, // Cantidad 0 para eliminar
+          token,
+        );
+      } catch (e) {
+        // Si falla, revertir el cambio
+        setState(() {
+          item.cantidad = cantidadOriginal;
+          _bultoActual?.contenido.add(item);
+        });
+        Carteles.showDialogs(context, 'Error al eliminar item', false, false, false);
+      }
+    }
   }
 
   void _editarCantidadItem(BultoItem item) {
@@ -312,7 +405,7 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
             ),
             TextButton(
               child: const Text('Guardar'),
-              onPressed: () {
+              onPressed: () async {
                 final nuevaCantidad = int.tryParse(controller.text) ?? item.cantidad;
                 final totalProyectado = cantidadEnOtrosBultos + nuevaCantidad;
                 
@@ -326,6 +419,23 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
                 setState(() {
                   item.cantidad = nuevaCantidad;
                 });
+
+                // Actualizar en el servidor si el bulto ya está guardado
+                if (_bultoActual?.bultoId != null && _bultoActual!.bultoId != 0) {
+                  try {
+                    await EntregaServices().patchItemBulto(
+                      context,
+                      entrega.entregaId,
+                      _bultoActual!.bultoId,
+                      item.pickLineaId,
+                      item.cantidad,
+                      token,
+                    );
+                  } catch (e) {
+                    Carteles.showDialogs(context, 'Error al actualizar cantidad', false, false, false);
+                  }
+                }
+
                 Navigator.of(context).pop();
               },
             ),
@@ -469,6 +579,17 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
                 TextButton(
                   child: const Text('Confirmar'),
                   onPressed: () async {
+                    // Validar que todos los productos estén completos
+                    if (!_validarCompletitudProductos()) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('No se pueden cerrar bultos hasta verificar todos los productos de la orden'),
+                          duration: Duration(seconds: 3),
+                        ),
+                      );
+                      return;
+                    }
+
                     final bultosSeleccionados = selecciones.where((s) => s).length;
                     
                     if (metodoEnvio == null || bultosSeleccionados == 0) {
@@ -494,7 +615,13 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
                     );
                     
                     setState(() {
+                      // Mover bultos cerrados a la lista de cerrados
+                      final bultosACerrar = _bultos.where((bulto) => selecciones[_bultos.indexOf(bulto)]).toList();
+                      _bultosCerrados.addAll(bultosACerrar);
+                      
+                      // Eliminar de la lista activa
                       _bultos.removeWhere((bulto) => selecciones[_bultos.indexOf(bulto)]);
+                      
                       if (_bultos.isEmpty) {
                         _bultoActual = null;
                       } else if (_bultoActual != null && !_bultos.contains(_bultoActual)) {
@@ -531,121 +658,33 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final isWideScreen = MediaQuery.of(context).size.width > 800;
-
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: colors.primary,
-        title: Text('Salida por Bultos', style: TextStyle(color: colors.onPrimary)),
-        iconTheme: IconThemeData(color: colors.onPrimary),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Seleccionar Orden:',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    DropdownButtonFormField<OrdenPicking>(
-                      value: _ordenSeleccionada,
-                      items: _ordenes.map((OrdenPicking orden) {
-                        return DropdownMenuItem<OrdenPicking>(
-                          value: orden,
-                          child: Text('${orden.serie}-${orden.numeroDocumento} - ${orden.nombre}'),
-                        );
-                      }).toList(),
-                      onChanged: _ordenes.length > 1 ? (OrdenPicking? nuevaOrden) {
-                        if (nuevaOrden != null) {
-                          setState(() {
-                            _ordenSeleccionada = nuevaOrden;
-                          });
-                          _cargarLineasOrden(nuevaOrden);
-                        }
-                      } : null,
-                      decoration: InputDecoration(
-                        border: const OutlineInputBorder(),
-                        enabled: _ordenes.length > 1
-                      ),
-                      isExpanded: true,
-                      disabledHint: _ordenSeleccionada != null 
-                          ? Text('${_ordenSeleccionada!.numeroDocumento}-${_ordenSeleccionada!.serie} - ${_ordenSeleccionada!.nombre}')
-                          : null,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),            
-            if (_ordenSeleccionada != null) ...[
-              const SizedBox(height: 20),
-              isWideScreen
-                ? Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        flex: 1,
-                        child: _buildProductosSection(),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        flex: 1,
-                        child: _buildBultosSection(),
-                      ),
-                    ],
-                  )
-                : Column(
-                    children: [
-                      _buildProductosSection(),
-                      const SizedBox(height: 20),
-                      _buildBultosSection(),
-                    ],
-                  ),
-            ],
-          ],
-        ),
-      ),
-      bottomNavigationBar: BottomAppBar(
-        notchMargin: 10,
-        elevation: 0,
-        shape: const CircularNotchedRectangle(),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            if (_ordenSeleccionada != null && !_isLoadingLineas)
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: colors.primary,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                ),
-                onPressed: _mostrarDialogoTipoBulto,
-                child: Text('Crear Nuevo Bulto', style: TextStyle(color: colors.onPrimary)),
-              ),
-            if (_bultos.isNotEmpty)
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: colors.primary,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                ),
-                onPressed: _mostrarDialogoCierreBultos,
-                child: Text('Cerrar Bultos y Seleccionar Envío', style: TextStyle(color: colors.onPrimary)),
-              ), 
-          ],
-        ),
+  void _eliminarBulto(Bulto bulto) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirmar eliminación'),
+        content: const Text('¿Estás seguro que deseas eliminar este bulto?'),
+        actions: [
+          TextButton(
+            child: const Text('Cancelar'),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          TextButton(
+            child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
+            onPressed: () {
+              Navigator.of(context).pop();
+              setState(() {
+                _bultos.remove(bulto);
+                if (_bultoActual == bulto) {
+                  _bultoActual = _bultos.isNotEmpty ? _bultos.first : null;
+                }
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Bulto eliminado')),
+              );
+            },
+          ),
+        ],
       ),
     );
   }
@@ -707,6 +746,7 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
   }
 
   Widget _buildBultosSection() {
+    final colors = Theme.of(context).colorScheme;
     return Column(
       children: [
         if (_bultos.isNotEmpty)
@@ -735,10 +775,19 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
                         return Padding(
                           padding: const EdgeInsets.only(right: 8.0),
                           child: ChoiceChip(
-                            avatar: getIcon(tipoBulto.icon, context),
-                            label: Text('Bulto ${_bultos.indexOf(bulto) + 1}', style: const TextStyle(fontSize: 22)),
+                            label: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text('Bulto ${_bultos.indexOf(bulto) + 1}', style: const TextStyle(fontSize: 22)),
+                                const SizedBox(width: 8,),
+                                getIcon(tipoBulto.icon, context, _bultoActual == bulto ? colors.onPrimary : colors.secondary)
+                              ],
+                            ),
                             selected: _bultoActual == bulto,
                             onSelected: (selected) {
+                              if (selected) {
+                                _cargarItemsBulto(bulto);
+                              }
                               setState(() {
                                 _bultoActual = selected ? bulto : null;
                               });
@@ -755,7 +804,6 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          // Aquí está el cambio principal
                           Builder(
                             builder: (context) {
                               final tipoBulto = tipoBultos.firstWhere(
@@ -850,33 +898,212 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
     );
   }
 
-  void _eliminarBulto(Bulto bulto) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirmar eliminación'),
-        content: const Text('¿Estás seguro que deseas eliminar este bulto?'),
-        actions: [
-          TextButton(
-            child: const Text('Cancelar'),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-          TextButton(
-            child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
-            onPressed: () {
-              Navigator.of(context).pop();
-              setState(() {
-                _bultos.remove(bulto);
-                if (_bultoActual == bulto) {
-                  _bultoActual = _bultos.isNotEmpty ? _bultos.first : null;
-                }
-              });
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Bulto eliminado')),
-              );
-            },
-          ),
-        ],
+  Future<void> _cargarItemsBulto(Bulto bulto) async {
+    if (bulto.bultoId == 0) return; // Bulto nuevo que aún no se guardó
+
+    setState(() => _isLoadingLineas = true);
+    try {
+      final items = await EntregaServices().getItemsBulto(
+        context,
+        entrega.entregaId,
+        bulto.bultoId,
+        token,
+      );
+
+      setState(() {
+        bulto.contenido = items;
+      });
+    } catch (e) {
+      Carteles.showDialogs(context, 'Error al cargar items del bulto', false, false, false);
+    } finally {
+      setState(() => _isLoadingLineas = false);
+    }
+  }
+
+  Widget _buildBultosCerradosSection() {
+    if (_bultosCerrados.isEmpty) return const SizedBox();
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Bultos Cerrados:',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 10),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _bultosCerrados.length,
+              itemBuilder: (context, index) {
+                final bulto = _bultosCerrados[index];
+                final tipoBulto = tipoBultos.firstWhere(
+                  (t) => t.tipoBultoId == bulto.tipoBultoId,
+                  orElse: () => TipoBulto.empty()
+                );
+                
+                return ExpansionTile(
+                  leading: getIcon(tipoBulto.icon, context, Theme.of(context).colorScheme.secondary),
+                  title: Text('Bulto ${index + 1} - ${tipoBulto.descripcion}'),
+                  subtitle: Text('Cerrado el ${DateFormat('dd/MM/yyyy HH:mm').format(bulto.fechaBulto)}'),
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Column(
+                        children: bulto.contenido.map((item) => ListTile(
+                          title: Text(item.descripcion),
+                          subtitle: Text('Cantidad: ${item.cantidad}'),
+                        )).toList(),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final isWideScreen = MediaQuery.of(context).size.width > 800;
+
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: colors.primary,
+        title: Text('Salida por Bultos', style: TextStyle(color: colors.onPrimary)),
+        iconTheme: IconThemeData(color: colors.onPrimary),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Seleccionar Orden:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    DropdownButtonFormField<OrdenPicking>(
+                      value: _ordenSeleccionada,
+                      items: _ordenes.map((OrdenPicking orden) {
+                        return DropdownMenuItem<OrdenPicking>(
+                          value: orden,
+                          child: Text('${orden.serie}-${orden.numeroDocumento} - ${orden.nombre}'),
+                        );
+                      }).toList(),
+                      onChanged: _ordenes.length > 1 ? (OrdenPicking? nuevaOrden) {
+                        if (nuevaOrden != null) {
+                          setState(() {
+                            _ordenSeleccionada = nuevaOrden;
+                          });
+                          _cargarLineasOrden(nuevaOrden);
+                        }
+                      } : null,
+                      decoration: InputDecoration(
+                        border: const OutlineInputBorder(),
+                        enabled: _ordenes.length > 1
+                      ),
+                      isExpanded: true,
+                      disabledHint: _ordenSeleccionada != null 
+                          ? Text('${_ordenSeleccionada!.numeroDocumento}-${_ordenSeleccionada!.serie} - ${_ordenSeleccionada!.nombre}')
+                          : null,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),            
+            if (_ordenSeleccionada != null) ...[
+              const SizedBox(height: 20),
+              isWideScreen
+                ? Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        flex: 1,
+                        child: _buildProductosSection(),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        flex: 1,
+                        child: _buildBultosSection(),
+                      ),
+                    ],
+                  )
+                : Column(
+                    children: [
+                      _buildProductosSection(),
+                      const SizedBox(height: 20),
+                      _buildBultosSection(),
+                    ],
+                  ),
+              _buildBultosCerradosSection(),
+            ],
+          ],
+        ),
+      ),
+      bottomNavigationBar: BottomAppBar(
+        notchMargin: 10,
+        elevation: 0,
+        shape: const CircularNotchedRectangle(),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            if (_ordenSeleccionada != null && !_isLoadingLineas)
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colors.primary,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                ),
+                onPressed: _mostrarDialogoTipoBulto,
+                child: Text('Crear Nuevo Bulto', style: TextStyle(color: colors.onPrimary)),
+              ),
+            if (_bultos.isNotEmpty)
+              Tooltip(
+                message: _validarCompletitudProductos() 
+                    ? '' 
+                    : 'No se pueden cerrar bultos hasta verificar todos los productos',
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _validarCompletitudProductos() 
+                        ? colors.primary 
+                        : Colors.grey,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  ),
+                  onPressed: _validarCompletitudProductos() 
+                      ? _mostrarDialogoCierreBultos 
+                      : null,
+                  child: Text(
+                    'Cerrar Bultos y Seleccionar Envío', 
+                    style: TextStyle(
+                      color: _validarCompletitudProductos() 
+                          ? colors.onPrimary 
+                          : Colors.grey[700],
+                    ),
+                  ),
+                ),
+              ), 
+          ],
+        ),
       ),
     );
   }

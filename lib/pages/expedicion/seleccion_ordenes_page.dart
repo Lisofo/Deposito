@@ -219,7 +219,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
                           Entrega entrega = Entrega.empty();
                           int? statusCode;
                           List<int> pickIds = _ordenesSeleccionadas.map((orden) => orden.pickId).toList();
-                          await entregaServices.postEntrega(context, pickIds, almacen.almacenId, token);
+                          entrega = await entregaServices.postEntrega(context, pickIds, almacen.almacenId, token);
                           statusCode = await entregaServices.getStatusCode();
                           await entregaServices.resetStatusCode();
                           if(statusCode == 1) {

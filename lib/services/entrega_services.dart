@@ -114,8 +114,11 @@ class EntregaServices {
     }
   }
 
-  Future<List<Entrega>> getEntregas(BuildContext context, String token) async {
+  Future<List<Entrega>> getEntregas(BuildContext context, String token, {int? usuId, String? estado}) async {
     String link = '$apirUrl/api/v1/entrega';
+    Map<String, dynamic> queryParams = {};
+    if (estado != null && estado.isNotEmpty) queryParams['estado'] = estado;
+    if (usuId != null && usuId != 0) queryParams['usuId'] = usuId;
 
     try {
       var headers = {'Authorization': token};
@@ -125,6 +128,7 @@ class EntregaServices {
           method: 'GET',
           headers: headers,
         ),
+        queryParameters: queryParams
       );
       statusCode = 1;
       final List<dynamic> entregasList = resp.data;
@@ -305,6 +309,32 @@ class EntregaServices {
     } catch (e) {
       statusCode = 0;
       errorManagment(e, context);
+    }
+  }
+
+  Future<List<Bulto>> getBultos(BuildContext context, String token, {int? usuId, String? estado}) async {
+    String link = '$apirUrl/api/v1/bultos';
+    Map<String, dynamic> queryParams = {};
+    if (estado != null && estado.isNotEmpty) queryParams['estado'] = estado;
+    if (usuId != null && usuId != 0) queryParams['usuId'] = usuId;
+
+    try {
+      var headers = {'Authorization': token};
+      var resp = await _dio.request(
+        link,
+        options: Options(
+          method: 'GET',
+          headers: headers,
+        ),
+        queryParameters: queryParams
+      );
+      statusCode = 1;
+      final List<dynamic> bultoList = resp.data;
+      return bultoList.map((obj) => Bulto.fromJson(obj)).toList();
+    } catch (e) {
+      statusCode = 0;
+      errorManagment(e, context);
+      return [];
     }
   }
 
