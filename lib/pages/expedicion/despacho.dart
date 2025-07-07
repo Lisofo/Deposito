@@ -42,61 +42,6 @@ class DespachoPageState extends State<DespachoPage> {
     });
   }
 
-  void _precargarBultos() {
-    final List<Bulto> listaTemp = [];
-    final now = DateTime.now();
-    
-    for (int i = 1; i <= 20; i++) {
-      listaTemp.add(
-        Bulto(
-          bultoId: i,
-          entregaId: 1000 + i,
-          clienteId: i % 5 + 1,
-          nombreCliente: 'Cliente ${i % 5 + 1}',
-          fechaDate: now.subtract(Duration(days: i % 7)),
-          fechaBulto: now.subtract(Duration(hours: i * 2)),
-          estado: _obtenerEstado(i),
-          almacenId: i % 2 + 1,
-          tipoBultoId: i % 4 + 1,
-          armadoPorUsuId: 1,
-          contenido: _generarContenidoBulto(i),
-          nroBulto: i,
-          totalBultos: 20,
-          direccion: 'Calle ${i + 100}, Ciudad ${i % 3 + 1}',
-          localidad: 'Localidad ${i % 4 + 1}',
-        ),
-      );
-    }
-    
-    setState(() {
-      bultos = listaTemp;
-    });
-  }
-
-  String _obtenerEstado(int index) {
-    switch (index % 3) {
-      case 0: return 'Pendiente';
-      case 1: return 'Preparado';
-      case 2: return 'Listo';
-      default: return 'Pendiente';
-    }
-  }
-
-  List<BultoItem> _generarContenidoBulto(int bultoId) {
-    return List.generate(
-      bultoId % 5 + 1, // Entre 1 y 5 items
-      (index) => BultoItem(
-        bultoLinId: bultoId * 100 + index + 1,
-        bultoId: bultoId,
-        pickLineaId: bultoId * 10 + index + 1,
-        cantidad: index + 1,
-        cantidadMaxima: index + 3,
-        codigoRaiz: 'ART$bultoId',
-        codigo: 'ART$bultoId-${index + 1}',
-        descripcion: 'Artículo de prueba $bultoId-${index + 1}',
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {

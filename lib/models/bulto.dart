@@ -23,7 +23,7 @@ class Bulto {
   final int? despachoId;
   final int? devolucionId;
   final bool? incluyeFactura;
-  late final List<BultoItem> contenido;
+  late List<BultoItem> contenido;
 
   Bulto({
     required this.bultoId,

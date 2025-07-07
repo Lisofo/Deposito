@@ -60,6 +60,7 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
   @override
   void dispose() {
     _codigoController.dispose();
+    _comentarioController.dispose();
     focoDeScanner.dispose();
     super.dispose();
   }
@@ -81,6 +82,11 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
         entrega.entregaId, 
         token
       );
+      
+      // Cargar items para cada bulto
+      for (var bulto in bultosExistentes) {
+        await _cargarItemsBulto(bulto);
+      }
       
       setState(() {
         _bultos.addAll(bultosExistentes);
@@ -149,7 +155,8 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
   }
 
   int _getCantidadVerificada(String codigoRaiz) {
-    return _bultos.fold(0, (total, bulto) {
+    // Sumar de todos los bultos (activos y cerrados)
+    return [..._bultos, ..._bultosCerrados].fold(0, (total, bulto) {
       final bultoItems = bulto.contenido.where((item) => item.codigoRaiz == codigoRaiz);
       return total + bultoItems.fold(0, (sum, item) => sum + item.cantidad);
     });
@@ -210,9 +217,9 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
         return;
       }
       
-      // Verificar si el item ya existe en el bulto
+      // Buscar por pickLineaId en lugar de codigo o codigoRaiz
       final index = _bultoActual!.contenido.indexWhere(
-        (item) => item.codigo == value || item.codigoRaiz == linea.codItem
+        (item) => item.pickLineaId == linea.pickLineaId
       );
       
       if (index != -1) {
@@ -451,9 +458,11 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
     FormaEnvio? empresaEnvioSeleccionada;
     String? transportista;
     _comentarioController.text = '';
+    bool _procesandoRetiro = false;
 
     showDialog(
       context: context,
+      barrierDismissible: false, // Evita que se cierre al tocar fuera
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
@@ -474,7 +483,7 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
                       return CheckboxListTile(
                         title: Text('Bulto ${index + 1} (${tipoBulto.descripcion})'),
                         value: selecciones[index],
-                        onChanged: (value) {
+                        onChanged: _procesandoRetiro ? null : (value) {
                           setStateDialog(() {
                             selecciones[index] = value!;
                           });
@@ -497,7 +506,7 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
                           child: Text(value.descripcion),
                         );
                       }).toList(),
-                      onChanged: (ModoEnvio? newValue) {
+                      onChanged: _procesandoRetiro ? null : (ModoEnvio? newValue) {
                         setStateDialog(() {
                           metodoEnvio = newValue;
                           if (newValue?.modoEnvioId != 2) {
@@ -524,7 +533,7 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
                             child: Text(value.descripcion.toString()),
                           );
                         }).toList(),
-                        onChanged: (String? newValue) {
+                        onChanged: _procesandoRetiro ? null : (String? newValue) {
                           setStateDialog(() {
                             transportista = newValue;
                           });
@@ -547,7 +556,7 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
                         items: empresasEnvio,
                         itemAsString: (FormaEnvio item) => item.descripcion.toString(),
                         selectedItem: empresaEnvioSeleccionada,
-                        onChanged: (FormaEnvio? newValue) {
+                        onChanged: _procesandoRetiro ? null : (FormaEnvio? newValue) {
                           setStateDialog(() {
                             empresaEnvioSeleccionada = newValue;
                           });
@@ -567,18 +576,24 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
                       minLines: 1,
                       maxLines: 5,
                       hint: 'Comentario',
+                      enabled: !_procesandoRetiro,
                     ),
+                    if (_procesandoRetiro) 
+                      const Padding(
+                        padding: EdgeInsets.all(8.0),
+                        child: CircularProgressIndicator(),
+                      ),
                   ],
                 ),
               ),
               actions: [
+                if (!_procesandoRetiro)
+                  TextButton(
+                    child: const Text('Cancelar'),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
                 TextButton(
-                  child: const Text('Cancelar'),
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-                TextButton(
-                  child: const Text('Confirmar'),
-                  onPressed: () async {
+                  onPressed: _procesandoRetiro ? null : () async {
                     // Validar que todos los productos estén completos
                     if (!_validarCompletitudProductos()) {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -606,53 +621,62 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
                       return;
                     }
                     
-                    Navigator.of(context).pop();
-                    
-                    _mostrarDialogo(
-                      'Bultos cerrados',
-                      '$bultosSeleccionados bultos cerrados para ${metodoEnvio?.descripcion}'
-                      '${metodoEnvio?.modoEnvioId == 2 ? '\nEmpresa: ${empresaEnvioSeleccionada?.descripcion}\nTransportista: $transportista' : '\nEn el ${metodoEnvio?.codModoEnvio}'}',
-                    );
-                    
-                    setState(() {
-                      // Mover bultos cerrados a la lista de cerrados
-                      final bultosACerrar = _bultos.where((bulto) => selecciones[_bultos.indexOf(bulto)]).toList();
-                      _bultosCerrados.addAll(bultosACerrar);
-                      
-                      // Eliminar de la lista activa
-                      _bultos.removeWhere((bulto) => selecciones[_bultos.indexOf(bulto)]);
-                      
-                      if (_bultos.isEmpty) {
-                        _bultoActual = null;
-                      } else if (_bultoActual != null && !_bultos.contains(_bultoActual)) {
-                        _bultoActual = _bultos.first;
-                      }
+                    setStateDialog(() {
+                      _procesandoRetiro = true;
                     });
+
+                    try {
+                      // Procesar cada bulto seleccionado
+                      for (int i = 0; i < selecciones.length; i++) {
+                        if (selecciones[i]) {
+                          final bulto = _bultos[i];
+                          
+                          // Registrar el retiro del bulto
+                          await EntregaServices().postRetiroBulto(
+                            context,
+                            bulto.bultoId,
+                            empresaEnvioSeleccionada?.formaEnvioId ?? 0,
+                            transportista ?? '',
+                            _comentarioController.text,
+                            token,
+                          );
+                        }
+                      }
+
+                      // Actualizar la UI
+                      if (mounted) {
+                        setState(() {
+                          // Mover bultos cerrados a la lista de cerrados
+                          final bultosACerrar = _bultos.where((bulto) => selecciones[_bultos.indexOf(bulto)]).toList();
+                          _bultosCerrados.addAll(bultosACerrar);
+                          
+                          // Eliminar de la lista activa
+                          _bultos.removeWhere((bulto) => selecciones[_bultos.indexOf(bulto)]);
+                          
+                          if (_bultos.isEmpty) {
+                            _bultoActual = null;
+                            Navigator.of(context).pop(); // Cerrar diálogo si no hay más bultos
+                          } else if (_bultoActual != null && !_bultos.contains(_bultoActual)) {
+                            _bultoActual = _bultos.first;
+                          }
+                        });
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Error al procesar retiro: ${e.toString()}')),
+                        );
+                        setStateDialog(() {
+                          _procesandoRetiro = false;
+                        });
+                      }
+                    }
                   },
+                  child: const Text('Confirmar'),
                 ),
               ],
             );
           },
-        );
-      },
-    );
-  }
-
-  void _mostrarDialogo(String titulo, String mensaje) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(titulo),
-          content: Text(mensaje),
-          actions: [
-            TextButton(
-              child: const Text('OK'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
         );
       },
     );
@@ -687,6 +711,30 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _cargarItemsBulto(Bulto bulto) async {
+    if (bulto.bultoId == 0) return; // Bulto nuevo que aún no se guardó
+
+    setState(() => _isLoadingLineas = true);
+    try {
+      final items = await EntregaServices().getItemsBulto(
+        context,
+        entrega.entregaId,
+        bulto.bultoId,
+        token,
+      );
+
+      setState(() {
+        // En lugar de reasignar el campo, limpiamos y agregamos los nuevos items
+        bulto.contenido.clear();
+        bulto.contenido.addAll(items);
+      });
+    } catch (e) {
+      Carteles.showDialogs(context, 'Error al cargar items del bulto', false, false, false);
+    } finally {
+      setState(() => _isLoadingLineas = false);
+    }
   }
 
   Widget _buildProductosSection() {
@@ -724,7 +772,7 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
                           final linea = _lineasOrdenSeleccionada.where((linea) => linea.cantidadPickeada != 0).toList()[index];
                           final cantidadVerificada = _getCantidadVerificada(linea.codItem);
                           return ListTile(
-                            title: Text('${linea.codItem} - ${linea.descripcion}'),
+                            title: Text('${linea.pickLineaId} - ${linea.codItem} - ${linea.descripcion}'),
                             subtitle: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -861,7 +909,7 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
                             final item = _bultoActual!.contenido[index];
                             final cantidadTotal = _getCantidadVerificada(item.codigoRaiz);
                             return ListTile(
-                              title: Text('${item.codigo} - ${item.descripcion}'),
+                              title: Text('${item.pickLineaId} - ${item.codigo} - ${item.descripcion}'),
                               subtitle: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -896,28 +944,6 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
           ),
       ],
     );
-  }
-
-  Future<void> _cargarItemsBulto(Bulto bulto) async {
-    if (bulto.bultoId == 0) return; // Bulto nuevo que aún no se guardó
-
-    setState(() => _isLoadingLineas = true);
-    try {
-      final items = await EntregaServices().getItemsBulto(
-        context,
-        entrega.entregaId,
-        bulto.bultoId,
-        token,
-      );
-
-      setState(() {
-        bulto.contenido = items;
-      });
-    } catch (e) {
-      Carteles.showDialogs(context, 'Error al cargar items del bulto', false, false, false);
-    } finally {
-      setState(() => _isLoadingLineas = false);
-    }
   }
 
   Widget _buildBultosCerradosSection() {
@@ -957,7 +983,7 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
                       padding: const EdgeInsets.all(8.0),
                       child: Column(
                         children: bulto.contenido.map((item) => ListTile(
-                          title: Text(item.descripcion),
+                          title: Text('${item.pickLineaId} - ${item.descripcion}'),
                           subtitle: Text('Cantidad: ${item.cantidad}'),
                         )).toList(),
                       ),

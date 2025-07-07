@@ -2,6 +2,7 @@ import 'package:deposito/config/config_env.dart';
 import 'package:deposito/models/entrega.dart';
 import 'package:deposito/models/forma_envio.dart';
 import 'package:deposito/models/modo_envio.dart';
+import 'package:deposito/models/retiro.dart';
 import 'package:deposito/models/tipo_bulto.dart';
 import 'package:deposito/models/bulto.dart';
 import 'package:deposito/widgets/carteles.dart';
@@ -312,11 +313,12 @@ class EntregaServices {
     }
   }
 
-  Future<List<Bulto>> getBultos(BuildContext context, String token, {int? usuId, String? estado}) async {
+  Future<List<Bulto>> getBultos(BuildContext context, String token, {int? usuId, String? estado, bool? retirado}) async {
     String link = '$apirUrl/api/v1/bultos';
     Map<String, dynamic> queryParams = {};
     if (estado != null && estado.isNotEmpty) queryParams['estado'] = estado;
     if (usuId != null && usuId != 0) queryParams['usuId'] = usuId;
+    if (retirado == false) queryParams['retirado'] = retirado;
 
     try {
       var headers = {'Authorization': token};
@@ -335,6 +337,125 @@ class EntregaServices {
       statusCode = 0;
       errorManagment(e, context);
       return [];
+    }
+  }
+
+  Future<Retiro> getRetiroBulto(BuildContext context, int bultoId, String token) async {
+    String link = '$apirUrl/api/v1/bultos/$bultoId/retiro';
+
+    try {
+      var headers = {'Authorization': token};
+      var resp = await _dio.request(
+        link,
+        options: Options(
+          method: 'GET',
+          headers: headers,
+        ),
+      );
+      statusCode = 1;
+      return Retiro.fromJson(resp.data);
+    } catch (e) {
+      statusCode = 0;
+      errorManagment(e, context);
+      return Retiro.empty();
+    }
+  }
+
+  Future<Retiro> postRetiroBulto(
+    BuildContext context,
+    int bultoId,
+    int agenciaTrId,
+    String retiradoPor,
+    String comentario,
+    String token,
+  ) async {
+    String link = '$apirUrl/api/v1/bultos/$bultoId/retiro';
+    var data = {
+      "agenciaTrId": agenciaTrId,
+      "retiradoPor": retiradoPor,
+      "comentario": comentario,
+    };
+
+    try {
+      var headers = {'Authorization': token};
+      var resp = await _dio.request(
+        link,
+        options: Options(
+          method: 'POST',
+          headers: headers,
+        ),
+        data: data,
+      );
+      statusCode = 1;
+      return Retiro.fromJson(resp.data);
+    } catch (e) {
+      statusCode = 0;
+      errorManagment(e, context);
+      return Retiro.empty();
+    }
+  }
+
+  Future<void> postDevolucionBulto(
+    BuildContext context,
+    int bultoId,
+    String devueltoPor,
+    String comentario,
+    String token,
+  ) async {
+    String link = '$apirUrl/api/v1/bultos/$bultoId/devolucion';
+    var data = {
+      "devueltoPor": devueltoPor,
+      "comentario": comentario,
+    };
+
+    try {
+      var headers = {'Authorization': token};
+      await _dio.request(
+        link,
+        options: Options(
+          method: 'POST',
+          headers: headers,
+        ),
+        data: data,
+      );
+      statusCode = 1;
+    } catch (e) {
+      statusCode = 0;
+      errorManagment(e, context);
+    }
+  }
+
+  Future<void> postDevolucionDespachoBulto(
+    BuildContext context,
+    int bultoId,
+    int agenciaUFId,
+    String? nroTicket,
+    String despachadoPor,
+    String comentario,
+    String token,
+  ) async {
+    String link = '$apirUrl/api/v1/bultos/$bultoId/devolucion';
+    var data = {
+      "agenciaUFId": agenciaUFId,
+      "nroTicket": nroTicket,
+      "despachadoPor": despachadoPor,
+      "comentario": comentario,
+    };
+
+    try {
+      var headers = {'Authorization': token};
+      await _dio.request(
+        link,
+        options: Options(
+          method: 'POST',
+          headers: headers,
+        ),
+        data: data,
+      );
+      statusCode = 1;
+    } catch (e) {
+      statusCode = 0;
+      errorManagment(e, context);
     }
   }
 
