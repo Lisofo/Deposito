@@ -33,7 +33,7 @@ class DespachoPageState extends State<DespachoPage> {
   loadData() async {
     final productProvider = Provider.of<ProductProvider>(context, listen: false);
     token = productProvider.token;
-    bultos = await EntregaServices().getBultos(context, token);
+    bultos = await EntregaServices().getBultos(context, token, estado: 'CERRADO');
     for (var bulto in bultos) {
       print(bulto.bultoId);
     }
@@ -116,7 +116,8 @@ class DespachoPageState extends State<DespachoPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('${bulto.contenido.length} items'),
+                  // Text('${bulto.contenido.length} items'),
+                  const SizedBox(),
                   Checkbox(
                     value: isSelected,
                     onChanged: (_) => _toggleSeleccionBulto(bulto),
@@ -231,9 +232,8 @@ class DespachoPageState extends State<DespachoPage> {
     );
   }
 
-  void _procesarDespacho() {
+  void _procesarDespacho() async {
     final retira = _retiraController.text.trim();
-    // ignore: unused_local_variable
     final comentario = _comentarioController.text.trim();
 
     if (retira.isEmpty) {
@@ -246,21 +246,79 @@ class DespachoPageState extends State<DespachoPage> {
       return;
     }
 
-    // Simular procesamiento
-    Future.delayed(const Duration(milliseconds: 500), () {
+    if (selectedBultos.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${selectedBultos.length} bultos despachados a $retira'),
-          duration: const Duration(seconds: 3),
+        const SnackBar(
+          content: Text('No hay bultos seleccionados para despachar'),
+          backgroundColor: Colors.red,
         ),
       );
+      return;
+    }
 
-      setState(() {
-        selectedBultos.clear();
-        _retiraController.clear();
-        _comentarioController.clear();
-      });
-    });
+    // Obtener el agenciaTrId del primer bulto seleccionado
+    final int? agenciaTrId = selectedBultos.first.agenciaTrId;
+
+    // Validar que el agenciaTrId no sea nulo
+    if (agenciaTrId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Los bultos seleccionados no tienen agencia de transporte asignada'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    try {
+      // Llamar al servicio para registrar el retiro
+      var response = await EntregaServices().postRetiroBulto(
+        context,
+        selectedBultos.map((b) => b.bultoId).toList(),
+        agenciaTrId,
+        retira,
+        comentario,
+        token,
+      );
+
+      if (response.retiroId != 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${selectedBultos.length} bultos despachados a $retira'),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+
+        // Actualizar el estado de los bultos en la lista local
+        setState(() {
+          for (var bulto in bultos) {
+            if (selectedBultos.contains(bulto)) {
+              bulto = bulto.copyWith(estado: 'Despachado');
+            }
+          }
+          selectedBultos.clear();
+          _retiraController.clear();
+          _comentarioController.clear();
+        });
+
+        // Opcional: Recargar los datos desde el servidor
+        await loadData();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error al procesar el despacho'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al despachar: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   

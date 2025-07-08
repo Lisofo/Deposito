@@ -213,11 +213,37 @@ class EntregaServices {
     }
   }
 
+  Future<Bulto> patchBultoEstado(BuildContext context, int entregaId, int bultoId, String estado, String token) async {
+    String link = '$apirUrl/api/v1/entrega/$entregaId/bultos/$bultoId';
+    var data = {
+      "estado": estado,
+    };
+
+    try {
+      var headers = {'Authorization': token};
+      var resp = await _dio.request(
+        link,
+        options: Options(
+          method: 'PATCH',
+          headers: headers,
+        ),
+        data: data,
+      );
+      statusCode = 1;
+      return Bulto.fromJson(resp.data);
+    } catch (e) {
+      statusCode = 0;
+      errorManagment(e, context);
+      return Bulto.empty();
+    }
+  }
+
   Future<Bulto> putBultoEntrega(
     BuildContext context,
     int entregaId,
     int bultoId,
     int clienteId,
+    String? nombreCliente,
     int modoEnvioId,
     int agenciaTrId,
     int agenciaUFId,
@@ -226,11 +252,16 @@ class EntregaServices {
     String telefono,
     String comentarioEnvio,
     String comentario,
+    int tipoBultoId,
+    bool incluyeFactura,
+    int? nroBulto,
+    int? totalBultos,
     String token,
   ) async {
     String link = '$apirUrl/api/v1/entrega/$entregaId/bultos/$bultoId';
     var data = {
       "clienteId": clienteId,
+      "nombreCliente": nombreCliente,
       "modoEnvioId": modoEnvioId,
       "agenciaTrId": agenciaTrId,
       "agenciaUFId": agenciaUFId,
@@ -239,6 +270,10 @@ class EntregaServices {
       "telefono": telefono,
       "comentarioEnvio": comentarioEnvio,
       "comentario": comentario,
+      "tipoBultoId": tipoBultoId,
+      "incluyeFactura": incluyeFactura,
+      "nroBulto": nroBulto,
+      "totalBultos": totalBultos,
     };
 
     try {
@@ -363,14 +398,15 @@ class EntregaServices {
 
   Future<Retiro> postRetiroBulto(
     BuildContext context,
-    int bultoId,
+    List<int> bultoIds,
     int agenciaTrId,
     String retiradoPor,
     String comentario,
     String token,
   ) async {
-    String link = '$apirUrl/api/v1/bultos/$bultoId/retiro';
+    String link = '$apirUrl/api/v1/bultos/retiro';
     var data = {
+      "bultoIds": bultoIds,
       "agenciaTrId": agenciaTrId,
       "retiradoPor": retiradoPor,
       "comentario": comentario,
@@ -397,13 +433,14 @@ class EntregaServices {
 
   Future<void> postDevolucionBulto(
     BuildContext context,
-    int bultoId,
+    List<int> bultoId,
     String devueltoPor,
     String comentario,
     String token,
   ) async {
-    String link = '$apirUrl/api/v1/bultos/$bultoId/devolucion';
+    String link = '$apirUrl/api/v1/bultos/devolucion';
     var data = {
+      "bultoIds": bultoId,
       "devueltoPor": devueltoPor,
       "comentario": comentario,
     };
@@ -427,15 +464,16 @@ class EntregaServices {
 
   Future<void> postDevolucionDespachoBulto(
     BuildContext context,
-    int bultoId,
+    List<int> bultoId,
     int agenciaUFId,
     String? nroTicket,
     String despachadoPor,
     String comentario,
     String token,
   ) async {
-    String link = '$apirUrl/api/v1/bultos/$bultoId/devolucion';
+    String link = '$apirUrl/api/v1/bultos/devolucion';
     var data = {
+      "bultoIds": bultoId,
       "agenciaUFId": agenciaUFId,
       "nroTicket": nroTicket,
       "despachadoPor": despachadoPor,

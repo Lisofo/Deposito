@@ -609,7 +609,8 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
         final foto = item.imagenes[0];
         final precio = item.precioIvaIncluidoMin != item.precioIvaIncluidoMax ? '${item.precioIvaIncluidoMin} - ${item.precioIvaIncluidoMax}' : item.precioIvaIncluidoMax.toString();
         final existe = lineas.any((linea) => linea.raiz == item.raiz);
-
+        // foto += '?authorization:$token';
+        // print(foto);
         return Row(
           children: [
             GestureDetector(
@@ -619,7 +620,9 @@ class _BuscadorProductoState extends State<BuscadorProducto> {
                 width: MediaQuery.of(context).size.width * 0.1,
                 child: Image.network(
                   foto,
-                  errorBuilder: (context, error, stackTrace) => const Placeholder(child: Text('No Image')),
+                  errorBuilder: (context, error, stackTrace) {
+                    return const Placeholder(child: Text('No Image'));
+                  },
                 ),
               ),
             ),

@@ -456,9 +456,10 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
     final List<bool> selecciones = List.filled(_bultos.length, false);
     ModoEnvio? metodoEnvio;
     FormaEnvio? empresaEnvioSeleccionada;
-    String? transportista;
-    _comentarioController.text = '';
+    FormaEnvio? transportistaSeleccionado;
+    final comentarioController = TextEditingController();
     bool _procesandoRetiro = false;
+    bool incluyeFactura = false;
 
     showDialog(
       context: context,
@@ -511,7 +512,7 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
                           metodoEnvio = newValue;
                           if (newValue?.modoEnvioId != 2) {
                             empresaEnvioSeleccionada = null;
-                            transportista = null;
+                            transportistaSeleccionado = null;
                           }
                         });
                       },
@@ -520,22 +521,22 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
                     if (metodoEnvio?.modoEnvioId == 2) ...[
                       const SizedBox(height: 10),                    
                       const Text('Transportista:'),
-                      DropdownButtonFormField<String>(
+                      DropdownButtonFormField<FormaEnvio>(
                         isExpanded: true,
-                        value: transportista,
+                        value: transportistaSeleccionado,
                         hint: const Text('Seleccione transportista'),
                         decoration: const InputDecoration(
                           border: OutlineInputBorder()
                         ),
                         items: transportistas.map((FormaEnvio value) {
                           return DropdownMenuItem(
-                            value: value.descripcion,
+                            value: value,
                             child: Text(value.descripcion.toString()),
                           );
                         }).toList(),
-                        onChanged: _procesandoRetiro ? null : (String? newValue) {
+                        onChanged: _procesandoRetiro ? null : (FormaEnvio? newValue) {
                           setStateDialog(() {
-                            transportista = newValue;
+                            transportistaSeleccionado = newValue;
                           });
                         },
                       ),
@@ -571,8 +572,17 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
                       ),
                     ],
                     const SizedBox(height: 10),
+                    CheckboxListTile(
+                      title: const Text('Incluye factura'),
+                      value: incluyeFactura,
+                      onChanged: _procesandoRetiro ? null : (bool? value) {
+                        setStateDialog(() {
+                          incluyeFactura = value ?? false;
+                        });
+                      },
+                    ),
                     CustomTextFormField(
-                      controller: _comentarioController,
+                      controller: comentarioController,
                       minLines: 1,
                       maxLines: 5,
                       hint: 'Comentario',
@@ -613,7 +623,7 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
                       return;
                     }
                     
-                    if (metodoEnvio?.modoEnvioId == 2 && (empresaEnvioSeleccionada == null || transportista == null)) {
+                    if (metodoEnvio?.modoEnvioId == 2 && (empresaEnvioSeleccionada == null || transportistaSeleccionado == null)) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('Para envío por correo debe seleccionar empresa y transportista')),
                       );
@@ -625,28 +635,72 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
                     });
 
                     try {
+                      // Procesar cada bulto seleccionado
                       for (int i = 0; i < selecciones.length; i++) {
                         if (selecciones[i]) {
                           final bulto = _bultos[i];
                           
-                          await EntregaServices().postRetiroBulto(
+                          // 1. Actualizar datos del bulto con PUT
+                          final bultoActualizado = await EntregaServices().putBultoEntrega(
                             context,
+                            entrega.entregaId,
                             bulto.bultoId,
-                            empresaEnvioSeleccionada?.formaEnvioId ?? 0,
-                            transportista ?? '',
-                            _comentarioController.text,
+                            _ordenSeleccionada?.entidadId ?? 0, // clienteId
+                            _ordenSeleccionada?.nombre ?? '', // nombreCliente
+                            metodoEnvio!.modoEnvioId,
+                            transportistaSeleccionado?.formaEnvioId ?? 0, // agenciaTrId
+                            empresaEnvioSeleccionada?.formaEnvioId ?? 0, // agenciaUFId
+                            '', // direccion
+                            _ordenSeleccionada!.localidad, // localidad
+                            _ordenSeleccionada!.telefono, // telefono
+                            comentarioController.text, // comentarioEnvio
+                            comentarioController.text, // comentario
+                            bulto.tipoBultoId, // tipoBultoId
+                            incluyeFactura,
+                            bulto.nroBulto,
+                            bulto.totalBultos,
+                            token,
+                          );
+
+                          // 2. Cambiar estado del bulto a CERRADO
+                          await EntregaServices().patchBultoEstado(
+                            context,
+                            entrega.entregaId,
+                            bulto.bultoId,
+                            'CERRADO',
                             token,
                           );
                         }
                       }
 
+                      // Verificar si todos los bultos están cerrados
+                      final bultosNoCerrados = await EntregaServices().getBultosEntrega(
+                        context,
+                        entrega.entregaId,
+                        token,
+                      ).then((bultos) => bultos.where((b) => b.estado != 'CERRADO').length);
+
+                      if (bultosNoCerrados == 0) {
+                        // 3. Si todos los bultos están cerrados, cerrar la entrega
+                        await EntregaServices().patchEntregaEstado(
+                          context,
+                          entrega.entregaId,
+                          'finalizado',
+                          token,
+                        );
+                      }
+
+                      // Actualizar la UI
                       if (mounted) {
                         setState(() {
+                          // Mover bultos cerrados a la lista de cerrados
                           final bultosACerrar = _bultos.where((bulto) => selecciones[_bultos.indexOf(bulto)]).toList();
                           _bultosCerrados.addAll(bultosACerrar);
                           
+                          // Eliminar de la lista de bultos activos
                           _bultos.removeWhere((bulto) => selecciones[_bultos.indexOf(bulto)]);
                           
+                          // Actualizar bulto actual si es necesario
                           if (_bultos.isEmpty) {
                             _bultoActual = null;
                             Navigator.of(context).pop();
@@ -658,7 +712,7 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
                     } catch (e) {
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Error al procesar retiro: ${e.toString()}')),
+                          SnackBar(content: Text('Error al procesar cierre: ${e.toString()}')),
                         );
                         setStateDialog(() {
                           _procesandoRetiro = false;

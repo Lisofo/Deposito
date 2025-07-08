@@ -144,12 +144,12 @@ class Ubicacione {
   });
 
   factory Ubicacione.fromJson(Map<String, dynamic> json) => Ubicacione(
-    almacenUbicacionId: json["almacenUbicacionId"],
-    codUbicacion: json["codUbicacion"],
-    descUbicacion: json["descUbicacion"],
-    existenciaActualUbi: json["existenciaActualUbi"],
-    capacidad: json["capacidad"],
-    orden: json["orden"],
+    almacenUbicacionId: json["almacenUbicacionId"] as int? ?? 0,
+    codUbicacion: json["codUbicacion"] as String? ?? '',
+    descUbicacion: json["descUbicacion"] as String? ?? '',
+    existenciaActualUbi: json["existenciaActualUbi"] as int? ?? 0,
+    capacidad: json["capacidad"] as int? ?? 0,
+    orden: json["orden"] as int? ?? 0,
   );
 
   Map<String, dynamic> toJson() => {
