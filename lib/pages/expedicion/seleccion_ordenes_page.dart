@@ -23,6 +23,7 @@ class SeleccionOrdenesScreen extends StatefulWidget {
 class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
   final List<OrdenPicking> _ordenesSeleccionadas = [];
   late List<OrdenPicking> _ordenes = [];
+  late Entrega entrega = Entrega.empty();
   final PickingServices _pickingServices = PickingServices();
   late Almacen almacen = Almacen.empty();
   final GlobalKey<RefreshIndicatorState> _refreshIndicatorKey = GlobalKey<RefreshIndicatorState>();
@@ -61,6 +62,8 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
     setState(() => _isLoading = true);
     try {
       await _pickingServices.resetStatusCode();
+      
+      // 1. Obtener todas las órdenes primero
       final result = await _pickingServices.getOrdenesPicking(
         context, 
         almacen.almacenId,
@@ -73,15 +76,38 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
         numeroDocumento: numeroDocumento,
         pickId: int.tryParse(pickId.toString())
       );
-      
+
+      // 2. Obtener entregas en proceso para el usuario actual
+      var entregas = await EntregaServices().getEntregas(
+        context, 
+        token, 
+        estado: 'EN PROCESO', 
+        usuId: context.read<ProductProvider>().uId
+      );
+
       if (result != null && _pickingServices.statusCode == 1) {
         setState(() {
-          _ordenes = result;          
+          _ordenes = result;
+          _ordenesSeleccionadas.clear(); // Limpiar selecciones anteriores
+          
+          // 3. Verificar si hay entregas y tomar la primera (posición 0)
+          if (entregas.isNotEmpty) {
+            final entrega = entregas[0]; // Tomamos la primera entrega
+            
+            // Buscar órdenes que coincidan con los pickIds de esta entrega
+            for (var orden in _ordenes) {
+              if (entrega.pickIds.contains(orden.pickId)) {
+                _ordenesSeleccionadas.add(orden);
+              }
+            }
+            
+            // También guardamos la entrega para usarla luego si es necesario
+            this.entrega = entrega;
+          }
         });
       }
     } finally {
       setState(() => _isLoading = false);
-      // Mantener foco después de cargar datos
       _manteneFocoScanner();
     }
   }

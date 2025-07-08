@@ -55,12 +55,12 @@ android {
     productFlavors {
         production {
             dimension "default"
-            applicationId "com.deposito.prod"
+            applicationId "com.integral_WMS.prod"
             versionNameSuffix "-prod"
         }
         qa {
             dimension "default"
-            applicationId "com.deposito.qa"
+            applicationId "com.integral_WMS.qa"
             versionNameSuffix "-qa"
         }
     }

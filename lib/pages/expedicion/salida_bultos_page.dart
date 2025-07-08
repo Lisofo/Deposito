@@ -154,20 +154,30 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
     }
   }
 
-  int _getCantidadVerificada(String codigoRaiz) {
-    // Sumar de todos los bultos (activos y cerrados)
-    return [..._bultos, ..._bultosCerrados].fold(0, (total, bulto) {
-      final bultoItems = bulto.contenido.where((item) => item.codigoRaiz == codigoRaiz);
-      return total + bultoItems.fold(0, (sum, item) => sum + item.cantidad);
-    });
+  (int verificada, int maxima) _getCantidadVerificadaYMaxima(String codigoRaiz, int pickLineaId) {
+    try {
+      final linea = _lineasOrdenSeleccionada.firstWhere(
+        (linea) => linea.pickLineaId == pickLineaId,
+      );
+      
+      final verificada = [..._bultos, ..._bultosCerrados].fold(0, (total, bulto) {
+        return total + bulto.contenido
+          .where((item) => item.pickLineaId == pickLineaId)
+          .fold(0, (sum, item) => sum + item.cantidad);
+      });
+      
+      return (verificada, linea.cantidadPickeada);
+    } catch (e) {
+      return (0, 0);
+    }
   }
 
   bool _validarCompletitudProductos() {
     for (final linea in _lineasOrdenSeleccionada) {
       if (linea.cantidadPickeada == 0) continue;
       
-      final cantidadVerificada = _getCantidadVerificada(linea.codItem);
-      if (cantidadVerificada < linea.cantidadPickeada) {
+      final (cantidadVerificada, maxima) = _getCantidadVerificadaYMaxima(linea.codItem, linea.pickLineaId);
+      if (cantidadVerificada < maxima) {
         return false;
       }
     }
@@ -205,8 +215,8 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
         return;
       }
       
-      final cantidadVerificadaTotal = _getCantidadVerificada(linea.codItem);
-      if (cantidadVerificadaTotal >= linea.cantidadPickeada) {
+      final (cantidadVerificadaTotal, maxima) = _getCantidadVerificadaYMaxima(linea.codItem, linea.pickLineaId);
+      if (cantidadVerificadaTotal >= maxima) {
         Carteles.showDialogs(
           context, 
           'Ya se verificó la cantidad máxima para este producto en todos los bultos', 
@@ -217,13 +227,11 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
         return;
       }
       
-      // Buscar por pickLineaId en lugar de codigo o codigoRaiz
       final index = _bultoActual!.contenido.indexWhere(
         (item) => item.pickLineaId == linea.pickLineaId
       );
       
       if (index != -1) {
-        // Item existente - incrementar cantidad
         final nuevaCantidadTotal = cantidadVerificadaTotal + 1;
         if (nuevaCantidadTotal > linea.cantidadPickeada) {
           Carteles.showDialogs(
@@ -236,7 +244,6 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
           return;
         }
         
-        // Primero actualizar en el servidor
         if (_bultoActual!.bultoId != 0) {
           await EntregaServices().patchItemBulto(
             context,
@@ -248,12 +255,10 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
           );
         }
         
-        // Luego actualizar localmente
         setState(() {
           _bultoActual!.contenido[index].cantidad += 1;
         });
       } else {
-        // Nuevo item
         final nuevaCantidadTotal = cantidadVerificadaTotal + 1;
         if (nuevaCantidadTotal > linea.cantidadPickeada) {
           Carteles.showDialogs(
@@ -266,19 +271,17 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
           return;
         }
         
-        // Primero crear en el servidor si el bulto existe
         if (_bultoActual!.bultoId != 0) {
           await EntregaServices().patchItemBulto(
             context,
             entrega.entregaId,
             _bultoActual!.bultoId,
             linea.pickLineaId,
-            1, // Cantidad inicial
+            1,
             token,
           );
         }
         
-        // Luego crear localmente
         final nuevoItem = BultoItem(
           codigo: value,
           codigoRaiz: linea.codItem,
@@ -369,7 +372,6 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
       _bultoActual?.contenido.remove(item);
     });
 
-    // Si el bulto está guardado, actualizar el servidor
     if (_bultoActual?.bultoId != null && _bultoActual!.bultoId != 0) {
       try {
         await EntregaServices().patchItemBulto(
@@ -377,11 +379,10 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
           entrega.entregaId,
           _bultoActual!.bultoId,
           pickLineaId,
-          0, // Cantidad 0 para eliminar
+          0,
           token,
         );
       } catch (e) {
-        // Si falla, revertir el cambio
         setState(() {
           item.cantidad = cantidadOriginal;
           _bultoActual?.contenido.add(item);
@@ -393,7 +394,7 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
 
   void _editarCantidadItem(BultoItem item) {
     final controller = TextEditingController(text: item.cantidad.toString());
-    final cantidadEnOtrosBultos = _getCantidadVerificada(item.codigoRaiz) - item.cantidad;
+    final (cantidadEnOtrosBultos, _) = _getCantidadVerificadaYMaxima(item.codigoRaiz, item.pickLineaId);
 
     showDialog(
       context: context,
@@ -427,7 +428,6 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
                   item.cantidad = nuevaCantidad;
                 });
 
-                // Actualizar en el servidor si el bulto ya está guardado
                 if (_bultoActual?.bultoId != null && _bultoActual!.bultoId != 0) {
                   try {
                     await EntregaServices().patchItemBulto(
@@ -462,7 +462,7 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
 
     showDialog(
       context: context,
-      barrierDismissible: false, // Evita que se cierre al tocar fuera
+      barrierDismissible: false,
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
@@ -594,7 +594,6 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
                   ),
                 TextButton(
                   onPressed: _procesandoRetiro ? null : () async {
-                    // Validar que todos los productos estén completos
                     if (!_validarCompletitudProductos()) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
@@ -626,12 +625,10 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
                     });
 
                     try {
-                      // Procesar cada bulto seleccionado
                       for (int i = 0; i < selecciones.length; i++) {
                         if (selecciones[i]) {
                           final bulto = _bultos[i];
                           
-                          // Registrar el retiro del bulto
                           await EntregaServices().postRetiroBulto(
                             context,
                             bulto.bultoId,
@@ -643,19 +640,16 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
                         }
                       }
 
-                      // Actualizar la UI
                       if (mounted) {
                         setState(() {
-                          // Mover bultos cerrados a la lista de cerrados
                           final bultosACerrar = _bultos.where((bulto) => selecciones[_bultos.indexOf(bulto)]).toList();
                           _bultosCerrados.addAll(bultosACerrar);
                           
-                          // Eliminar de la lista activa
                           _bultos.removeWhere((bulto) => selecciones[_bultos.indexOf(bulto)]);
                           
                           if (_bultos.isEmpty) {
                             _bultoActual = null;
-                            Navigator.of(context).pop(); // Cerrar diálogo si no hay más bultos
+                            Navigator.of(context).pop();
                           } else if (_bultoActual != null && !_bultos.contains(_bultoActual)) {
                             _bultoActual = _bultos.first;
                           }
@@ -714,7 +708,7 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
   }
 
   Future<void> _cargarItemsBulto(Bulto bulto) async {
-    if (bulto.bultoId == 0) return; // Bulto nuevo que aún no se guardó
+    if (bulto.bultoId == 0) return;
 
     setState(() => _isLoadingLineas = true);
     try {
@@ -725,10 +719,22 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
         token,
       );
 
+      final itemsActualizados = items.map((item) {
+        final linea = _lineasOrdenSeleccionada.firstWhere(
+          (l) => l.pickLineaId == item.pickLineaId,
+          orElse: () => PickingLinea.empty(),
+        );
+        
+        return item.copyWith(
+          cantidadMaxima: linea.cantidadPickeada,
+          descripcion: linea.descripcion,
+          codigoRaiz: linea.codItem,
+        );
+      }).toList();
+
       setState(() {
-        // En lugar de reasignar el campo, limpiamos y agregamos los nuevos items
         bulto.contenido.clear();
-        bulto.contenido.addAll(items);
+        bulto.contenido.addAll(itemsActualizados);
       });
     } catch (e) {
       Carteles.showDialogs(context, 'Error al cargar items del bulto', false, false, false);
@@ -770,17 +776,17 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
                         itemCount: _lineasOrdenSeleccionada.where((linea) => linea.cantidadPickeada != 0).length,
                         itemBuilder: (context, index) {
                           final linea = _lineasOrdenSeleccionada.where((linea) => linea.cantidadPickeada != 0).toList()[index];
-                          final cantidadVerificada = _getCantidadVerificada(linea.codItem);
+                          final (verificada, maxima) = _getCantidadVerificadaYMaxima(linea.codItem, linea.pickLineaId);
                           return ListTile(
                             title: Text('${linea.pickLineaId} - ${linea.codItem} - ${linea.descripcion}'),
                             subtitle: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text('Pickeado: ${linea.cantidadPickeada}/${linea.cantidadPedida}'),
-                                Text('Verificado: $cantidadVerificada/${linea.cantidadPickeada}'),
+                                Text('Verificado: $verificada/$maxima'),
                               ],
                             ),
-                            trailing: cantidadVerificada >= linea.cantidadPickeada
+                            trailing: verificada >= maxima
                                 ? const Icon(Icons.check_circle, color: Colors.green)
                                 : null,
                           );
@@ -834,11 +840,15 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
                             selected: _bultoActual == bulto,
                             onSelected: (selected) {
                               if (selected) {
-                                _cargarItemsBulto(bulto);
+                                setState(() {
+                                  _bultoActual = bulto;
+                                });
+                                _cargarItemsBulto(bulto).then((_) {
+                                  if (mounted) {
+                                    setState(() {});
+                                  }
+                                });
                               }
-                              setState(() {
-                                _bultoActual = selected ? bulto : null;
-                              });
                             },
                           ),
                         );
@@ -907,20 +917,21 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
                           itemCount: _bultoActual!.contenido.length,
                           itemBuilder: (context, index) {
                             final item = _bultoActual!.contenido[index];
-                            final cantidadTotal = _getCantidadVerificada(item.codigoRaiz);
+                            final (verificadaTotal, maximaTotal) = _getCantidadVerificadaYMaxima(item.codigoRaiz, item.pickLineaId);
                             return ListTile(
-                              title: Text('${item.pickLineaId} - ${item.codigo} - ${item.descripcion}'),
+                              // title: Text('${item.pickLineaId} - ${item.codigoRaiz} - ${item.descripcion}'),
+                              title: Text('${item.codigoRaiz} - ${item.descripcion}'),
                               subtitle: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text('En este bulto: ${item.cantidad}'),
-                                  Text('Total verificado: $cantidadTotal/${item.cantidadMaxima}'),
+                                  Text('Total verificado: $verificadaTotal/$maximaTotal'),
                                 ],
                               ),
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  if (cantidadTotal >= item.cantidadMaxima)
+                                  if (verificadaTotal >= maximaTotal)
                                     const Icon(Icons.check_circle, color: Colors.green),
                                   IconButton(
                                     icon: const Icon(Icons.edit),

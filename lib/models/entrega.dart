@@ -15,7 +15,7 @@ class Entrega {
   late int usuId;
   late String estado;
   late List<OrdenesPicking> ordenesPicking;
-  late List<int> pickIds;
+  late List pickIds;
 
   Entrega({
     required this.entregaId,
@@ -33,8 +33,8 @@ class Entrega {
     almacenIdOrigen: json["almacenIdOrigen"] as int? ?? 0,
     usuId: json["usuId"] as int? ?? 0,
     estado: json["estado"] as String? ?? '',
-    ordenesPicking: List<OrdenesPicking>.from(json["ordenesPicking"].map((x) => OrdenesPicking.fromJson(x))),
-    pickIds: json['pickIds'] as List<int>? ?? [],
+    ordenesPicking: json["ordenesPicking"] == null ? [] : List<OrdenesPicking>.from(json["ordenesPicking"].map((x) => OrdenesPicking.fromJson(x))),
+    pickIds: json['pickIds'] ?? [],
   );
 
   Map<String, dynamic> toJson() => {
