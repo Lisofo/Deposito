@@ -348,12 +348,79 @@ class EntregaServices {
     }
   }
 
-  Future<List<Bulto>> getBultos(BuildContext context, String token, {int? usuId, String? estado, bool? retirado}) async {
+  Future<List<Bulto>> getBultos(BuildContext context, String token, 
+    {
+      int? usuId, 
+      String? estado, 
+      bool? retirado,
+      // Nuevos parámetros de filtro
+      int? bultoId,
+      int? entregaId,
+      int? clienteId,
+      String? nombreCliente,
+      String? fechaDateDesde,
+      String? fechaDateHasta,
+      String? fechaBultoDesde,
+      String? fechaBultoHasta,
+      int? almacenId,
+      int? modoEnvioId,
+      int? agenciaTrId,
+      String? comentarioEnvio,
+      String? direccion,
+      String? localidad,
+      String? telefono,
+      int? agenciaUFId,
+      int? tipoBultoId,
+      String? comentario,
+      int? retiroId,
+      int? armadoPorUsuId,
+      int? nroBulto,
+      int? totalBultos,
+      int? despachoId,
+      int? devolucionId,
+      bool? incluyeFactura,
+      int? offset,
+      int? limit,
+      String? sort,
+    }
+  ) async {
     String link = '$apirUrl/api/v1/bultos';
     Map<String, dynamic> queryParams = {};
+    
+    // Parámetros originales
     if (estado != null && estado.isNotEmpty) queryParams['estado'] = estado;
     if (usuId != null && usuId != 0) queryParams['usuId'] = usuId;
     if (retirado == false) queryParams['retirado'] = retirado;
+
+    // Nuevos parámetros de filtro
+    if (bultoId != null) queryParams['bultoId'] = bultoId;
+    if (entregaId != null) queryParams['entregaId'] = entregaId;
+    if (clienteId != null) queryParams['clienteId'] = clienteId;
+    if (nombreCliente != null && nombreCliente.isNotEmpty) queryParams['nombreCliente'] = nombreCliente;
+    if (fechaDateDesde != null) queryParams['fechaDateDesde'] = fechaDateDesde;
+    if (fechaDateHasta != null) queryParams['fechaDateHasta'] = fechaDateHasta;
+    if (fechaBultoDesde != null) queryParams['fechaBultoDesde'] = fechaBultoDesde;
+    if (fechaBultoHasta != null) queryParams['fechaBultoHasta'] = fechaBultoHasta;
+    if (almacenId != null) queryParams['almacenId'] = almacenId;
+    if (modoEnvioId != null) queryParams['modoEnvioId'] = modoEnvioId;
+    if (agenciaTrId != null) queryParams['agenciaTrId'] = agenciaTrId;
+    if (comentarioEnvio != null && comentarioEnvio.isNotEmpty) queryParams['comentarioEnvio'] = comentarioEnvio;
+    if (direccion != null && direccion.isNotEmpty) queryParams['direccion'] = direccion;
+    if (localidad != null && localidad.isNotEmpty) queryParams['localidad'] = localidad;
+    if (telefono != null && telefono.isNotEmpty) queryParams['telefono'] = telefono;
+    if (agenciaUFId != null) queryParams['agenciaUFId'] = agenciaUFId;
+    if (tipoBultoId != null) queryParams['tipoBultoId'] = tipoBultoId;
+    if (comentario != null && comentario.isNotEmpty) queryParams['comentario'] = comentario;
+    if (retiroId != null) queryParams['retiroId'] = retiroId;
+    if (armadoPorUsuId != null) queryParams['armadoPorUsuId'] = armadoPorUsuId;
+    if (nroBulto != null) queryParams['nroBulto'] = nroBulto;
+    if (totalBultos != null) queryParams['totalBultos'] = totalBultos;
+    if (despachoId != null) queryParams['despachoId'] = despachoId;
+    if (devolucionId != null) queryParams['devolucionId'] = devolucionId;
+    if (incluyeFactura != null) queryParams['incluyeFactura'] = incluyeFactura;
+    if (offset != null) queryParams['offset'] = offset;
+    if (limit != null) queryParams['limit'] = limit;
+    if (sort != null && sort.isNotEmpty) queryParams['sort'] = sort;
 
     try {
       var headers = {'Authorization': token};
@@ -363,7 +430,7 @@ class EntregaServices {
           method: 'GET',
           headers: headers,
         ),
-        queryParameters: queryParams
+        queryParameters: queryParams.isNotEmpty ? queryParams : null,
       );
       statusCode = 1;
       final List<dynamic> bultoList = resp.data;

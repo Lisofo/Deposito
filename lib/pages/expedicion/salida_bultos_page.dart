@@ -86,6 +86,12 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
       // Cargar items para cada bulto
       for (var bulto in bultosExistentes) {
         await _cargarItemsBulto(bulto);
+      
+        if (bulto.estado == 'CERRADO') {
+          _bultosCerrados.add(bulto);
+        } else if (bulto.estado == 'PENDIENTE') {
+          _bultos.add(bulto);
+        }
       }
       
       setState(() {
@@ -366,12 +372,8 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
 
   void _eliminarItem(BultoItem item) async {
     final pickLineaId = item.pickLineaId;
-    final cantidadOriginal = item.cantidad;
     
-    setState(() {
-      _bultoActual?.contenido.remove(item);
-    });
-
+    // Primero intentamos actualizar el servidor con conteo = 0
     if (_bultoActual?.bultoId != null && _bultoActual!.bultoId != 0) {
       try {
         await EntregaServices().patchItemBulto(
@@ -379,22 +381,36 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
           entrega.entregaId,
           _bultoActual!.bultoId,
           pickLineaId,
-          0,
+          0, // Enviamos conteo = 0 para eliminar el item
           token,
         );
-      } catch (e) {
+        
+        // Si el servidor responde OK, eliminamos el item localmente
         setState(() {
-          item.cantidad = cantidadOriginal;
-          _bultoActual?.contenido.add(item);
+          _bultoActual?.contenido.remove(item);
         });
+        
+      } catch (e) {
+        // Si hay error, mostramos mensaje y mantenemos el item
         Carteles.showDialogs(context, 'Error al eliminar item', false, false, false);
+        if (mounted) {
+          setState(() {
+            // No hacemos nada para mantener el item
+          });
+        }
       }
+    } else {
+      // Si es un bulto nuevo (sin ID), simplemente lo eliminamos localmente
+      setState(() {
+        _bultoActual?.contenido.remove(item);
+      });
     }
   }
 
   void _editarCantidadItem(BultoItem item) {
     final controller = TextEditingController(text: item.cantidad.toString());
     final (cantidadEnOtrosBultos, _) = _getCantidadVerificadaYMaxima(item.codigoRaiz, item.pickLineaId);
+    final FocusNode focusNode = FocusNode();
 
     showDialog(
       context: context,
@@ -403,8 +419,20 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
           title: const Text('Editar cantidad'),
           content: TextField(
             controller: controller,
+            focusNode: focusNode,
             keyboardType: TextInputType.number,
             decoration: const InputDecoration(labelText: 'Nueva cantidad'),
+            onSubmitted: (value) async {
+              await _procesarEdicionCantidad(
+                item, 
+                controller.text, 
+                cantidadEnOtrosBultos, 
+                item.cantidadMaxima
+              );
+              if (mounted) {
+                Navigator.of(context).pop();
+              }
+            },
           ),
           actions: [
             TextButton(
@@ -414,42 +442,84 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
             TextButton(
               child: const Text('Guardar'),
               onPressed: () async {
-                final nuevaCantidad = int.tryParse(controller.text) ?? item.cantidad;
-                final totalProyectado = cantidadEnOtrosBultos + nuevaCantidad;
-                
-                if (totalProyectado > item.cantidadMaxima) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('No puede superar ${item.cantidadMaxima} (Total actual: $totalProyectado')),
-                  );
-                  return;
+                await _procesarEdicionCantidad(
+                  item, 
+                  controller.text, 
+                  cantidadEnOtrosBultos, 
+                  item.cantidadMaxima
+                );
+                if (mounted) {
+                  Navigator.of(context).pop();
                 }
-                
-                setState(() {
-                  item.cantidad = nuevaCantidad;
-                });
-
-                if (_bultoActual?.bultoId != null && _bultoActual!.bultoId != 0) {
-                  try {
-                    await EntregaServices().patchItemBulto(
-                      context,
-                      entrega.entregaId,
-                      _bultoActual!.bultoId,
-                      item.pickLineaId,
-                      item.cantidad,
-                      token,
-                    );
-                  } catch (e) {
-                    Carteles.showDialogs(context, 'Error al actualizar cantidad', false, false, false);
-                  }
-                }
-
-                Navigator.of(context).pop();
               },
             ),
           ],
         );
       },
     );
+
+    // Enfocar y seleccionar todo el texto al mostrar el diálogo
+    focusNode.requestFocus();
+    controller.selection = TextSelection(
+      baseOffset: 0,
+      extentOffset: controller.text.length,
+    );
+  }
+
+  Future<void> _procesarEdicionCantidad(
+    BultoItem item, 
+    String nuevoValor, 
+    int cantidadEnOtrosBultos, 
+    int cantidadMaxima
+  ) async {
+    final nuevaCantidad = int.tryParse(nuevoValor) ?? item.cantidad;
+    
+    if (nuevaCantidad < 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('La cantidad no puede ser negativa')),
+      );
+      return;
+    }
+    
+    if (nuevaCantidad == 0) {
+      // Cantidad cero = eliminar el ítem
+      _eliminarItem(item);
+      return;
+    }
+
+    final totalProyectado = cantidadEnOtrosBultos - item.cantidad + nuevaCantidad;
+    
+    if (totalProyectado > cantidadMaxima) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No puede superar $cantidadMaxima (Total actual: $totalProyectado')),
+      );
+      return;
+    }
+    
+    setState(() {
+      item.cantidad = nuevaCantidad;
+    });
+
+    if (_bultoActual?.bultoId != null && _bultoActual!.bultoId != 0) {
+      try {
+        await EntregaServices().patchItemBulto(
+          context,
+          entrega.entregaId,
+          _bultoActual!.bultoId,
+          item.pickLineaId,
+          item.cantidad,
+          token,
+        );
+      } catch (e) {
+        Carteles.showDialogs(context, 'Error al actualizar cantidad', false, false, false);
+        // Revertir el cambio local si falla el servidor
+        if (mounted) {
+          setState(() {
+            item.cantidad = int.tryParse(nuevoValor) ?? item.cantidad;
+          });
+        }
+      }
+    }
   }
 
   void _mostrarDialogoCierreBultos() {
@@ -886,7 +956,7 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
                             label: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text('Bulto ${_bultos.indexOf(bulto) + 1}', style: const TextStyle(fontSize: 22)),
+                                Text('B ${_bultos.indexOf(bulto) + 1}', style: const TextStyle(fontSize: 22)),
                                 const SizedBox(width: 8,),
                                 getIcon(tipoBulto.icon, context, _bultoActual == bulto ? colors.onPrimary : colors.secondary)
                               ],
@@ -916,20 +986,27 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Builder(
-                            builder: (context) {
-                              final tipoBulto = tipoBultos.firstWhere(
-                                (t) => t.tipoBultoId == _bultoActual!.tipoBultoId,
-                                orElse: () => TipoBulto.empty()
-                              );
-                              return Text(
-                                'Bulto ${_bultos.indexOf(_bultoActual!) + 1} - ${tipoBulto.descripcion}',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              );
-                            },
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Builder(
+                                builder: (context) {
+                                  final tipoBulto = tipoBultos.firstWhere(
+                                    (t) => t.tipoBultoId == _bultoActual!.tipoBultoId,
+                                    orElse: () => TipoBulto.empty()
+                                  );
+                                  return Text(
+                                    'Bulto ${_bultos.indexOf(_bultoActual!) + 1} - ${tipoBulto.descripcion}',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  );
+                                },
+                              ),
+                              const SizedBox(width: 10,),
+                              Text('Cant. de prods.: ${_bultoActual?.contenido.length}'),
+                            ],
                           ),
                           ElevatedButton.icon(
                             icon: const Icon(Icons.delete, size: 20),
@@ -1028,6 +1105,8 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
               ),
             ),
             const SizedBox(height: 10),
+            Text('Total: ${_bultosCerrados.length} bultos cerrados'),
+            const SizedBox(height: 10),
             ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -1042,15 +1121,23 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
                 return ExpansionTile(
                   leading: getIcon(tipoBulto.icon, context, Theme.of(context).colorScheme.secondary),
                   title: Text('Bulto ${index + 1} - ${tipoBulto.descripcion}'),
-                  subtitle: Text('Cerrado el ${DateFormat('dd/MM/yyyy HH:mm').format(bulto.fechaBulto)}'),
+                  subtitle: Text('Estado: ${bulto.estado} - ${DateFormat('dd/MM/yyyy HH:mm').format(bulto.fechaBulto)}'),
                   children: [
                     Padding(
                       padding: const EdgeInsets.all(8.0),
                       child: Column(
-                        children: bulto.contenido.map((item) => ListTile(
-                          title: Text('${item.pickLineaId} - ${item.descripcion}'),
-                          subtitle: Text('Cantidad: ${item.cantidad}'),
-                        )).toList(),
+                        children: [
+                          if (bulto.modoEnvioId != null)
+                            Text('Método de envío: ${modoEnvios.firstWhere((m) => m.modoEnvioId == bulto.modoEnvioId, orElse: () => ModoEnvio.empty()).descripcion}'),
+                          if (bulto.agenciaUFId != null)
+                            Text('Empresa: ${formasEnvio.firstWhere((f) => f.formaEnvioId == bulto.agenciaUFId, orElse: () => FormaEnvio.empty()).descripcion}'),
+                          const SizedBox(height: 10),
+                          const Text('Contenido:', style: TextStyle(fontWeight: FontWeight.bold)),
+                          ...bulto.contenido.map((item) => ListTile(
+                            title: Text('${item.codigoRaiz} - ${item.descripcion}'),
+                            subtitle: Text('Cantidad: ${item.cantidad}'),
+                          )),
+                        ],
                       ),
                     ),
                   ],
@@ -1068,132 +1155,134 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
     final colors = Theme.of(context).colorScheme;
     final isWideScreen = MediaQuery.of(context).size.width > 800;
 
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: colors.primary,
-        title: Text('Salida por Bultos', style: TextStyle(color: colors.onPrimary)),
-        iconTheme: IconThemeData(color: colors.onPrimary),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Seleccionar Orden:',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    DropdownButtonFormField<OrdenPicking>(
-                      value: _ordenSeleccionada,
-                      items: _ordenes.map((OrdenPicking orden) {
-                        return DropdownMenuItem<OrdenPicking>(
-                          value: orden,
-                          child: Text('${orden.serie}-${orden.numeroDocumento} - ${orden.nombre}'),
-                        );
-                      }).toList(),
-                      onChanged: _ordenes.length > 1 ? (OrdenPicking? nuevaOrden) {
-                        if (nuevaOrden != null) {
-                          setState(() {
-                            _ordenSeleccionada = nuevaOrden;
-                          });
-                          _cargarLineasOrden(nuevaOrden);
-                        }
-                      } : null,
-                      decoration: InputDecoration(
-                        border: const OutlineInputBorder(),
-                        enabled: _ordenes.length > 1
-                      ),
-                      isExpanded: true,
-                      disabledHint: _ordenSeleccionada != null 
-                          ? Text('${_ordenSeleccionada!.numeroDocumento}-${_ordenSeleccionada!.serie} - ${_ordenSeleccionada!.nombre}')
-                          : null,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),            
-            if (_ordenSeleccionada != null) ...[
-              const SizedBox(height: 20),
-              isWideScreen
-                ? Row(
+    return SafeArea(
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: colors.primary,
+          title: Text('Salida por Bultos', style: TextStyle(color: colors.onPrimary)),
+          iconTheme: IconThemeData(color: colors.onPrimary),
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        flex: 1,
-                        child: _buildProductosSection(),
+                      const Text(
+                        'Seleccionar Orden:',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        flex: 1,
-                        child: _buildBultosSection(),
+                      const SizedBox(height: 10),
+                      DropdownButtonFormField<OrdenPicking>(
+                        value: _ordenSeleccionada,
+                        items: _ordenes.map((OrdenPicking orden) {
+                          return DropdownMenuItem<OrdenPicking>(
+                            value: orden,
+                            child: Text('${orden.serie}-${orden.numeroDocumento} - ${orden.nombre}'),
+                          );
+                        }).toList(),
+                        onChanged: _ordenes.length > 1 ? (OrdenPicking? nuevaOrden) {
+                          if (nuevaOrden != null) {
+                            setState(() {
+                              _ordenSeleccionada = nuevaOrden;
+                            });
+                            _cargarLineasOrden(nuevaOrden);
+                          }
+                        } : null,
+                        decoration: InputDecoration(
+                          border: const OutlineInputBorder(),
+                          enabled: _ordenes.length > 1
+                        ),
+                        isExpanded: true,
+                        disabledHint: _ordenSeleccionada != null 
+                            ? Text('${_ordenSeleccionada!.numeroDocumento}-${_ordenSeleccionada!.serie} - ${_ordenSeleccionada!.nombre}')
+                            : null,
                       ),
-                    ],
-                  )
-                : Column(
-                    children: [
-                      _buildProductosSection(),
-                      const SizedBox(height: 20),
-                      _buildBultosSection(),
                     ],
                   ),
-              _buildBultosCerradosSection(),
-            ],
-          ],
-        ),
-      ),
-      bottomNavigationBar: BottomAppBar(
-        notchMargin: 10,
-        elevation: 0,
-        shape: const CircularNotchedRectangle(),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            if (_ordenSeleccionada != null && !_isLoadingLineas)
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: colors.primary,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 ),
-                onPressed: _mostrarDialogoTipoBulto,
-                child: Text('Crear Nuevo Bulto', style: TextStyle(color: colors.onPrimary)),
               ),
-            if (_bultos.isNotEmpty)
-              Tooltip(
-                message: _validarCompletitudProductos() 
-                    ? '' 
-                    : 'No se pueden cerrar bultos hasta verificar todos los productos',
-                child: ElevatedButton(
+              const SizedBox(height: 20),            
+              if (_ordenSeleccionada != null) ...[
+                const SizedBox(height: 20),
+                isWideScreen
+                  ? Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          flex: 1,
+                          child: _buildProductosSection(),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          flex: 1,
+                          child: _buildBultosSection(),
+                        ),
+                      ],
+                    )
+                  : Column(
+                      children: [
+                        _buildProductosSection(),
+                        const SizedBox(height: 20),
+                        _buildBultosSection(),
+                      ],
+                    ),
+                _buildBultosCerradosSection(),
+              ],
+            ],
+          ),
+        ),
+        bottomNavigationBar: BottomAppBar(
+          notchMargin: 10,
+          elevation: 0,
+          shape: const CircularNotchedRectangle(),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              if (_ordenSeleccionada != null && !_isLoadingLineas)
+                ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _validarCompletitudProductos() 
-                        ? colors.primary 
-                        : Colors.grey,
+                    backgroundColor: colors.primary,
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   ),
-                  onPressed: _validarCompletitudProductos() 
-                      ? _mostrarDialogoCierreBultos 
-                      : null,
-                  child: Text(
-                    'Cerrar Bultos y Seleccionar Envío', 
-                    style: TextStyle(
-                      color: _validarCompletitudProductos() 
-                          ? colors.onPrimary 
-                          : Colors.grey[700],
+                  onPressed: _mostrarDialogoTipoBulto,
+                  child: Text('Crear Nuevo Bulto', style: TextStyle(color: colors.onPrimary)),
+                ),
+              if (_bultos.isNotEmpty)
+                Tooltip(
+                  message: _validarCompletitudProductos() 
+                      ? '' 
+                      : 'No se pueden cerrar bultos hasta verificar todos los productos',
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _validarCompletitudProductos() 
+                          ? colors.primary 
+                          : Colors.grey,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    ),
+                    onPressed: _validarCompletitudProductos() 
+                        ? _mostrarDialogoCierreBultos 
+                        : null,
+                    child: Text(
+                      'Cerrar Bultos y Seleccionar Envío', 
+                      style: TextStyle(
+                        color: _validarCompletitudProductos() 
+                            ? colors.onPrimary 
+                            : Colors.grey[700],
+                      ),
                     ),
                   ),
-                ),
-              ), 
-          ],
+                ), 
+            ],
+          ),
         ),
       ),
     );

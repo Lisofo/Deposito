@@ -1,6 +1,8 @@
 import 'package:deposito/config/router/pages.dart';
 import 'package:deposito/models/bulto.dart';
+import 'package:deposito/models/forma_envio.dart';
 import 'package:deposito/services/entrega_services.dart';
+import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
 
 class DespachoPage extends StatefulWidget {
@@ -13,9 +15,12 @@ class DespachoPage extends StatefulWidget {
 class DespachoPageState extends State<DespachoPage> {
   List<Bulto> selectedBultos = [];
   List<Bulto> bultos = [];
+  List<FormaEnvio> transportistas = [];
+  FormaEnvio? transportistaSeleccionado;
   final TextEditingController _retiraController = TextEditingController();
   final TextEditingController _comentarioController = TextEditingController();
   String token = '';
+  bool isLoading = true;
 
   @override
   void initState() {
@@ -33,48 +38,132 @@ class DespachoPageState extends State<DespachoPage> {
   loadData() async {
     final productProvider = Provider.of<ProductProvider>(context, listen: false);
     token = productProvider.token;
-    bultos = await EntregaServices().getBultos(context, token, estado: 'CERRADO');
-    for (var bulto in bultos) {
-      print(bulto.bultoId);
+    
+    try {
+      // Cargar transportistas (FormaEnvio con tr=true)
+      final formasEnvio = await EntregaServices().formaEnvio(context, token);
+      transportistas = formasEnvio.where((f) => f.tr == true).toList();
+      transportistas.sort((a, b) => a.descripcion!.compareTo(b.descripcion.toString()));
+
+      // Cargar bultos cerrados
+      await _cargarBultos();
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
-    setState(() {
-      
-    });
   }
 
+  Future<void> _cargarBultos({int? agenciaTrId}) async {
+    setState(() {
+      isLoading = true;
+    });
+    
+    try {
+      bultos = await EntregaServices().getBultos(
+        context, 
+        token, 
+        estado: 'CERRADO',
+        agenciaTrId: agenciaTrId,
+      );
+      
+      if (mounted) {
+        setState(() {
+          selectedBultos.clear();
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: colors.primary,
-        title: Text(
-          context.read<ProductProvider>().menuTitle,
-          style: TextStyle(color: colors.onPrimary),
-        ),
-        iconTheme: IconThemeData(color: colors.onPrimary),
-        actions: [
-          if (selectedBultos.isNotEmpty)
-            Chip(
-              label: Text('${selectedBultos.length}'),
-              backgroundColor: Colors.blueAccent,
-              labelStyle: const TextStyle(color: Colors.white),
-            ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: bultos.isEmpty
-                ? const Center(child: CircularProgressIndicator())
-                : ListView.builder(
-                    itemCount: bultos.length,
-                    itemBuilder: (context, index) => _buildBultoItem(bultos[index]),
-                  ),
+    return SafeArea(
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: colors.primary,
+          title: Text(
+            context.read<ProductProvider>().menuTitle,
+            style: TextStyle(color: colors.onPrimary),
           ),
-          if (selectedBultos.isNotEmpty) _buildDespacharButton(),
-        ],
+          iconTheme: IconThemeData(color: colors.onPrimary),
+          actions: [
+            if (transportistaSeleccionado != null)
+              IconButton(
+                icon: const Icon(Icons.clear_all),
+                tooltip: 'Limpiar filtro',
+                onPressed: () async {
+                  setState(() {
+                    transportistaSeleccionado = null;
+                  });
+                  await _cargarBultos();
+                },
+              ),
+            if (selectedBultos.isNotEmpty)
+              Chip(
+                label: Text('${selectedBultos.length}'),
+                backgroundColor: Colors.blueAccent,
+                labelStyle: const TextStyle(color: Colors.white),
+              ),
+          ],
+        ),
+        body: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: DropdownSearch<FormaEnvio>(
+                popupProps: const PopupProps.menu(
+                  showSearchBox: true,
+                  searchDelay: Duration.zero,
+                  searchFieldProps: TextFieldProps(
+                    decoration: InputDecoration(
+                      hintText: "Buscar transportista...",
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.search),
+                    ),
+                  ),
+                ),
+                items: transportistas,
+                itemAsString: (FormaEnvio item) => item.descripcion.toString(),
+                selectedItem: transportistaSeleccionado,
+                onChanged: (FormaEnvio? newValue) async {
+                  setState(() {
+                    transportistaSeleccionado = newValue;
+                  });
+                  await _cargarBultos(
+                    agenciaTrId: newValue?.formaEnvioId
+                  );
+                },
+                dropdownDecoratorProps: const DropDownDecoratorProps(
+                  dropdownSearchDecoration: InputDecoration(
+                    labelText: "Seleccionar transportista",
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                compareFn: (item, selectedItem) => item.formaEnvioId == selectedItem.formaEnvioId,
+              ),
+            ),
+            Expanded(
+              child: isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : bultos.isEmpty
+                      ? const Center(child: Text('No hay bultos disponibles'))
+                      : ListView.builder(
+                          itemCount: bultos.length,
+                          itemBuilder: (context, index) => _buildBultoItem(bultos[index]),
+                        ),
+            ),
+            if (selectedBultos.isNotEmpty) _buildDespacharButton(),
+          ],
+        ),
       ),
     );
   }
@@ -112,11 +201,12 @@ class DespachoPageState extends State<DespachoPage> {
               Text('Cliente: ${bulto.nombreCliente}'),
               Text('Dirección: ${bulto.direccion}'),
               Text('Localidad: ${bulto.localidad}'),
+              if (bulto.agenciaTrId != null)
+                Text('Transportista: ${_getNombreTransportista(bulto.agenciaTrId)}'),
               const SizedBox(height: 8),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Text('${bulto.contenido.length} items'),
                   const SizedBox(),
                   Checkbox(
                     value: isSelected,
@@ -131,11 +221,22 @@ class DespachoPageState extends State<DespachoPage> {
     );
   }
 
+  String _getNombreTransportista(int? agenciaTrId) {
+    if (agenciaTrId == null) return 'No asignado';
+    final transportista = transportistas.firstWhere(
+      (t) => t.formaEnvioId == agenciaTrId,
+      orElse: () => FormaEnvio.empty(),
+    );
+    return transportista.descripcion ?? 'Transportista desconocido';
+  }
+
   Color _getEstadoColor(String estado) {
     switch (estado) {
       case 'Pendiente': return Colors.orange;
       case 'Preparado': return Colors.blue;
       case 'Listo': return Colors.green;
+      case 'CERRADO': return Colors.purple;
+      case 'DESPACHADO': return Colors.teal;
       default: return Colors.grey;
     }
   }
@@ -256,14 +357,14 @@ class DespachoPageState extends State<DespachoPage> {
       return;
     }
 
-    // Obtener el agenciaTrId del primer bulto seleccionado
-    final int? agenciaTrId = selectedBultos.first.agenciaTrId;
+    // Obtener el agenciaTrId del transportista seleccionado o del primer bulto
+    final int? agenciaTrId = transportistaSeleccionado?.formaEnvioId ?? 
+                            selectedBultos.first.agenciaTrId;
 
-    // Validar que el agenciaTrId no sea nulo
     if (agenciaTrId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Los bultos seleccionados no tienen agencia de transporte asignada'),
+          content: Text('No se ha seleccionado un transportista válido'),
           backgroundColor: Colors.red,
         ),
       );
@@ -293,7 +394,7 @@ class DespachoPageState extends State<DespachoPage> {
         setState(() {
           for (var bulto in bultos) {
             if (selectedBultos.contains(bulto)) {
-              bulto = bulto.copyWith(estado: 'Despachado');
+              bulto = bulto.copyWith(estado: 'DESPACHADO');
             }
           }
           selectedBultos.clear();
@@ -301,8 +402,8 @@ class DespachoPageState extends State<DespachoPage> {
           _comentarioController.clear();
         });
 
-        // Opcional: Recargar los datos desde el servidor
-        await loadData();
+        // Recargar los datos desde el servidor
+        await _cargarBultos(agenciaTrId: transportistaSeleccionado?.formaEnvioId);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -320,6 +421,4 @@ class DespachoPageState extends State<DespachoPage> {
       );
     }
   }
-
-  
 }

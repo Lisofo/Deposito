@@ -130,144 +130,146 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final productProvider = Provider.of<ProductProvider>(context, listen: false);
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: colors.primary,
-        title: Text(
-          context.read<ProductProvider>().menuTitle,
-          style: const TextStyle(color: Colors.white),
-        ),
-        iconTheme: IconThemeData(color: colors.onPrimary),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.filter_alt_off),
-            tooltip: 'Limpiar filtros',
-            onPressed: _limpiarFiltros,
+    return SafeArea(
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: colors.primary,
+          title: Text(
+            context.read<ProductProvider>().menuTitle,
+            style: const TextStyle(color: Colors.white),
           ),
-        ],
-      ),
-      body: _isLoading ? const Center(child: CircularProgressIndicator())
-        : RefreshIndicator(
-            key: _refreshIndicatorKey,
-            onRefresh: _refreshData,
-            child: Column(
-              children: [
-                FiltrosExpedicion(
-                  onSearch: (fechaDesde, fechaHasta, cliente, numeroDocumento, pickId) {
-                    _loadData(
-                      fechaDesde: fechaDesde,
-                      fechaHasta: fechaHasta,
-                      cliente: cliente,
-                      numeroDocumento: numeroDocumento,
-                      pickId: pickId
-                    );
-                  },
-                  onReset: _limpiarFiltros,
-                  clienteController: _clienteController,
-                  numeroDocController: _numeroDocController,
-                  pickIDController: _pickIDController,
-                  isFilterExpanded: _isFilterExpanded,
-                  onToggleFilter: (expanded) {
-                    setState(() {
-                      _isFilterExpanded = expanded;
-                    });
-                    // Mantener foco cuando se expande/colapsa el filtro
-                    _manteneFocoScanner();
-                  },
-                  cantidadDeOrdenes: _ordenes.length,
-                ),
-                Expanded(
-                  child: _ordenes.isEmpty
-                    ? ListView(
-                        children: [
-                          SizedBox(height: MediaQuery.of(context).size.height * 0.3),
-                          const Center(
-                            child: Column(
-                              children: [
-                                Icon(
-                                  Icons.search_off,
-                                  size: 64,
-                                  color: Colors.grey,
-                                ),
-                                SizedBox(height: 16),
-                                Text(
-                                  'No se encontraron órdenes',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
+          iconTheme: IconThemeData(color: colors.onPrimary),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.filter_alt_off),
+              tooltip: 'Limpiar filtros',
+              onPressed: _limpiarFiltros,
+            ),
+          ],
+        ),
+        body: _isLoading ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              key: _refreshIndicatorKey,
+              onRefresh: _refreshData,
+              child: Column(
+                children: [
+                  FiltrosExpedicion(
+                    onSearch: (fechaDesde, fechaHasta, cliente, numeroDocumento, pickId) {
+                      _loadData(
+                        fechaDesde: fechaDesde,
+                        fechaHasta: fechaHasta,
+                        cliente: cliente,
+                        numeroDocumento: numeroDocumento,
+                        pickId: pickId
+                      );
+                    },
+                    onReset: _limpiarFiltros,
+                    clienteController: _clienteController,
+                    numeroDocController: _numeroDocController,
+                    pickIDController: _pickIDController,
+                    isFilterExpanded: _isFilterExpanded,
+                    onToggleFilter: (expanded) {
+                      setState(() {
+                        _isFilterExpanded = expanded;
+                      });
+                      // Mantener foco cuando se expande/colapsa el filtro
+                      _manteneFocoScanner();
+                    },
+                    cantidadDeOrdenes: _ordenes.length,
+                  ),
+                  Expanded(
+                    child: _ordenes.isEmpty
+                      ? ListView(
+                          children: [
+                            SizedBox(height: MediaQuery.of(context).size.height * 0.3),
+                            const Center(
+                              child: Column(
+                                children: [
+                                  Icon(
+                                    Icons.search_off,
+                                    size: 64,
                                     color: Colors.grey,
                                   ),
-                                ), 
-                              ],
+                                  SizedBox(height: 16),
+                                  Text(
+                                    'No se encontraron órdenes',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.grey,
+                                    ),
+                                  ), 
+                                ],
+                              ),
+                            ),
+                          ],
+                        )
+                      : Column(
+                        children: [
+                          Expanded(
+                            child: ListView.builder(
+                              itemCount: _ordenes.length,
+                              itemBuilder: (context, index) {
+                                final orden = _ordenes[index];
+                                return _buildOrdenItem(orden);
+                              },
+                            ),
+                          ),
+                          VisibilityDetector(
+                            key: const Key('scanner-field-visibility'),
+                            onVisibilityChanged: (info) {
+                              if (info.visibleFraction > 0) {
+                                focoDeScanner.requestFocus();
+                              }
+                            },
+                            child: TextFormField(
+                              focusNode: focoDeScanner,
+                              cursorColor: Colors.transparent,
+                              decoration: const InputDecoration(
+                                border: UnderlineInputBorder(borderSide: BorderSide.none),
+                              ),
+                              style: const TextStyle(color: Colors.transparent),
+                              autofocus: true,
+                              keyboardType: TextInputType.none,
+                              controller: textController,
+                              onFieldSubmitted: procesarEscaneoUbicacion,
                             ),
                           ),
                         ],
-                      )
-                    : Column(
-                      children: [
-                        Expanded(
-                          child: ListView.builder(
-                            itemCount: _ordenes.length,
-                            itemBuilder: (context, index) {
-                              final orden = _ordenes[index];
-                              return _buildOrdenItem(orden);
-                            },
-                          ),
-                        ),
-                        VisibilityDetector(
-                          key: const Key('scanner-field-visibility'),
-                          onVisibilityChanged: (info) {
-                            if (info.visibleFraction > 0) {
-                              focoDeScanner.requestFocus();
+                      ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: ElevatedButton(
+                      onPressed: _ordenesSeleccionadas.isNotEmpty
+                        ? () async {
+                            Entrega entrega = Entrega.empty();
+                            int? statusCode;
+                            List<int> pickIds = _ordenesSeleccionadas.map((orden) => orden.pickId).toList();
+                            entrega = await entregaServices.postEntrega(context, pickIds, almacen.almacenId, token);
+                            statusCode = await entregaServices.getStatusCode();
+                            await entregaServices.resetStatusCode();
+                            if(statusCode == 1) {
+                              productProvider.setOrdenesExpedicion(_ordenesSeleccionadas);
+                              productProvider.setEntrega(entrega);
+                              appRouter.push('/salidaBultos');
                             }
-                          },
-                          child: TextFormField(
-                            focusNode: focoDeScanner,
-                            cursorColor: Colors.transparent,
-                            decoration: const InputDecoration(
-                              border: UnderlineInputBorder(borderSide: BorderSide.none),
-                            ),
-                            style: const TextStyle(color: Colors.transparent),
-                            autofocus: true,
-                            keyboardType: TextInputType.none,
-                            controller: textController,
-                            onFieldSubmitted: procesarEscaneoUbicacion,
-                          ),
-                        ),
-                      ],
-                    ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: ElevatedButton(
-                    onPressed: _ordenesSeleccionadas.isNotEmpty
-                      ? () async {
-                          Entrega entrega = Entrega.empty();
-                          int? statusCode;
-                          List<int> pickIds = _ordenesSeleccionadas.map((orden) => orden.pickId).toList();
-                          entrega = await entregaServices.postEntrega(context, pickIds, almacen.almacenId, token);
-                          statusCode = await entregaServices.getStatusCode();
-                          await entregaServices.resetStatusCode();
-                          if(statusCode == 1) {
-                            productProvider.setOrdenesExpedicion(_ordenesSeleccionadas);
-                            productProvider.setEntrega(entrega);
-                            appRouter.push('/salidaBultos');
                           }
-                        }
-                      : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: colors.primary,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    ),
-                    child: const Text(
-                      'Siguiente',
-                      style: TextStyle(color: Colors.white, fontSize: 16),
+                        : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: colors.primary,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      ),
+                      child: const Text(
+                        'Siguiente',
+                        style: TextStyle(color: Colors.white, fontSize: 16),
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-        )
+                ],
+              ),
+          )
+      ),
     );
   }
 
