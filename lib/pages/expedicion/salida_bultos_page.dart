@@ -944,6 +944,7 @@ class SalidaBultosScreenState extends State<SalidaBultosScreen> {
                   const SizedBox(height: 10),
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
+                    physics: const AlwaysScrollableScrollPhysics(),
                     child: Row(
                       children: _bultos.map((bulto) {
                         final tipoBulto = tipoBultos.firstWhere(

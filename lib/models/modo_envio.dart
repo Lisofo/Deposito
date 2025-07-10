@@ -36,4 +36,7 @@ class ModoEnvio {
     codModoEnvio = '';
     descripcion = '';
   }
+
+  @override
+  String toString() => descripcion;
 }

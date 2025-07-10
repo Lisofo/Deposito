@@ -40,4 +40,7 @@ class TipoBulto {
     descripcion = '';
     icon = '';
   }
+
+  @override
+  String toString() => descripcion;
 }

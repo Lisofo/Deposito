@@ -5,6 +5,7 @@ import 'package:deposito/provider/menu_provider.dart';
 import 'package:deposito/provider/product_provider.dart';
 import 'package:deposito/provider/theme_provider.dart';
 import 'package:deposito/provider/ubicacion_provider.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -45,6 +46,29 @@ Future<void> main() async {
   }
 }
 
+class MyCustomScrollBehavior extends MaterialScrollBehavior {
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+    PointerDeviceKind.touch,
+    PointerDeviceKind.mouse,
+    PointerDeviceKind.stylus,
+    PointerDeviceKind.trackpad,
+  };
+
+  @override
+  Widget buildScrollbar(BuildContext context, Widget child, ScrollableDetails details) {
+    return Scrollbar(
+      controller: details.controller,
+      thumbVisibility: true, // Hacer visible siempre
+      trackVisibility: true, // Mostrar también el track
+      thickness: 6, // Grosor de la barra
+      radius: const Radius.circular(10), // Bordes redondeados
+      interactive: true, // Permite interactuar directamente con la barra
+      child: child,
+    );
+  }
+}
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -52,7 +76,17 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final appTheme = AppTheme(selectedColor: 0);
     return MaterialApp.router(
-      theme: appTheme.getTheme(),
+      theme: appTheme.getTheme().copyWith(
+        scrollbarTheme: ScrollbarThemeData(
+          thumbVisibility: WidgetStateProperty.all(true),
+          trackVisibility: WidgetStateProperty.all(true),
+          thickness: WidgetStateProperty.all(12),
+          radius: const Radius.circular(10),
+          minThumbLength: 50,
+          interactive: true,
+        ),
+      ),
+      scrollBehavior: MyCustomScrollBehavior(), // Añade esta línea
       routerConfig: appRouter,
       debugShowCheckedModeBanner: false,
       localizationsDelegates: const [
