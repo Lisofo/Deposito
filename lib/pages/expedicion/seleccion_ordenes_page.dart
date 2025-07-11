@@ -8,10 +8,10 @@ import 'package:deposito/models/orden_picking.dart';
 import 'package:deposito/services/entrega_services.dart';
 import 'package:deposito/services/picking_services.dart';
 import 'package:deposito/widgets/carteles.dart';
+import 'package:deposito/widgets/escaner_pda.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:deposito/widgets/filtros_expedicion.dart';
-import 'package:visibility_detector/visibility_detector.dart';
 
 class SeleccionOrdenesScreen extends StatefulWidget {
   const SeleccionOrdenesScreen({super.key});
@@ -215,25 +215,10 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
                               },
                             ),
                           ),
-                          VisibilityDetector(
-                            key: const Key('scanner-field-visibility'),
-                            onVisibilityChanged: (info) {
-                              if (info.visibleFraction > 0) {
-                                focoDeScanner.requestFocus();
-                              }
-                            },
-                            child: TextFormField(
-                              focusNode: focoDeScanner,
-                              cursorColor: Colors.transparent,
-                              decoration: const InputDecoration(
-                                border: UnderlineInputBorder(borderSide: BorderSide.none),
-                              ),
-                              style: const TextStyle(color: Colors.transparent),
-                              autofocus: true,
-                              keyboardType: TextInputType.none,
-                              controller: textController,
-                              onFieldSubmitted: procesarEscaneoUbicacion,
-                            ),
+                          EscanerPDA(
+                            onScan: procesarEscaneoUbicacion,
+                            focusNode: focoDeScanner,
+                            controller: textController
                           ),
                         ],
                       ),
@@ -250,6 +235,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
                             statusCode = await entregaServices.getStatusCode();
                             await entregaServices.resetStatusCode();
                             if(statusCode == 1) {
+                              Provider.of<ProductProvider>(context, listen: false).setVistaMonitor(false);
                               productProvider.setOrdenesExpedicion(_ordenesSeleccionadas);
                               productProvider.setEntrega(entrega);
                               appRouter.push('/salidaBultos');

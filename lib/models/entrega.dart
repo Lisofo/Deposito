@@ -16,6 +16,7 @@ class Entrega {
   late String estado;
   late List<OrdenesPicking> ordenesPicking;
   late List pickIds;
+  late int cantBultos;
 
   Entrega({
     required this.entregaId,
@@ -25,6 +26,7 @@ class Entrega {
     required this.estado,
     required this.ordenesPicking,
     required this.pickIds,
+    required this.cantBultos,
   });
 
   factory Entrega.fromJson(Map<String, dynamic> json) => Entrega(
@@ -35,6 +37,7 @@ class Entrega {
     estado: json["estado"] as String? ?? '',
     ordenesPicking: json["ordenesPicking"] == null ? [] : List<OrdenesPicking>.from(json["ordenesPicking"].map((x) => OrdenesPicking.fromJson(x))),
     pickIds: json['pickIds'] ?? [],
+    cantBultos: json['cantBultos'] as int? ?? 0, 
   );
 
   Map<String, dynamic> toJson() => {
@@ -45,6 +48,7 @@ class Entrega {
     "estado": estado,
     "ordenesPicking": List<dynamic>.from(ordenesPicking.map((x) => x.toJson())),
     "pickIds": pickIds,
+    'cantBultos': cantBultos
   };
 
   Entrega.empty() {
@@ -55,6 +59,7 @@ class Entrega {
     estado = '';
     ordenesPicking = [];
     pickIds = [];
+    cantBultos = 0;
   }
 }
 

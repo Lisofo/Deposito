@@ -51,9 +51,9 @@ class FormaEnvio {
     formaEnvioId = 0;
     codFormaEnvio = '';
     descripcion = '';
-    agencia;
-    tr;
-    envio;
+    agencia = null;
+    tr = null;
+    envio = null;
     fechabaja = DateTime.now();
   }
 

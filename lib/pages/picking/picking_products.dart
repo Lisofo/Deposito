@@ -5,12 +5,12 @@ import 'package:deposito/models/orden_picking.dart';
 import 'package:deposito/models/product.dart';
 import 'package:deposito/services/product_services.dart';
 import 'package:deposito/widgets/custom_speed_dial.dart';
+import 'package:deposito/widgets/escaner_pda.dart';
 import 'package:flutter/material.dart';
 import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 import 'package:provider/provider.dart';
 import 'package:deposito/provider/product_provider.dart';
 import 'package:deposito/services/picking_services.dart';
-import 'package:visibility_detector/visibility_detector.dart';
 import 'resumen_picking.dart';
 
 class PickingProducts extends StatefulWidget {
@@ -502,25 +502,10 @@ class PickingProductsState extends State<PickingProducts> {
             Expanded(
               child: _buildLocationList(currentLine),
             ),
-            VisibilityDetector(
-              key: const Key('scanner-field-visibility'),
-              onVisibilityChanged: (info) {
-                if (info.visibleFraction > 0) {
-                  focoDeScanner.requestFocus();
-                }
-              },
-              child: TextFormField(
-                focusNode: focoDeScanner,
-                cursorColor: Colors.transparent,
-                decoration: const InputDecoration(
-                  border: UnderlineInputBorder(borderSide: BorderSide.none),
-                ),
-                style: const TextStyle(color: Colors.transparent),
-                autofocus: true,
-                keyboardType: TextInputType.none,
-                controller: textController,
-                onFieldSubmitted: procesarEscaneoUbicacion,
-              ),
+            EscanerPDA(
+              onScan: procesarEscaneoUbicacion,
+              focusNode: focoDeScanner,
+              controller: textController
             ),
           ],
         );

@@ -8,6 +8,7 @@ import 'package:deposito/models/bulto.dart';
 import 'package:deposito/widgets/carteles.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 class EntregaServices {
   final _dio = Dio();
@@ -115,11 +116,13 @@ class EntregaServices {
     }
   }
 
-  Future<List<Entrega>> getEntregas(BuildContext context, String token, {int? usuId, String? estado}) async {
+  Future<List<Entrega>> getEntregas(BuildContext context, String token, {int? usuId, String? estado, DateTime? fechaDateDesde, DateTime? fechaDateHasta}) async {
     String link = '$apirUrl/api/v1/entrega';
     Map<String, dynamic> queryParams = {};
     if (estado != null && estado.isNotEmpty) queryParams['estado'] = estado;
     if (usuId != null && usuId != 0) queryParams['usuId'] = usuId;
+    if (fechaDateDesde != null) queryParams['fechaDateDesde'] = DateFormat('yyyy-MM-dd').format(fechaDateDesde);
+    if (fechaDateHasta != null) queryParams['fechaDateHasta'] = DateFormat('yyyy-MM-dd').format(fechaDateHasta);
 
     try {
       var headers = {'Authorization': token};
@@ -523,29 +526,19 @@ class EntregaServices {
         data: data,
       );
       statusCode = 1;
+      return;
     } catch (e) {
       statusCode = 0;
       errorManagment(e, context);
     }
   }
 
-  Future<void> postDevolucionDespachoBulto(
+  Future<void> postImprimirRetiro(
     BuildContext context,
-    List<int> bultoId,
-    int agenciaUFId,
-    String? nroTicket,
-    String despachadoPor,
-    String comentario,
+    int retiroId,
     String token,
   ) async {
-    String link = '$apirUrl/api/v1/bultos/devolucion';
-    var data = {
-      "bultoIds": bultoId,
-      "agenciaUFId": agenciaUFId,
-      "nroTicket": nroTicket,
-      "despachadoPor": despachadoPor,
-      "comentario": comentario,
-    };
+    String link = '$apirUrl/api/v1/bultos/$retiroId/devolucion';
 
     try {
       var headers = {'Authorization': token};
@@ -555,12 +548,34 @@ class EntregaServices {
           method: 'POST',
           headers: headers,
         ),
-        data: data,
       );
       statusCode = 1;
     } catch (e) {
       statusCode = 0;
       errorManagment(e, context);
+    }
+  }  
+
+  Future<List<Retiro>> getRetiros(BuildContext context, String token) async {
+    String link = '$apirUrl/api/v1/bultos/retiro';
+
+    try {
+      var headers = {'Authorization': token};
+      var resp = await _dio.request(
+        link,
+        options: Options(
+          method: 'GET',
+          headers: headers,
+        ),
+      );
+      statusCode = 1;
+
+      final List<dynamic> retirosList = resp.data;
+      return retirosList.map((obj) => Retiro.fromJson(obj)).toList();
+    } catch (e) {
+      statusCode = 0;
+      errorManagment(e, context);
+      return [];
     }
   }
 

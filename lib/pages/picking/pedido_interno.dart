@@ -175,7 +175,11 @@ class _PedidoInternoState extends State<PedidoInterno> {
     );
     
     provider.setUbicacionSeleccionada(ubicacion);
-    appRouter.push('/pickingProductos');
+    if (orderProvider.tipo == 'TE' || orderProvider.tipo == "C") {
+      appRouter.push('/pickingCompra');
+    } else {
+      appRouter.push('/pickingProductos');
+    }
   }
 
   @override
@@ -342,7 +346,11 @@ class _PedidoInternoState extends State<PedidoInterno> {
     provider.setOrdenPickingInterna(order);
     provider.setLineasPicking(order.lineas ?? []);
     provider.setModoSeleccionUbicacion(false);
-    appRouter.push('/pickingProductos');
+    if (orderProvider.tipo == 'TE' || orderProvider.tipo == 'C') {
+      appRouter.push('/pickingCompra');
+    } else {
+      appRouter.push('/pickingProductos');
+    }
   }
 
   Widget _buildCommentSection(OrdenPicking order, ColorScheme colors) {

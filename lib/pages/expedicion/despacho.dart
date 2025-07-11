@@ -2,8 +2,12 @@ import 'package:deposito/config/router/pages.dart';
 import 'package:deposito/models/bulto.dart';
 import 'package:deposito/models/forma_envio.dart';
 import 'package:deposito/services/entrega_services.dart';
+import 'package:deposito/widgets/carteles.dart';
+import 'package:deposito/widgets/escaner_pda.dart';
 import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:provider/provider.dart';
 
 class DespachoPage extends StatefulWidget {
   const DespachoPage({super.key});
@@ -19,19 +23,29 @@ class DespachoPageState extends State<DespachoPage> {
   FormaEnvio? transportistaSeleccionado;
   final TextEditingController _retiraController = TextEditingController();
   final TextEditingController _comentarioController = TextEditingController();
+  final FocusNode focoDeScanner = FocusNode();
+  final TextEditingController textController = TextEditingController();
   String token = '';
   bool isLoading = true;
+  int _groupValueBultos = 2; // Default to "Cerrado"
 
   @override
   void initState() {
     super.initState();
     loadData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        focoDeScanner.requestFocus();
+      }
+    });
   }
 
   @override
   void dispose() {
     _retiraController.dispose();
     _comentarioController.dispose();
+    focoDeScanner.dispose();
+    textController.dispose();
     super.dispose();
   }
 
@@ -62,10 +76,15 @@ class DespachoPageState extends State<DespachoPage> {
     });
     
     try {
+      String? estado;
+      if (_groupValueBultos != 0) {
+        estado = ['PENDIENTE', 'CERRADO', 'DESPACHADO'][_groupValueBultos - 1];
+      }
+      
       bultos = await EntregaServices().getBultos(
         context, 
         token, 
-        estado: 'CERRADO',
+        estado: estado,
         agenciaTrId: agenciaTrId,
       );
       
@@ -80,6 +99,42 @@ class DespachoPageState extends State<DespachoPage> {
           isLoading = false;
         });
       }
+    }
+  }
+
+  bool _todosBultosDespachados() {
+    return selectedBultos.isNotEmpty && selectedBultos.every((b) => b.estado == 'DESPACHADO');
+  }
+
+  bool _esBultoImprimible(Bulto bulto) {
+    return (bulto.estado == 'CERRADO' || bulto.estado == 'DESPACHADO') && bulto.retiroId != null;
+  }
+
+  void _mantenerFocoScanner() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        focoDeScanner.requestFocus();
+      }
+    });
+  }
+
+  Future<void> procesarEscaneoBulto(String value) async {
+    if (value.isEmpty) return;
+    
+    try {
+      var bultoEncontrado = bultos.firstWhere((bulto) => bulto.bultoId == int.parse(value));
+      
+      if (!selectedBultos.contains(bultoEncontrado)) {
+        setState(() {
+          selectedBultos.add(bultoEncontrado);
+        });
+      }
+      
+      textController.clear();
+      _mantenerFocoScanner();
+    } catch (e) {
+      Carteles.showDialogs(context, 'Error al procesar el escaneo', false, false, false);
+      _mantenerFocoScanner();
     }
   }
 
@@ -105,6 +160,7 @@ class DespachoPageState extends State<DespachoPage> {
                     transportistaSeleccionado = null;
                   });
                   await _cargarBultos();
+                  _mantenerFocoScanner();
                 },
               ),
             if (selectedBultos.isNotEmpty)
@@ -141,6 +197,7 @@ class DespachoPageState extends State<DespachoPage> {
                   await _cargarBultos(
                     agenciaTrId: newValue?.formaEnvioId
                   );
+                  _mantenerFocoScanner();
                 },
                 dropdownDecoratorProps: const DropDownDecoratorProps(
                   dropdownSearchDecoration: InputDecoration(
@@ -151,6 +208,26 @@ class DespachoPageState extends State<DespachoPage> {
                 compareFn: (item, selectedItem) => item.formaEnvioId == selectedItem.formaEnvioId,
               ),
             ),
+            CupertinoSegmentedControl<int>(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              groupValue: _groupValueBultos,
+              borderColor: Theme.of(context).colorScheme.primary,
+              selectedColor: Theme.of(context).colorScheme.primary,
+              unselectedColor: Colors.white,
+              children: const {
+                0: Text('Todos'),
+                1: Text('Pendiente'),
+                2: Text('Cerrado'),
+                3: Text('Despachado'),
+              },
+              onValueChanged: (newValue) {
+                setState(() {
+                  _groupValueBultos = newValue;
+                  _cargarBultos(agenciaTrId: transportistaSeleccionado?.formaEnvioId);
+                });
+              },
+            ),
+            const SizedBox(height: 10),
             Expanded(
               child: isLoading
                   ? const Center(child: CircularProgressIndicator())
@@ -161,7 +238,12 @@ class DespachoPageState extends State<DespachoPage> {
                           itemBuilder: (context, index) => _buildBultoItem(bultos[index]),
                         ),
             ),
-            if (selectedBultos.isNotEmpty) _buildDespacharButton(),
+            EscanerPDA(
+              onScan: procesarEscaneoBulto,
+              focusNode: focoDeScanner,
+              controller: textController,
+            ),
+            if (selectedBultos.isNotEmpty) _buildActionButtons(),
           ],
         ),
       ),
@@ -203,6 +285,8 @@ class DespachoPageState extends State<DespachoPage> {
               Text('Localidad: ${bulto.localidad}'),
               if (bulto.agenciaTrId != null)
                 Text('Transportista: ${_getNombreTransportista(bulto.agenciaTrId)}'),
+              if (bulto.retiroId != null)
+                Text('Retiro ID: ${bulto.retiroId}'),
               const SizedBox(height: 8),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -221,6 +305,108 @@ class DespachoPageState extends State<DespachoPage> {
     );
   }
 
+  Widget _buildActionButtons() {
+    if (selectedBultos.length == 1 && _esBultoImprimible(selectedBultos.first)) {
+      return Row(
+        children: [
+          _buildImprimirButton(),
+          _buildDespacharButton(),
+        ],
+      );
+    }
+    return _buildDespacharButton();
+  }
+
+  Widget _buildImprimirButton() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          minimumSize: const Size(double.infinity, 50),
+          backgroundColor: Colors.green,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+        onPressed: () => _confirmarImpresion(),
+        child: const Text(
+          'IMPRIMIR RETIRO',
+          style: TextStyle(fontSize: 18, color: Colors.white),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDespacharButton() {
+    final colors = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          minimumSize: const Size(25, 50),
+          backgroundColor: _todosBultosDespachados() ? Colors.orange : colors.primary,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+        onPressed: _todosBultosDespachados() ? _showDevolucionDialog : _showDespachoDialog,
+        child: Text(
+          _todosBultosDespachados() ? 'DEVOLVER (${selectedBultos.length})' : 'DESPACHAR (${selectedBultos.length})',
+          style: const TextStyle(fontSize: 18, color: Colors.white),
+        ),
+      ),
+    );
+  }
+
+  void _confirmarImpresion() async {
+    final bulto = selectedBultos.first;
+    bool confirmado = await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirmar Impresión'),
+        content: const Text('¿Desea imprimir los datos del retiro de este bulto?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('CANCELAR'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('ACEPTAR'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmado == true) {
+      await _imprimirRetiro(bulto.retiroId!);
+    }
+  }
+
+  Future<void> _imprimirRetiro(int retiroId) async {
+    try {
+      await EntregaServices().postImprimirRetiro(
+        context,
+        retiroId,
+        token,
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Impresión del retiro enviada correctamente'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al imprimir: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   String _getNombreTransportista(int? agenciaTrId) {
     if (agenciaTrId == null) return 'No asignado';
     final transportista = transportistas.firstWhere(
@@ -237,6 +423,7 @@ class DespachoPageState extends State<DespachoPage> {
       case 'Listo': return Colors.green;
       case 'CERRADO': return Colors.purple;
       case 'DESPACHADO': return Colors.teal;
+      case 'DEVUELTO': return Colors.red;
       default: return Colors.grey;
     }
   }
@@ -249,27 +436,7 @@ class DespachoPageState extends State<DespachoPage> {
         selectedBultos.add(bulto);
       }
     });
-  }
-
-  Widget _buildDespacharButton() {
-    final colors = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          minimumSize: const Size(25, 50),
-          backgroundColor: colors.primary,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-        ),
-        onPressed: _showDespachoDialog,
-        child: Text(
-          'DESPACHAR (${selectedBultos.length})',
-          style: const TextStyle(fontSize: 18, color: Colors.white),
-        ),
-      ),
-    );
+    _mantenerFocoScanner();
   }
 
   void _showDespachoDialog() {
@@ -327,6 +494,67 @@ class DespachoPageState extends State<DespachoPage> {
               Navigator.pop(context);
             },
             child: const Text('CONFIRMAR DESPACHO'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDevolucionDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Registrar Devolución'),
+        content: SingleChildScrollView(
+          child: SizedBox(
+            width: MediaQuery.of(context).size.width * 0.5,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: _retiraController,
+                  decoration: const InputDecoration(
+                    labelText: 'Persona que devuelve',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _comentarioController,
+                  decoration: const InputDecoration(
+                    labelText: 'Comentarios adicionales',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 3,
+                ),
+                const SizedBox(height: 16),
+                const Divider(),
+                const Text(
+                  'Bultos a devolver:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                ...selectedBultos.map((bulto) => ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.inventory, size: 20),
+                  title: Text('Bulto #${bulto.bultoId}'),
+                  subtitle: Text('Cliente: ${bulto.nombreCliente}'),
+                )),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('CANCELAR'),
+          ),
+          TextButton(
+            onPressed: () {
+              _procesarDevolucion();
+              Navigator.pop(context);
+            },
+            child: const Text('CONFIRMAR DEVOLUCIÓN'),
           ),
         ],
       ),
@@ -416,6 +644,70 @@ class DespachoPageState extends State<DespachoPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error al despachar: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _procesarDevolucion() async {
+    final devueltoPor = _retiraController.text.trim();
+    final comentario = _comentarioController.text.trim();
+
+    if (devueltoPor.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Debe ingresar el nombre de quien devuelve'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (selectedBultos.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No hay bultos seleccionados para devolver'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    try {
+      await EntregaServices().postDevolucionBulto(
+        context,
+        selectedBultos.map((b) => b.bultoId).toList(),
+        devueltoPor,
+        comentario,
+        token,
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${selectedBultos.length} bultos devueltos por $devueltoPor'),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+
+      // Actualizar el estado de los bultos en la lista local
+      setState(() {
+        for (var bulto in bultos) {
+          if (selectedBultos.contains(bulto)) {
+            bulto = bulto.copyWith(estado: 'DEVUELTO');
+          }
+        }
+        selectedBultos.clear();
+        _retiraController.clear();
+        _comentarioController.clear();
+      });
+
+      // Recargar los datos desde el servidor
+      await _cargarBultos(agenciaTrId: transportistaSeleccionado?.formaEnvioId);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al devolver: ${e.toString()}'),
           backgroundColor: Colors.red,
         ),
       );

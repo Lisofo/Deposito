@@ -7,6 +7,7 @@ import 'package:deposito/provider/product_provider.dart';
 import 'package:deposito/services/almacen_services.dart';
 import 'package:deposito/widgets/cargando.dart';
 import 'package:deposito/widgets/custom_speed_dial.dart';
+import 'package:deposito/widgets/escaner_pda.dart';
 import 'package:deposito/widgets/ubicacion_dropdown.dart';
 import 'package:flutter/material.dart';
 import 'package:deposito/config/router/router.dart';
@@ -14,7 +15,6 @@ import 'package:deposito/models/product.dart';
 import 'package:deposito/widgets/custom_button.dart';
 import 'package:provider/provider.dart';
 import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
-import 'package:visibility_detector/visibility_detector.dart';
 
 class InventarioPage extends StatefulWidget {
   const InventarioPage({super.key});
@@ -122,25 +122,10 @@ class _InventarioPageState extends State<InventarioPage> {
                   hintText: 'Seleccione una ubicacion',
                 ),
                 const SizedBox(height: 20,),
-                VisibilityDetector(
-                  key: const Key('scanner-field-visibility'),
-                  onVisibilityChanged: (info) {
-                    if (info.visibleFraction > 0) {
-                      focoDeScanner.requestFocus();
-                    }
-                  },
-                  child: TextFormField(
-                    focusNode: focoDeScanner,
-                    cursorColor: Colors.transparent,
-                    decoration: const InputDecoration(
-                      border: UnderlineInputBorder(borderSide: BorderSide.none)
-                    ),
-                    style: const TextStyle(color: Colors.transparent),
-                    autofocus: true,
-                    keyboardType: TextInputType.none,
-                    controller: textController,
-                    onFieldSubmitted: procesarEscaneo, // Cambiado a usar onFieldSubmitted
-                  ),
+                EscanerPDA(
+                  onScan: procesarEscaneo,
+                  focusNode: focoDeScanner,
+                  controller: textController
                 ),
                 const Expanded(
                   child: Text('Escanee una ubicación'),

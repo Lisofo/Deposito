@@ -121,6 +121,14 @@ class ProductProvider with ChangeNotifier {
   Entrega _entrega = Entrega.empty();
   Entrega get entrega => _entrega;
 
+  bool _vistaMonitor = false;
+  bool get vistaMonitor => _vistaMonitor;
+
+  void setVistaMonitor (bool vista) {
+    _vistaMonitor = vista;
+    notifyListeners();
+  }
+
   void setEntrega (Entrega entrega) {
     _entrega = entrega;
     notifyListeners();

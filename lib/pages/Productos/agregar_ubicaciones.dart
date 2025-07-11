@@ -10,10 +10,10 @@ import 'package:deposito/services/almacen_services.dart';
 import 'package:deposito/widgets/carteles.dart';
 import 'package:deposito/widgets/custom_button.dart';
 import 'package:deposito/widgets/custom_form_field.dart';
+import 'package:deposito/widgets/escaner_pda.dart';
 import 'package:deposito/widgets/ubicacion_dropdown.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:visibility_detector/visibility_detector.dart';
 
 class AgregarUbicaciones extends StatefulWidget {
   const AgregarUbicaciones({super.key});
@@ -161,25 +161,10 @@ class _AgregarUbicacionesState extends State<AgregarUbicaciones> {
                 }
               ),
             ),
-            VisibilityDetector(
-              key: const Key('scanner-field-visibility'),
-              onVisibilityChanged: (info) {
-                if (info.visibleFraction > 0) {
-                  focoDeScanner.requestFocus();
-                }
-              },
-              child: TextFormField(
-                focusNode: focoDeScanner,
-                cursorColor: Colors.transparent,
-                decoration: const InputDecoration(
-                  border: UnderlineInputBorder(borderSide: BorderSide.none)
-                ),
-                style: const TextStyle(color: Colors.transparent),
-                autofocus: true,
-                keyboardType: TextInputType.none,
-                controller: textController,
-                onFieldSubmitted: procesarEscaneo, // Cambiado a usar onFieldSubmitted
-              ),
+            EscanerPDA(
+              onScan: procesarEscaneo,
+              focusNode: focoDeScanner,
+              controller: textController
             ),
           ],
         ),

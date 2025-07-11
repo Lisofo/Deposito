@@ -1,6 +1,7 @@
 import 'package:deposito/search/product_search_delegate.dart';
 import 'package:deposito/services/almacen_services.dart';
 import 'package:deposito/widgets/custom_speed_dial.dart';
+import 'package:deposito/widgets/escaner_pda.dart';
 import 'package:deposito/widgets/ubicacion_dropdown.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -13,7 +14,6 @@ import 'package:deposito/services/product_services.dart';
 import 'package:deposito/widgets/carteles.dart';
 import 'package:deposito/widgets/custom_button.dart';
 import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
-import 'package:visibility_detector/visibility_detector.dart';
 
 class TransferenciaAlmacenPage extends StatefulWidget {
   const TransferenciaAlmacenPage({super.key});
@@ -160,28 +160,10 @@ class _TransferenciaAlmacenPageState extends State<TransferenciaAlmacenPage> {
                   },
                 ),
               ),
-              VisibilityDetector(
-                key: const Key('scanner-field-visibility'),
-                onVisibilityChanged: (info) {
-                  if (info.visibleFraction > 0) {
-                    focoDeScanner.requestFocus();
-                  }
-                },
-                child: SizedBox(
-                  width: 100,
-                  child: TextFormField(
-                    focusNode: focoDeScanner,
-                    cursorColor: Colors.transparent,
-                    decoration: const InputDecoration(
-                      border: UnderlineInputBorder(borderSide: BorderSide.none),
-                    ),
-                    style: const TextStyle(color: Colors.transparent),
-                    autofocus: true,
-                    keyboardType: TextInputType.none,
-                    controller: textController,
-                    onFieldSubmitted: procesarEscaneoProducto,
-                  ),
-                ),
+              EscanerPDA(
+                onScan: procesarEscaneoProducto,
+                focusNode: focoDeScanner,
+                controller: textController
               ),
               // Botón para continuar a la siguiente pantalla (solo si la ubicación ya fue escaneada)
               Row(

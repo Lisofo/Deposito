@@ -80,7 +80,7 @@ class MyApp extends StatelessWidget {
         scrollbarTheme: ScrollbarThemeData(
           thumbVisibility: WidgetStateProperty.all(true),
           trackVisibility: WidgetStateProperty.all(true),
-          thickness: WidgetStateProperty.all(12),
+          thickness: WidgetStateProperty.all(6),
           radius: const Radius.circular(10),
           minThumbLength: 50,
           interactive: true,

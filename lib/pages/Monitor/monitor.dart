@@ -1,16 +1,20 @@
 // ignore_for_file: unused_field
 
+import 'dart:async';
 import 'package:deposito/config/router/router.dart';
 import 'package:deposito/models/almacen.dart';
 import 'package:deposito/models/bulto.dart';
+import 'package:deposito/models/entrega.dart';
 import 'package:deposito/models/modo_envio.dart';
 import 'package:deposito/models/orden_picking.dart';
 import 'package:deposito/models/tipo_bulto.dart';
 import 'package:deposito/models/usuario.dart';
+import 'package:deposito/models/retiro.dart';
 import 'package:deposito/provider/product_provider.dart';
 import 'package:deposito/services/entrega_services.dart';
 import 'package:deposito/services/picking_services.dart';
 import 'package:deposito/widgets/filtros_bulto.dart';
+import 'package:deposito/widgets/filtros_entregas.dart';
 import 'package:deposito/widgets/filtros_picking.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -34,14 +38,24 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
   final TextEditingController _searchControllerBultoId = TextEditingController();
   final GlobalKey<RefreshIndicatorState> _refreshIndicatorKey = GlobalKey<RefreshIndicatorState>();
   late Almacen almacen = Almacen.empty();
+  Timer? _refreshTimer;
+  DateTime _ultimaActualizacion = DateTime.now();
 
   // Datos para órdenes
   List<OrdenPicking> _ordenes = [];
   List<OrdenPicking> _filteredOrdenes = [];
   
+  // Datos para entregas
+  List<Entrega> _entregas = [];
+  List<Entrega> _filteredEntregas = [];
+  
   // Datos para bultos
   List<Bulto> _bultos = [];
   List<Bulto> _filteredBultos = [];
+  
+  // Datos para retiros
+  List<Retiro> _retiros = [];
+  List<Retiro> _filteredRetiros = [];
   
   // Datos para filtros
   List<Usuario> usuarios = [];
@@ -60,17 +74,22 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
   List<Map<String, String>>? _selectedTipos = [];
   Usuario? _selectedUsuarioMod;
   Usuario? _selectedUsuarioCreado;
-  int _groupValueOrdenes = 0; // 0 = Todos, 1 = Pendiente, 2 = En Proceso, 3 = CERRADO
+  int _groupValueOrdenes = 0;
+
+  // Filtros para entregas
+  DateTime? _fechaDesdeEntregas;
+  DateTime? _fechaHastaEntregas;
+  int _groupValueEntregas = 0;
+  Usuario? _selectedUsuarioEntrega;
 
   // Filtros para bultos
   DateTime? _fechaDesdeBultos;
   DateTime? _fechaHastaBultos;
-  int _groupValueBultos = 0; // 0 = Todos, 1 = Pendiente, 2 = Cerrado, 3 = Despachado
+  int _groupValueBultos = 0;
   int? _selectedModoEnvioId;
   int? _selectedTipoBultoId;
   Usuario? _selectedUsuarioArmado;
 
-  // Opciones para dropdowns
   final List<String> _prioridades = ['ALTA', 'NORMAL', 'BAJA', 'TODAS'];
   final List<Map<String, String>> _tipos = [
     {'value': 'C', 'label': 'Compra'},
@@ -86,21 +105,41 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
+    _tabController.addListener(_handleTabChange);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       token = context.read<ProductProvider>().token;
       _loadData();
+      _startRefreshTimer();
     });
   }
 
   @override
   void dispose() {
+    _refreshTimer?.cancel();
+    _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
     _searchControllerNombre.dispose();
     _searchControllerNumeroDoc.dispose();
     _searchControllerClienteBulto.dispose();
     _searchControllerBultoId.dispose();
     super.dispose();
+  }
+
+  void _handleTabChange() {
+    if (_tabController.indexIsChanging) {
+      _startRefreshTimer();
+      _loadData();
+    }
+  }
+
+  void _startRefreshTimer() {
+    _refreshTimer?.cancel();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      if (mounted) {
+        _loadData();
+      }
+    });
   }
 
   Future<void> _loadData() async {
@@ -112,70 +151,105 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
       // Cargar datos comunes
       usuarios = await _pickingServices.getUsuarios(context, token);
       
-      // Cargar datos específicos según la pestaña activa
-      if (_tabController.index == 0 || _ordenes.isEmpty) {
-        // Cargar órdenes
-        final resultOrdenes = await _pickingServices.getOrdenesPicking(
-          context,
-          almacen.almacenId,
-          token,
-          tipo: _selectedTipos != null && _selectedTipos!.isNotEmpty 
-              ? _selectedTipos!.map((t) => t['value']!).join(',') 
-              : null,
-          prioridad: _selectedPrioridad != null && _selectedPrioridad != 'TODAS' 
-              ? _selectedPrioridad 
-              : null,
-          fechaDateDesde: _fechaDesdeOrdenes,
-          fechaDateHasta: _fechaHastaOrdenes,
-          estado: _groupValueOrdenes != 0 
-              ? ['PENDIENTE', 'EN PROCESO', 'CERRADO'][_groupValueOrdenes - 1] 
-              : null,
-          numeroDocumento: _searchControllerNumeroDoc.text.isNotEmpty ? _searchControllerNumeroDoc.text : null,
-          nombre: _searchControllerNombre.text.isNotEmpty ? _searchControllerNombre.text : null,
-          usuId: _selectedUsuarioCreado?.usuarioId,
-          modUsuId: _selectedUsuarioMod?.usuarioId,
-        );
+      // Cargar datos según la pestaña activa
+      switch (_tabController.index) {
+        case 0:
+          final resultOrdenes = await _pickingServices.getOrdenesPicking(
+            context,
+            almacen.almacenId,
+            token,
+            tipo: _selectedTipos != null && _selectedTipos!.isNotEmpty 
+                ? _selectedTipos!.map((t) => t['value']!).join(',') 
+                : null,
+            prioridad: _selectedPrioridad != null && _selectedPrioridad != 'TODAS' 
+                ? _selectedPrioridad 
+                : null,
+            fechaDateDesde: _fechaDesdeOrdenes,
+            fechaDateHasta: _fechaHastaOrdenes,
+            estado: _groupValueOrdenes != 0 
+                ? ['PENDIENTE', 'EN PROCESO', 'CERRADO'][_groupValueOrdenes - 1] 
+                : null,
+            numeroDocumento: _searchControllerNumeroDoc.text.isNotEmpty ? _searchControllerNumeroDoc.text : null,
+            nombre: _searchControllerNombre.text.isNotEmpty ? _searchControllerNombre.text : null,
+            usuId: _selectedUsuarioCreado?.usuarioId,
+            modUsuId: _selectedUsuarioMod?.usuarioId,
+          );
+          
+          if (resultOrdenes != null && _pickingServices.statusCode == 1) {
+            setState(() {
+              _ordenes = resultOrdenes;
+              _filteredOrdenes = List.from(_ordenes);
+              _ultimaActualizacion = DateTime.now();
+            });
+          }
+          break;
         
-        if (resultOrdenes != null && _pickingServices.statusCode == 1) {
-          setState(() {
-            _ordenes = resultOrdenes;
-            _filteredOrdenes = List.from(_ordenes);
-          });
-        }
-      }
-      
-      if (_tabController.index == 1 || _bultos.isEmpty) {
-        // Cargar datos específicos de bultos
+        case 1:
+          final resultEntregas = await _entregaServices.getEntregas(
+            context,
+            token,
+            usuId: _selectedUsuarioEntrega?.usuarioId,
+            estado: _groupValueEntregas != 0 
+                ? ['PENDIENTE', 'EN PROCESO', 'FINALIZADO'][_groupValueEntregas - 1] 
+                : null,
+            fechaDateDesde: _fechaDesdeEntregas,
+            fechaDateHasta: _fechaHastaEntregas
+          );
+          
+          if (resultEntregas != [] && _entregaServices.statusCode == 1) {
+            setState(() {
+              _entregas = resultEntregas;
+              _filteredEntregas = List.from(_entregas);
+              _ultimaActualizacion = DateTime.now();
+            });
+          }
+          break;
         
-        modosEnvio = await _entregaServices.modoEnvio(context, token);
-        tiposBulto = await _entregaServices.tipoBulto(context, token);
+        case 2:
+          modosEnvio = await _entregaServices.modoEnvio(context, token);
+          tiposBulto = await _entregaServices.tipoBulto(context, token);
+          
+          final resultBultos = await _entregaServices.getBultos(
+            context,
+            token,
+            estado: _groupValueBultos != 0 
+                ? ['PENDIENTE', 'CERRADO', 'DESPACHADO'][_groupValueBultos - 1] 
+                : null,
+            fechaDateDesde: _fechaDesdeBultos != null ? DateFormat('yyyy-MM-dd').format(_fechaDesdeBultos!) : null,
+            fechaDateHasta: _fechaHastaBultos != null ? DateFormat('yyyy-MM-dd').format(_fechaHastaBultos!) : null,
+            nombreCliente: _searchControllerClienteBulto.text.isNotEmpty ? _searchControllerClienteBulto.text : null,
+            bultoId: _searchControllerBultoId.text.isNotEmpty ? int.tryParse(_searchControllerBultoId.text) : null,
+            armadoPorUsuId: _selectedUsuarioArmado?.usuarioId,
+            modoEnvioId: _selectedModoEnvioId,
+            tipoBultoId: _selectedTipoBultoId,
+          );
+          
+          if (resultBultos != [] && _entregaServices.statusCode == 1) {
+            setState(() {
+              _bultos = resultBultos;
+              _filteredBultos = List.from(_bultos);
+              _ultimaActualizacion = DateTime.now();
+            });
+          }
+          break;
         
-        // Cargar bultos
-        final resultBultos = await _entregaServices.getBultos(
-          context,
-          token,
-          estado: _groupValueBultos != 0 
-              ? ['PENDIENTE', 'CERRADO', 'DESPACHADO'][_groupValueBultos - 1] 
-              : null,
-          fechaDateDesde: _fechaDesdeBultos != null ? DateFormat('yyyy-MM-dd').format(_fechaDesdeBultos!) : null,
-          fechaDateHasta: _fechaHastaBultos != null ? DateFormat('yyyy-MM-dd').format(_fechaHastaBultos!) : null,
-          nombreCliente: _searchControllerClienteBulto.text.isNotEmpty ? _searchControllerClienteBulto.text : null,
-          bultoId: _searchControllerBultoId.text.isNotEmpty ? int.tryParse(_searchControllerBultoId.text) : null,
-          armadoPorUsuId: _selectedUsuarioArmado?.usuarioId,
-          modoEnvioId: _selectedModoEnvioId,
-          tipoBultoId: _selectedTipoBultoId,
-        );
-        
-        if (resultBultos != [] && _entregaServices.statusCode == 1) {
-          setState(() {
-            _bultos = resultBultos;
-            _filteredBultos = List.from(_bultos);
-          });
-        }
+        case 3:
+          final resultRetiros = await _entregaServices.getRetiros(context, token);
+          
+          if (resultRetiros != [] && _entregaServices.statusCode == 1) {
+            setState(() {
+              _retiros = resultRetiros;
+              _filteredRetiros = List.from(_retiros);
+              _ultimaActualizacion = DateTime.now();
+            });
+          }
+          break;
       }
     } finally {
-      _isFilterExpanded = false;
-      setState(() => _isLoading = false);
+      setState(() {
+        _isFilterExpanded = false;
+        _isLoading = false;
+      });
     }
   }
 
@@ -185,53 +259,74 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
 
   void _resetFilters() {
     setState(() {
-      if (_tabController.index == 0) {
-        // Reset filtros de órdenes
-        _fechaDesdeOrdenes = null;
-        _fechaHastaOrdenes = null;
-        _selectedPrioridad = null;
-        _selectedTipos?.clear();
-        _groupValueOrdenes = 0;
-        _searchControllerNombre.clear();
-        _searchControllerNumeroDoc.clear();
-        _selectedUsuarioCreado = null;
-        _selectedUsuarioMod = null;
-      } else {
-        // Reset filtros de bultos
-        _fechaDesdeBultos = null;
-        _fechaHastaBultos = null;
-        _groupValueBultos = 0;
-        _selectedModoEnvioId = null;
-        _selectedTipoBultoId = null;
-        _selectedUsuarioArmado = null;
-        _searchControllerClienteBulto.clear();
-        _searchControllerBultoId.clear();
+      switch (_tabController.index) {
+        case 0:
+          _fechaDesdeOrdenes = null;
+          _fechaHastaOrdenes = null;
+          _selectedPrioridad = null;
+          _selectedTipos?.clear();
+          _groupValueOrdenes = 0;
+          _searchControllerNombre.clear();
+          _searchControllerNumeroDoc.clear();
+          _selectedUsuarioCreado = null;
+          _selectedUsuarioMod = null;
+          break;
+        case 1:
+          _fechaDesdeEntregas = null;
+          _fechaHastaEntregas = null;
+          _groupValueEntregas = 0;
+          _selectedUsuarioEntrega = null;
+          break;
+        case 2:
+          _fechaDesdeBultos = null;
+          _fechaHastaBultos = null;
+          _groupValueBultos = 0;
+          _selectedModoEnvioId = null;
+          _selectedTipoBultoId = null;
+          _selectedUsuarioArmado = null;
+          _searchControllerClienteBulto.clear();
+          _searchControllerBultoId.clear();
+          break;
+        case 3:
+          // No hay filtros para retiros
+          break;
       }
       _isFilterExpanded = false;
-      _loadData();
     });
+    _loadData();
   }
   
   bool _hasActiveFilters() {
-    if (_tabController.index == 0) {
-      return _fechaDesdeOrdenes != null ||
-            _fechaHastaOrdenes != null ||
-            (_selectedPrioridad != null && _selectedPrioridad != 'TODAS') ||
-            (_selectedTipos != null && _selectedTipos!.isNotEmpty) ||
-            _searchControllerNombre.text.isNotEmpty ||
-            _searchControllerNumeroDoc.text.isNotEmpty ||
-            _selectedUsuarioCreado != null ||
-            _selectedUsuarioMod != null ||
-            _groupValueOrdenes != 0;
-    } else {
-      return _fechaDesdeBultos != null ||
-            _fechaHastaBultos != null ||
-            _searchControllerClienteBulto.text.isNotEmpty ||
-            _searchControllerBultoId.text.isNotEmpty ||
-            _selectedUsuarioArmado != null ||
-            _selectedModoEnvioId != null ||
-            _selectedTipoBultoId != null ||
-            _groupValueBultos != 0;
+    switch (_tabController.index) {
+      case 0:
+        return _fechaDesdeOrdenes != null ||
+              _fechaHastaOrdenes != null ||
+              (_selectedPrioridad != null && _selectedPrioridad != 'TODAS') ||
+              (_selectedTipos != null && _selectedTipos!.isNotEmpty) ||
+              _searchControllerNombre.text.isNotEmpty ||
+              _searchControllerNumeroDoc.text.isNotEmpty ||
+              _selectedUsuarioCreado != null ||
+              _selectedUsuarioMod != null ||
+              _groupValueOrdenes != 0;
+      case 1:
+        return _fechaDesdeEntregas != null ||
+              _fechaHastaEntregas != null ||
+              _selectedUsuarioEntrega != null ||
+              _groupValueEntregas != 0;
+      case 2:
+        return _fechaDesdeBultos != null ||
+              _fechaHastaBultos != null ||
+              _searchControllerClienteBulto.text.isNotEmpty ||
+              _searchControllerBultoId.text.isNotEmpty ||
+              _selectedUsuarioArmado != null ||
+              _selectedModoEnvioId != null ||
+              _selectedTipoBultoId != null ||
+              _groupValueBultos != 0;
+      case 3:
+        // No hay filtros para retiros
+        return false;
+      default:
+        return false;
     }
   }
 
@@ -257,7 +352,17 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
             });
           },
         ),
-        const SizedBox(height: 10),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Text(
+            'Última actualización: ${DateFormat('dd/MM/yyyy HH:mm:ss').format(_ultimaActualizacion)}',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[600],
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ),
         Expanded(
           child: _isLoading
               ? const Center(child: CircularProgressIndicator())
@@ -271,6 +376,59 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
                           itemBuilder: (context, index) {
                             final orden = _filteredOrdenes[index];
                             return _buildOrdenCard(orden);
+                          },
+                        ),
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEntregasTab() {
+    return Column(
+      children: [
+        CupertinoSegmentedControl<int>(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          groupValue: _groupValueEntregas,
+          borderColor: Theme.of(context).colorScheme.primary,
+          selectedColor: Theme.of(context).colorScheme.primary,
+          unselectedColor: Colors.white,
+          children: const {
+            0: Text('Todos'),
+            1: Text('Pendiente'),
+            2: Text('En Proceso'),
+            3: Text('Finalizada'),
+          },
+          onValueChanged: (newValue) {
+            setState(() {
+              _groupValueEntregas = newValue;
+              _loadData();
+            });
+          },
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Text(
+            'Última actualización: ${DateFormat('dd/MM/yyyy HH:mm:ss').format(_ultimaActualizacion)}',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[600],
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ),
+        Expanded(
+          child: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : RefreshIndicator(
+                  onRefresh: _refreshData,
+                  child: _filteredEntregas.isEmpty
+                      ? _buildEmptyState('No se encontraron entregas')
+                      : ListView.builder(
+                          itemCount: _filteredEntregas.length,
+                          itemBuilder: (context, index) {
+                            final entrega = _filteredEntregas[index];
+                            return _buildEntregaCard(entrega);
                           },
                         ),
                 ),
@@ -301,7 +459,17 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
             });
           },
         ),
-        const SizedBox(height: 10),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Text(
+            'Última actualización: ${DateFormat('dd/MM/yyyy HH:mm:ss').format(_ultimaActualizacion)}',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[600],
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ),
         Expanded(
           child: _isLoading
               ? const Center(child: CircularProgressIndicator())
@@ -320,6 +488,170 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
         ),
       ],
     );
+  }
+
+  Widget _buildRetirosTab() {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Text(
+            'Última actualización: ${DateFormat('dd/MM/yyyy HH:mm:ss').format(_ultimaActualizacion)}',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[600],
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ),
+        Expanded(
+          child: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : RefreshIndicator(
+                  onRefresh: _refreshData,
+                  child: _filteredRetiros.isEmpty
+                      ? _buildEmptyState('No se encontraron retiros')
+                      : ListView.builder(
+                          itemCount: _filteredRetiros.length,
+                          itemBuilder: (context, index) {
+                            final retiro = _filteredRetiros[index];
+                            return _buildRetiroCard(retiro);
+                          },
+                        ),
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRetiroCard(Retiro retiro) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      surfaceTintColor: Colors.white,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(
+          color: Colors.grey.shade300,
+          width: 1,
+        ),
+      ),
+      elevation: 2,
+      child: InkWell(
+        onTap: () => _confirmarImpresionRetiro(retiro),
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Retiro #${retiro.retiroId}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                      Text(
+                        'Fecha: ${retiro.fecha != null ? DateFormat('dd/MM/yyyy HH:mm').format(retiro.fecha!) : 'N/A'}',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Spacer(),
+                  if(kIsWeb)
+                    Expanded(
+                      flex: 10,
+                      child: SizedBox(
+                        width: MediaQuery.of(context).size.width * 0.8,
+                        child: Wrap(
+                          spacing: 16,
+                          runSpacing: 8,
+                          alignment: WrapAlignment.center,
+                          children: [
+                            _infoBox('Transportista:', '${retiro.agenciaTrId}'),
+                            _infoBox('Retirado por:', retiro.retiradoPor),
+                            _infoBox('Usuario:', '${retiro.usuarioId}'),
+                            if (retiro.comentario.isNotEmpty)
+                              _infoBox('Comentario:', retiro.comentario),
+                          ],
+                        ),
+                      ),
+                    ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.blue,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Text(
+                          'RETIRO',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              if (!kIsWeb)
+              Wrap(
+                spacing: 16,
+                runSpacing: 8,
+                children: [
+                  _infoBox('Transportista:', '${retiro.agenciaTrId}'),
+                  _infoBox('Retirado por:', retiro.retiradoPor),
+                  _infoBox('Usuario:', '${retiro.usuarioId}'),
+                  if (retiro.comentario.isNotEmpty)
+                    _infoBox('Comentario:', retiro.comentario),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmarImpresionRetiro(Retiro retiro) async {
+    bool confirmado = await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirmar Impresión'),
+        content: const Text('¿Desea imprimir los datos de este retiro?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('CANCELAR'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('ACEPTAR'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmado == true) {
+      await _imprimirRetiro(retiro.retiroId);
+    }
   }
 
   Widget _buildEmptyState(String message) {
@@ -493,9 +825,113 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
     );
   }
 
+  Widget _buildEntregaCard(Entrega entrega) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      surfaceTintColor: Colors.white,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(
+          color: Colors.grey.shade300,
+          width: 1,
+        ),
+      ),
+      elevation: 2,
+      child: InkWell(
+        onTap: () {
+          Provider.of<ProductProvider>(context, listen: false).setEntrega(entrega);
+          Provider.of<ProductProvider>(context, listen: false).setVistaMonitor(true);
+          appRouter.push('/salidaBultos');
+        },
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Entrega #${entrega.entregaId}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                      Text(
+                        'Fecha: ${DateFormat('dd/MM/yyyy HH:mm').format(entrega.fechaDate)}',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Spacer(),
+                  if(kIsWeb)
+                    Expanded(
+                      flex: 10,
+                      child: SizedBox(
+                        width: MediaQuery.of(context).size.width * 0.8,
+                        child: Wrap(
+                          spacing: 16,
+                          runSpacing: 8,
+                          alignment: WrapAlignment.center,
+                          children: [
+                            _infoBox('Almacén:', '${entrega.almacenIdOrigen}'),
+                            _infoBox('Usuario:', '${entrega.usuId}'),
+                            _infoBox('Bultos:', '${entrega.cantBultos}'),
+                          ],
+                        ),
+                      ),
+                    ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: _getEntregaStatusColor(entrega.estado),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          entrega.estado,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              if (!kIsWeb)
+              Wrap(
+                spacing: 16,
+                runSpacing: 8,
+                children: [
+                  _infoBox('Almacén:', '${entrega.almacenIdOrigen}'),
+                  _infoBox('Usuario:', '${entrega.usuId}'),
+                  _infoBox('Bultos:', '${entrega.cantBultos}'),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildBultoCard(Bulto bulto) {
-    // final colors = Theme.of(context).colorScheme;
-    
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       surfaceTintColor: Colors.white,
@@ -554,7 +990,7 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
                           alignment: WrapAlignment.center,
                           children: [
                             _infoBox('Cliente:', bulto.nombreCliente ?? 'N/A'),
-                            _infoBox('Fecha:', DateFormat('dd/MM/yyyy').format(bulto.fechaDate)),
+                            _infoBox('Fecha:', DateFormat('dd/MM/yyyy HH:mm').format(bulto.fechaDate)),
                             if (bulto.tipoBultoId != 0) 
                               _infoBox('Tipo Bulto:', '${bulto.tipoBultoId}'),
                             _infoBox('Armado por:', 'Usuario ${bulto.armadoPorUsuId}'),
@@ -587,7 +1023,6 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
                       ),
                       if (bulto.retiroId != null) 
                         Text('Retiro #${bulto.retiroId}'),
-                      Text('Items: ${bulto.contenido.length}'),
                     ],
                   ),
                 ],
@@ -599,7 +1034,7 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
                 runSpacing: 8,
                 children: [
                   _infoBox('Cliente:', bulto.nombreCliente ?? 'N/A'),
-                  _infoBox('Fecha:', DateFormat('dd/MM/yyyy').format(bulto.fechaDate)),
+                  _infoBox('Fecha:', DateFormat('dd/MM/yyyy HH:mm').format(bulto.fechaDate)),
                   if (bulto.tipoBultoId != 0)
                     _infoBox('Tipo Bulto:', '${bulto.tipoBultoId}'),
                   _infoBox('Armado por:', 'Usuario ${bulto.armadoPorUsuId}'),
@@ -646,7 +1081,27 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
         mostrarFiltroTipos: true,
         tiposDisponibles: _tipos,
       );
-    } else {
+    } else if (_tabController.index == 1) {
+      return FiltrosEntregas(
+        usuarios: usuarios,
+        onSearch: (fechaDesde, fechaHasta, usuario) {
+          setState(() {
+            _fechaDesdeEntregas = fechaDesde;
+            _fechaHastaEntregas = fechaHasta;
+            _selectedUsuarioEntrega = usuario;
+          });
+          _loadData();
+        },
+        isFilterExpanded: _isFilterExpanded,
+        onToggleFilter: (expanded) {
+          setState(() {
+            _isFilterExpanded = expanded;
+          });
+        },
+        cantidadDeEntregas: _filteredEntregas.length, 
+        onReset: _resetFilters,
+      );
+    } else if (_tabController.index == 2) {
       return FiltrosBulto(
         usuarios: usuarios,
         modosEnvio: modosEnvio,
@@ -674,6 +1129,9 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
         },
         cantidadDeBultos: _filteredBultos.length,
       );
+    } else {
+      // No hay filtros para la pestaña de retiros
+      return const SizedBox.shrink();
     }
   }
 
@@ -693,21 +1151,17 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
           bottom: TabBar(
             controller: _tabController,
             onTap: (index) {
-              setState(() {});
+              _startRefreshTimer();
               _loadData();
             },
             labelColor: colors.onPrimary,
             unselectedLabelColor: colors.onPrimary.withValues(alpha: 0.7),
             indicatorColor: colors.onPrimary,
-            tabs: [
-              Tab(
-                text: 'Órdenes',
-                icon: Icon(Icons.list_alt, color: colors.onPrimary),
-              ),
-              Tab(
-                text: 'Bultos',
-                icon: Icon(Icons.inventory_2, color: colors.onPrimary),
-              ),
+            tabs: const [
+              Tab(text: 'Órdenes', icon: Icon(Icons.list_alt)),
+              Tab(text: 'Entregas', icon: Icon(Icons.local_shipping)),
+              Tab(text: 'Bultos', icon: Icon(Icons.inventory_2)),
+              Tab(text: 'Retiros', icon: Icon(Icons.assignment_return)),
             ],
           ),
           actions: [
@@ -741,7 +1195,9 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
                 controller: _tabController,
                 children: [
                   _buildOrdenesTab(),
+                  _buildEntregasTab(),
                   _buildBultosTab(),
+                  _buildRetirosTab(),
                 ],
               ),
             ),
@@ -792,6 +1248,19 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
     }
   }
 
+  Color _getEntregaStatusColor(String status) {
+    switch (status.toUpperCase()) {
+      case 'PENDIENTE':
+        return Colors.orange;
+      case 'EN PROCESO':
+        return Colors.blue;
+      case 'FINALIZADA':
+        return Colors.green;
+      default:
+        return Colors.grey;
+    }
+  }
+
   Color _getBultoStatusColor(String status) {
     switch (status.toUpperCase()) {
       case 'PENDIENTE':
@@ -802,6 +1271,30 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
         return Colors.blue;
       default:
         return Colors.grey;
+    }
+  }
+
+  Future<void> _imprimirRetiro(int retiroId) async {
+    try {
+      await _entregaServices.postImprimirRetiro(
+        context,
+        retiroId,
+        token,
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Impresión del retiro enviada correctamente'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al imprimir: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 }
