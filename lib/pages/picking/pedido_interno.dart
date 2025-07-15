@@ -1,5 +1,6 @@
 // ignore_for_file: unused_element
 
+import 'package:deposito/config/router/pages.dart';
 import 'package:deposito/config/router/router.dart';
 import 'package:deposito/models/almacen.dart';
 import 'package:deposito/models/orden_picking.dart';
@@ -195,6 +196,15 @@ class _PedidoInternoState extends State<PedidoInterno> {
             'Orden ${orderProvider.numeroDocumento}',
             style: const TextStyle(color: Colors.white),
           ),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () {
+              var menu = context.read<ProductProvider>().menu;
+              Navigator.of(context).popUntil((route) => route.settings.name == menu);
+              final router = GoRouter.of(context);
+              router.pushReplacement(menu);
+            },
+          ),
           actions: [
             IconButton(onPressed: () => appRouter.push('/qrPage'), icon: const Icon(Icons.qr_code)),
           ],
@@ -264,12 +274,20 @@ class _PedidoInternoState extends State<PedidoInterno> {
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          Chip(
-                            label: Text(
-                              orderProvider.estado,
-                              style: const TextStyle(color: Colors.white),
-                            ),
-                            backgroundColor: _getStatusColor(orderProvider.estado),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Chip(
+                                label: Text(
+                                  orderProvider.estado,
+                                  style: const TextStyle(color: Colors.white),
+                                ),
+                                backgroundColor: _getStatusColor(orderProvider.estado),
+                              ),
+                              Text(orderProvider.prioridad),
+                              Text('PickId: ${orderProvider.pickId}'),
+                              Text('Líneas: ${order.cantLineas ?? 0}'),
+                            ],
                           ),
                         ],
                       ),
@@ -279,9 +297,6 @@ class _PedidoInternoState extends State<PedidoInterno> {
                       Text('Fecha: ${_formatDate(orderProvider.fechaDate)}'),
                       const SizedBox(height: 8),
                       Text('Tipo: ${orderProvider.descTipo}'),
-                      const SizedBox(height: 8),
-                      if (orderProvider.prioridad != '')
-                        Text('Prioridad: ${orderProvider.prioridad}'),
                       const SizedBox(height: 8,),
                       Text(orderProvider.transaccion),
                       const SizedBox(height: 8,),
@@ -423,29 +438,43 @@ class _PedidoInternoState extends State<PedidoInterno> {
                 child: Icon(Icons.inventory_2, color: colors.onPrimary,)
               ),
             ] else ...[
-              ElevatedButton(
-                onPressed: order.estado == 'CERRADO' ? null : () => _mostrarDialogoConfirmacionModo(false),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: colors.primary,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              if(order.tipo == 'C' || order.tipo == 'C') ...[
+                ElevatedButton(
+                  onPressed: order.estado == 'CERRADO' ? null : () => _iniciarDirectamente(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: colors.primary,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  ),
+                  child: const Text(
+                    'Iniciar',
+                    style: TextStyle(color: Colors.white, fontSize: 16),
+                  ),
                 ),
-                child: const Text(
-                  'Manual',
-                  style: TextStyle(color: Colors.white, fontSize: 16),
+              ] else ...[
+                ElevatedButton(
+                  onPressed: order.estado == 'CERRADO' ? null : () => _mostrarDialogoConfirmacionModo(false),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: colors.primary,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  ),
+                  child: const Text(
+                    'Manual',
+                    style: TextStyle(color: Colors.white, fontSize: 16),
+                  ),
                 ),
-              ),
+                ElevatedButton(
+                  onPressed: order.estado == 'CERRADO' ? null : () => _mostrarDialogoConfirmacionModo(true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: colors.primary,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  ),
+                  child: const Text(
+                    'Automático',
+                    style: TextStyle(color: Colors.white, fontSize: 16),
+                  ),
+                ),
+              ],
               
-              ElevatedButton(
-                onPressed: order.estado == 'CERRADO' ? null : () => _mostrarDialogoConfirmacionModo(true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: colors.primary,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                ),
-                child: const Text(
-                  'Automático',
-                  style: TextStyle(color: Colors.white, fontSize: 16),
-                ),
-              ),
               ElevatedButton(
                 onPressed: (order.estado == 'CERRADO' || order.estado == 'PENDIENTE') ? null : () => _mostrarDialogoConfirmacion('finalizar'),
                 style: ElevatedButton.styleFrom(
@@ -463,6 +492,57 @@ class _PedidoInternoState extends State<PedidoInterno> {
         ),
       ),
     );
+  }
+
+  Future<void> _iniciarDirectamente() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Confirmar inicio'),
+          content: const Text('¿Desea iniciar el proceso de picking?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Confirmar'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      final provider = context.read<ProductProvider>();
+      
+      // Cambiar estado de la orden si está pendiente
+      if (order.estado == 'PENDIENTE') {
+        orderProvider = await PickingServices().putOrderPicking(
+          context, 
+          order.pickId, 
+          'en proceso',
+          1, 
+          token
+        );
+        order.estado = orderProvider.estado;
+      }
+      
+      // Actualizar estado en el provider
+      setState(() {
+        continuar = true;
+        modoAutomatico = false;
+      });
+      
+      provider.setOrdenPickingInterna(order);
+      provider.setLineasPicking(order.lineas ?? []);
+      provider.setModoSeleccionUbicacion(false);
+      
+      // Redirigir directamente a pickingCompra
+      appRouter.push('/pickingCompra');
+    }
   }
 
   void _mostrarDialogoConfirmacion(String accion) {

@@ -43,7 +43,7 @@ class _ListaPickingState extends State<ListaPicking> {
   DateTime? _fechaDesde;
   DateTime? _fechaHasta;
   String? _selectedPrioridad;
-  int _groupValue = -1;
+  int _groupValue = 0;
 
   String token = '';
   late String menu;
@@ -72,6 +72,13 @@ class _ListaPickingState extends State<ListaPicking> {
       _selectedTipos = _tipos.where((tipo) => tiposMenu.contains(tipo['value'])).toList();
     }
     
+    _loadData();
+    _startRefreshTimer();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     _loadData();
     _startRefreshTimer();
   }

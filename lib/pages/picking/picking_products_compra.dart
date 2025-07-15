@@ -2,6 +2,7 @@ import 'package:deposito/config/router/router.dart';
 import 'package:deposito/models/orden_picking.dart';
 import 'package:deposito/models/product.dart';
 import 'package:deposito/models/ubicacion_almacen.dart';
+import 'package:deposito/models/ubicacion_picking.dart';
 import 'package:deposito/services/product_services.dart';
 import 'package:deposito/widgets/custom_speed_dial.dart';
 import 'package:deposito/widgets/escaner_pda.dart';
@@ -141,6 +142,8 @@ class PickingProductsEntradaState extends State<PickingProductsEntrada> {
   }
 
   void _updateProductQuantity(int index, String value) async {
+    if (_isPatching) return;
+    
     final provider = Provider.of<ProductProvider>(context, listen: false);
     final currentLine = provider.ordenPickingInterna.lineas![index];
     final newQuantity = int.tryParse(value) ?? 0;
@@ -317,6 +320,15 @@ class PickingProductsEntradaState extends State<PickingProductsEntrada> {
       line.cantidadPickeada = cantidadPickeadaActualizada;
       _previousQuantities[index] = cantidadPickeadaActualizada;
 
+      // Registrar la ubicación donde se guardó
+      final ubicacionPicking = UbicacionPicking(
+        codUbicacion: provider.ubicacion.codUbicacion,
+        cantidadPickeada: diferencia,
+        existenciaActual: response['existenciaActual'] ?? 0,
+      );
+      
+      provider.agregarUbicacionPicking(line.pickLineaId, ubicacionPicking);
+
       // Actualizar la línea en el provider
       final updatedLine = PickingLinea(
         pickLineaId: line.pickLineaId,
@@ -450,7 +462,7 @@ class PickingProductsEntradaState extends State<PickingProductsEntrada> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      '${int.tryParse(_quantityControllers[index]?.text ?? '0')} / ${line.cantidadPedida}',
+                      '${int.tryParse(_quantityControllers[index]?.text ?? '0') ?? 0} / ${line.cantidadPedida}',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: (int.tryParse(_quantityControllers[index]?.text ?? '0') ?? 0) > 0 ? 
@@ -461,36 +473,42 @@ class PickingProductsEntradaState extends State<PickingProductsEntrada> {
                       children: [
                         IconButton(
                           icon: const Icon(Icons.remove),
-                          onPressed: () => _decrementProductQuantity(index),
+                          onPressed: _isPatching ? null : () => _decrementProductQuantity(index),
                         ),
                         SizedBox(
                           width: 60,
-                          child: TextField(
-                            controller: _quantityControllers[index],
-                            keyboardType: TextInputType.number,
-                            textAlign: TextAlign.center,
-                            decoration: const InputDecoration(
-                              border: OutlineInputBorder(),
-                              contentPadding: EdgeInsets.symmetric(vertical: 8),
-                            ),
-                            onChanged: (value) => _updateProductQuantity(index, value),
-                            onEditingComplete: () async {
-                              final newQuantity = int.tryParse(_quantityControllers[index]?.text ?? '0') ?? 0;
-                              if (newQuantity != _previousQuantities[index]) {
-                                final success = await _patchSingleLine(index, newQuantity);
-                                if (!success) {
-                                  setState(() {
-                                    _quantityControllers[index]?.text = _previousQuantities[index].toString();
-                                  });
+                          child: AbsorbPointer(
+                            absorbing: _isPatching,
+                            child: TextField(
+                              controller: _quantityControllers[index],
+                              keyboardType: TextInputType.number,
+                              textAlign: TextAlign.center,
+                              enabled: !_isPatching,
+                              decoration: const InputDecoration(
+                                border: OutlineInputBorder(),
+                                contentPadding: EdgeInsets.symmetric(vertical: 8),
+                              ),
+                              onChanged: (value) => _updateProductQuantity(index, value),
+                              onEditingComplete: () async {
+                                if (_isPatching) return;
+                                
+                                final newQuantity = int.tryParse(_quantityControllers[index]?.text ?? '0') ?? 0;
+                                if (newQuantity != _previousQuantities[index]) {
+                                  final success = await _patchSingleLine(index, newQuantity);
+                                  if (!success) {
+                                    setState(() {
+                                      _quantityControllers[index]?.text = _previousQuantities[index].toString();
+                                    });
+                                  }
                                 }
-                              }
-                              FocusScope.of(context).requestFocus(focoDeScanner);
-                            },
+                                FocusScope.of(context).requestFocus(focoDeScanner);
+                              },
+                            ),
                           ),
                         ),
                         IconButton(
                           icon: const Icon(Icons.add),
-                          onPressed: () => _incrementProductQuantity(index),
+                          onPressed: _isPatching ? null : () => _incrementProductQuantity(index),
                         ),
                       ],
                     ),
@@ -526,23 +544,22 @@ class PickingProductsEntradaState extends State<PickingProductsEntrada> {
         for (int i = 0; i < provider.ordenPickingInterna.lineas!.length; i++) {
           final line = provider.ordenPickingInterna.lineas![i];
           if (producto.raiz == line.codItem) {
-            // Incrementamos directamente en 1 sin esperar la respuesta del patch
+            final currentQuantity = int.tryParse(_quantityControllers[i]?.text ?? '0') ?? 0;
+            final newQuantity = currentQuantity + 1;
+            
             setState(() {
-              _quantityControllers[i]?.text = (int.tryParse(_quantityControllers[i]?.text ?? '0') ?? 0 + 1).toString();
+              _quantityControllers[i]?.text = newQuantity.toString();
             });
             
-            // Ejecutamos el patch en segundo plano
-            _patchSingleLine(i, int.tryParse(_quantityControllers[i]?.text ?? '0') ?? 0).then((success) {
-              if (!success) {
-                _showSingleSnackBar('Error al registrar el producto', backgroundColor: Colors.red);
-                // Si falla, restauramos el valor anterior
-                setState(() {
-                  _quantityControllers[i]?.text = (int.tryParse(_quantityControllers[i]?.text ?? '0') ?? 0 - 1).toString();
-                });
-              } else {
-                _showSingleSnackBar('Producto registrado correctamente');
-              }
-            });
+            final success = await _patchSingleLine(i, newQuantity);
+            if (!success) {
+              _showSingleSnackBar('Error al registrar el producto', backgroundColor: Colors.red);
+              setState(() {
+                _quantityControllers[i]?.text = currentQuantity.toString();
+              });
+            } else {
+              _showSingleSnackBar('Producto registrado correctamente');
+            }
 
             productoEncontrado = true;
             break;
@@ -601,23 +618,22 @@ class PickingProductsEntradaState extends State<PickingProductsEntrada> {
         for (int i = 0; i < provider.ordenPickingInterna.lineas!.length; i++) {
           final line = provider.ordenPickingInterna.lineas![i];
           if (producto.raiz == line.codItem) {
-            // Incrementamos directamente en 1 sin esperar la respuesta del patch
+            final currentQuantity = int.tryParse(_quantityControllers[i]?.text ?? '0') ?? 0;
+            final newQuantity = currentQuantity + 1;
+            
             setState(() {
-              _quantityControllers[i]?.text = (int.tryParse(_quantityControllers[i]?.text ?? '0') ?? 0 + 1).toString();
+              _quantityControllers[i]?.text = newQuantity.toString();
             });
             
-            // Ejecutamos el patch en segundo plano
-            _patchSingleLine(i, int.tryParse(_quantityControllers[i]?.text ?? '0') ?? 0).then((success) {
-              if (!success) {
-                _showSingleSnackBar('Error al registrar el producto', backgroundColor: Colors.red);
-                // Si falla, restauramos el valor anterior
-                setState(() {
-                  _quantityControllers[i]?.text = (int.tryParse(_quantityControllers[i]?.text ?? '0') ?? 0 - 1).toString();
-                });
-              } else {
-                _showSingleSnackBar('Producto registrado correctamente');
-              }
-            });
+            final success = await _patchSingleLine(i, newQuantity);
+            if (!success) {
+              _showSingleSnackBar('Error al registrar el producto', backgroundColor: Colors.red);
+              setState(() {
+                _quantityControllers[i]?.text = currentQuantity.toString();
+              });
+            } else {
+              _showSingleSnackBar('Producto registrado correctamente');
+            }
 
             productoEncontrado = true;
             break;

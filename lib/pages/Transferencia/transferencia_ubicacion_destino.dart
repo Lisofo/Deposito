@@ -131,10 +131,12 @@ class _TransferenciaUbicacionDestinoState extends State<TransferenciaUbicacionDe
                     }
                   ),
                   const Text('Llevar en mano'),
-                  EscanerPDA(
-                    onScan: procesarEscaneo,
-                    focusNode: focoDeScanner,
-                    controller: textController
+                  Expanded(
+                    child: EscanerPDA(
+                      onScan: procesarEscaneo,
+                      focusNode: focoDeScanner,
+                      controller: textController
+                    ),
                   ),
                 ],
               ),  

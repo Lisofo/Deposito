@@ -30,7 +30,7 @@ class SummaryScreen extends StatelessWidget {
         ),
         body: processedLines!.isEmpty
             ? const Center(child: Text('No hay líneas procesadas'))
-            : _buildSummaryList(processedLines!),
+            : _buildSummaryList(context, processedLines!, ordenPicking),
         bottomNavigationBar: Row(
           children: [
             Expanded(
@@ -77,7 +77,7 @@ class SummaryScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSummaryList(List<PickingLinea> lines) {
+  Widget _buildSummaryList(BuildContext context, List<PickingLinea> lines, OrdenPicking ordenPicking) {
     final lineasPadre = lines.where((line) => line.tipoLineaAdicional == "C" && line.lineaIdOriginal == 0).toList();
     final lineasHijas = lines.where((line) => line.tipoLineaAdicional == "C" && line.lineaIdOriginal != 0).toList();
     final lineasNormales = lines.where((line) => line.tipoLineaAdicional != "C").toList();
@@ -133,7 +133,7 @@ class SummaryScreen extends StatelessWidget {
         Expanded(
           child: ListView(
             children: [
-              ...lineasNormales.map((line) => _buildLineCard(line)),
+              ...lineasNormales.map((line) => _buildLineCard(context, line, ordenPicking)),
               
               ...lineasPadre.map((padre) {
                 final hijos = lineasHijas.where((hija) => 
@@ -168,7 +168,7 @@ class SummaryScreen extends StatelessWidget {
                               Text('Pedido: ${padre.cantidadPedida}'),
                             ],
                           ),
-                          children: hijos.map((hija) => _buildLineCard(hija)).toList(),
+                          children: hijos.map((hija) => _buildLineCard(context, hija, ordenPicking)).toList(),
                         ),
                       );
                     },
@@ -182,9 +182,22 @@ class SummaryScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildLineCard(PickingLinea line) {
+  Widget _buildLineCard(BuildContext context, PickingLinea line, OrdenPicking ordenPicking) {
+    final isCompra = ordenPicking.tipo == 'C' || ordenPicking.tipo == 'TE';
     final isComplete = line.cantidadPickeada >= line.cantidadPedida;
-    
+    final provider = Provider.of<ProductProvider>(context);
+    final ubicacionesReales = provider.ubicacionesPicking[line.pickLineaId] ?? [];
+
+    // Agrupar ubicaciones por código y sumar cantidades
+    final Map<String, int> ubicacionesAgrupadas = {};
+    for (var ubicacion in ubicacionesReales) {
+      ubicacionesAgrupadas.update(
+        ubicacion.codUbicacion,
+        (value) => value + ubicacion.cantidadPickeada,
+        ifAbsent: () => ubicacion.cantidadPickeada,
+      );
+    }
+
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Padding(
@@ -224,12 +237,14 @@ class SummaryScreen extends StatelessWidget {
                 Text('${line.cantidadPickeada}'),
               ],
             ),
-            if (line.ubicaciones.isNotEmpty) ...[
+            if (isCompra && ubicacionesAgrupadas.isNotEmpty) ...[
               const SizedBox(height: 8),
-              const Text('Ubicaciones:', style: TextStyle(fontWeight: FontWeight.bold)),
-              ...line.ubicaciones.map((ubicacion) => Padding(
+              const Text('Ubicaciones usadas:', style: TextStyle(fontWeight: FontWeight.bold)),
+              ...ubicacionesAgrupadas.entries.map((entry) => Padding(
                 padding: const EdgeInsets.only(top: 4.0),
-                child: Text('- ${ubicacion.codUbicacion} (Stock: ${ubicacion.existenciaActual})'),
+                child: Text(
+                  '- ${entry.key} (Pickeado: ${entry.value})'
+                ),
               )),
             ],
           ],
@@ -238,7 +253,6 @@ class SummaryScreen extends StatelessWidget {
     );
   }
 
-  // En el método _completarPicking de resumen_picking.dart:
   Future<void> _completarPicking(BuildContext context, ProductProvider provider, OrdenPicking ordenPicking, String token) async {
     try {
       final confirm = await showDialog<bool>(
@@ -286,11 +300,9 @@ class SummaryScreen extends StatelessWidget {
         
         // Forzar navegación limpia
         Navigator.of(context).popUntil((route) => route.settings.name == '/pickingInterno');
+        final router = GoRouter.of(context);
+        router.pushReplacement('/pickingInterno');
         
-        if (!Navigator.of(context).canPop()) {
-          final router = GoRouter.of(context);
-          router.go('/pickingInterno');
-        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Error al completar el picking')),
@@ -304,7 +316,6 @@ class SummaryScreen extends StatelessWidget {
     }
   }
 
-  // En el método _pausarPicking de resumen_picking.dart:
   Future<void> _pausarPicking(BuildContext context, ProductProvider provider, OrdenPicking ordenPicking, String token) async {
     try {
       final confirm = await showDialog<bool>(
@@ -344,11 +355,8 @@ class SummaryScreen extends StatelessWidget {
       
       // Volver a la pantalla anterior
       Navigator.of(context).popUntil((route) => route.settings.name == '/pickingInterno');
-      
-      if (!Navigator.of(context).canPop()) {
-        final router = GoRouter.of(context);
-        router.go('/pickingInterno');
-      }
+      final router = GoRouter.of(context);
+      router.pushReplacement('/pickingInterno');
       
     } catch (e) {
       Navigator.of(context).pop();

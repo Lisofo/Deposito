@@ -9,6 +9,7 @@ import 'package:deposito/models/pedido.dart';
 import 'package:deposito/models/product.dart';
 import 'package:deposito/models/producto_deposito.dart';
 import 'package:deposito/models/ubicacion_almacen.dart';
+import 'package:deposito/models/ubicacion_picking.dart';
 import 'package:flutter/material.dart';
 
 class ProductProvider with ChangeNotifier {
@@ -123,6 +124,27 @@ class ProductProvider with ChangeNotifier {
 
   bool _vistaMonitor = false;
   bool get vistaMonitor => _vistaMonitor;
+
+  final Map<int, List<UbicacionPicking>> _ubicacionesPicking = {};
+  Map<int, List<UbicacionPicking>> get ubicacionesPicking => _ubicacionesPicking;
+
+  void agregarUbicacionPicking(int lineaId, UbicacionPicking ubicacion) {
+    if (!_ubicacionesPicking.containsKey(lineaId)) {
+      _ubicacionesPicking[lineaId] = [];
+    }
+    _ubicacionesPicking[lineaId]!.add(ubicacion);
+    notifyListeners();
+  }
+
+  void limpiarUbicacionesPicking() {
+    _ubicacionesPicking.clear();
+    notifyListeners();
+  }
+
+  void actualizarUbicacionPicking(int lineaId, List<UbicacionPicking> ubicaciones) {
+    _ubicacionesPicking[lineaId] = ubicaciones;
+    notifyListeners();
+  }
 
   void setVistaMonitor (bool vista) {
     _vistaMonitor = vista;

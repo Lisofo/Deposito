@@ -17,7 +17,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final prefs = await SharedPreferences.getInstance();
-  final bool camDisponible = prefs.getBool('cambioVista') ?? false;
+  final bool camDisponible = prefs.getBool('camDisponible') ?? false;
   
   String initialLocation = '/login';
   
