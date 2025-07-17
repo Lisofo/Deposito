@@ -1,4 +1,5 @@
 import 'package:deposito/models/almacen.dart';
+import 'package:deposito/provider/menu_provider.dart';
 import 'package:deposito/provider/product_provider.dart';
 import 'package:deposito/services/almacen_services.dart';
 import 'package:flutter/material.dart';
@@ -62,6 +63,14 @@ class _SeleccionAlmacenState extends State<SeleccionAlmacen> {
             backgroundColor: colors.primary,
             iconTheme: IconThemeData(color: colors.onPrimary),
             actions: [
+              IconButton.filledTonal(
+                style: ButtonStyle(
+                  backgroundColor: WidgetStatePropertyAll(colors.primary)
+                ),
+                onPressed: () => logout(),
+                icon: const Icon(Icons.logout),
+                tooltip: 'Logout',
+              ),
               IconButton(
                 onPressed: () {
                   appRouter.push('/config');
@@ -97,6 +106,37 @@ class _SeleccionAlmacenState extends State<SeleccionAlmacen> {
           ),
         ),
       ),
+    );
+  }
+
+  void logout() {
+    final colors = Theme.of(context).colorScheme;
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Cerrar sesión'),
+          content: const Text('¿Está seguro de querer cerrar sesión?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancelar')
+            ),
+            TextButton(
+              onPressed: () {
+                Provider.of<ProductProvider>(context, listen: false).setUsuarioId(0);
+                Provider.of<MenuProvider>(context, listen: false).setUsuarioId(0);
+                appRouter.go('/login');
+                Navigator.of(context).pop();
+              },
+              child: Text(
+                'Cerrar Sesión',
+                style: TextStyle(color: colors.onError),
+              )
+            ),
+          ],
+        );
+      },
     );
   }
 }

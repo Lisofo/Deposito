@@ -10,8 +10,16 @@ class MenuProvider with ChangeNotifier {
   List<String> _quickAccessItems = [];
   bool _isDataReady = false;
 
+  int _uId = 0;
+  int get uId => _uId;
+
+  void setUsuarioId(int id) {
+    _uId = id;
+    notifyListeners();
+  }
+
   MenuProvider() {
-    _loadQuickAccess();
+    loadQuickAccess();
   }
 
   Future<void> initialize(BuildContext context, String token) async {
@@ -20,15 +28,15 @@ class MenuProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _loadQuickAccess() async {
+  Future<void> loadQuickAccess() async {
     final prefs = await SharedPreferences.getInstance();
-    _quickAccessItems = prefs.getStringList('quick_access') ?? [];
+    _quickAccessItems = prefs.getStringList('quick_access$uId') ?? [];
     notifyListeners();
   }
 
   Future<void> _saveQuickAccess() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList('quick_access', _quickAccessItems);
+    await prefs.setStringList('quick_access$uId', _quickAccessItems);
   }
 
   List<String> get quickAccessItems => _quickAccessItems;

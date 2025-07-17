@@ -317,19 +317,8 @@ class PickingProductsEntradaState extends State<PickingProductsEntrada> {
 
       // Actualizar con la respuesta del servidor
       final cantidadPickeadaActualizada = response['cantidadPickeada'];
-      line.cantidadPickeada = cantidadPickeadaActualizada;
-      _previousQuantities[index] = cantidadPickeadaActualizada;
-
-      // Registrar la ubicación donde se guardó
-      final ubicacionPicking = UbicacionPicking(
-        codUbicacion: provider.ubicacion.codUbicacion,
-        cantidadPickeada: diferencia,
-        existenciaActual: response['existenciaActual'] ?? 0,
-      );
       
-      provider.agregarUbicacionPicking(line.pickLineaId, ubicacionPicking);
-
-      // Actualizar la línea en el provider
+      // Actualizar la línea localmente
       final updatedLine = PickingLinea(
         pickLineaId: line.pickLineaId,
         pickId: line.pickId,
@@ -345,8 +334,24 @@ class PickingProductsEntradaState extends State<PickingProductsEntrada> {
         ubicaciones: List.from(line.ubicaciones),
       );
       
+      // Actualizar en el provider y en el estado local
       provider.updateLineaPicking(index, updatedLine);
       provider.ordenPickingInterna.lineas![index] = updatedLine;
+      _previousQuantities[index] = cantidadPickeadaActualizada;
+      
+      // Registrar la ubicación donde se guardó
+      final ubicacionPicking = UbicacionPicking(
+        codUbicacion: provider.ubicacion.codUbicacion,
+        cantidadPickeada: diferencia,
+        existenciaActual: response['existenciaActual'] ?? 0,
+      );
+      
+      provider.agregarUbicacionPicking(line.pickLineaId, ubicacionPicking);
+
+      // Actualizar el controlador de texto para reflejar el cambio
+      if (_quantityControllers[index]?.text != cantidadPickeadaActualizada.toString()) {
+        _quantityControllers[index]?.text = cantidadPickeadaActualizada.toString();
+      }
 
       return true;
     } catch (e) {
@@ -459,11 +464,12 @@ class PickingProductsEntradaState extends State<PickingProductsEntrada> {
                 ),
                 const SizedBox(height: 8),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     Text(
                       '${int.tryParse(_quantityControllers[index]?.text ?? '0') ?? 0} / ${line.cantidadPedida}',
                       style: TextStyle(
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: (int.tryParse(_quantityControllers[index]?.text ?? '0') ?? 0) > 0 ? 
                           Colors.green : Colors.blue,

@@ -75,6 +75,13 @@ class _InventarioPageState extends State<InventarioPage> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final productProvider = context.watch<ProductProvider>();
+  
+    // Si hay una ubicación guardada en el provider, usarla como seleccionada inicialmente
+    if (productProvider.ubicacion.almacenUbicacionId != 0 && 
+        ubicacionSeleccionada.almacenId == 0) {
+      ubicacionSeleccionada = productProvider.ubicacion;
+    }
     return SafeArea(child: scaffoldScannerSearch(context, colors));
   }
 
@@ -113,7 +120,7 @@ class _InventarioPageState extends State<InventarioPage> {
                 UbicacionDropdown(
                   listaUbicaciones: listaUbicaciones, 
                   selectedItem: ubicacionSeleccionada.almacenId == 0 ? null : ubicacionSeleccionada,
-                  onChanged: (value) {
+                  onChanged: productProvider.ubicacion.almacenUbicacionId != 0 ? (_) {} : (value) {
                     ubicacionSeleccionada = value!;
                     Provider.of<ProductProvider>(context, listen: false).setUbicacion(ubicacionSeleccionada);
                     appRouter.push('/editarInventario');
@@ -128,7 +135,7 @@ class _InventarioPageState extends State<InventarioPage> {
                   controller: textController
                 ),
                 const Expanded(
-                  child: Text('Escanee una ubicación'),
+                  child: Text('Escanee o seleccione una ubicación'),
                 ),
               ],
             ),
@@ -246,6 +253,13 @@ class _InventarioPageState extends State<InventarioPage> {
         final ubicacionEncontrada = listaUbicaciones.firstWhere(
           (element) => element.codUbicacion == value || element.descripcion.contains(value),
         );
+        
+        // Verificar que la ubicación escaneada coincida con la seleccionada (si hay una)
+        if (ubicacionSeleccionada.almacenId != 0 && ubicacionEncontrada.codUbicacion != ubicacionSeleccionada.codUbicacion) {
+          await error('La ubicación escaneada no coincide con la seleccionada');
+          return;
+        }
+
         Provider.of<ProductProvider>(context, listen: false).setUbicacion(ubicacionEncontrada);
         setState(() {
           ubicacionSeleccionada = ubicacionEncontrada;
@@ -256,9 +270,8 @@ class _InventarioPageState extends State<InventarioPage> {
         await error(value);
         print('Ubicación no encontrada: $value');
       } finally {
-        // Restablecer el campo y reenfocar
         textController.clear();
-        await Future.delayed(const Duration(milliseconds: 100)); // Breve pausa para evitar conflictos de enfoque
+        await Future.delayed(const Duration(milliseconds: 100));
         focoDeScanner.requestFocus();
       }
     }

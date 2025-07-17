@@ -100,6 +100,7 @@ class _EditarInventarioState extends State<EditarInventario> {
               focusNode: focoDeScanner,
               controller: textController
             ),
+            const Text('Escanee o busque el producto'),
             Expanded(
               child: ListView.builder(
                 itemCount: conteoList.length,
@@ -167,7 +168,7 @@ class _EditarInventarioState extends State<EditarInventario> {
           children: [
             CustomButton(
               tamano: 16,
-              text: 'Borrar conteo de la ubicacion ${ubicacion.descripcion}',
+              text: 'Borrar conteo de la ubicación ${ubicacion.descripcion}',
               disabled: conteoList.isEmpty,
               onPressed: conteoList.isEmpty ? null : () async {
                 await borrarConteoTotal(context);

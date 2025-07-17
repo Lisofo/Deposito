@@ -343,7 +343,7 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
             0: Text('Todos'),
             1: Text('Pendiente'),
             2: Text('En Proceso'),
-            3: Text('Completado'),
+            3: Text('Cerrado'),
           },
           onValueChanged: (newValue) {
             setState(() {
@@ -1159,9 +1159,9 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
             indicatorColor: colors.onPrimary,
             tabs: const [
               Tab(text: 'Órdenes', icon: Icon(Icons.list_alt)),
-              Tab(text: 'Entregas', icon: Icon(Icons.local_shipping)),
+              Tab(text: 'Entregas', icon: Icon(Icons.dashboard)),
               Tab(text: 'Bultos', icon: Icon(Icons.inventory_2)),
-              Tab(text: 'Retiros', icon: Icon(Icons.assignment_return)),
+              Tab(text: 'Retiros', icon: Icon(Icons.local_shipping)),
             ],
           ),
           actions: [

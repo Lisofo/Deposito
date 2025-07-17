@@ -277,7 +277,7 @@ class _ListaPickingState extends State<ListaPicking> {
           children: {
             0: buildSegment('Pendiente'),
             1: buildSegment('En Proceso'),
-            2: buildSegment('Completado'),
+            2: buildSegment('Cerrado'),
             -1: buildSegment('Mis ordenes'),
           },
           onValueChanged: (newValue) {

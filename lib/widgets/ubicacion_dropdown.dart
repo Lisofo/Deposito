@@ -5,7 +5,7 @@ import 'package:deposito/models/ubicacion_almacen.dart';
 class UbicacionDropdown extends StatelessWidget {
   final List<UbicacionAlmacen> listaUbicaciones;
   final UbicacionAlmacen? selectedItem;
-  final ValueChanged<UbicacionAlmacen?> onChanged;
+  final ValueChanged<UbicacionAlmacen?>? onChanged;
   final bool enabled;
   final String hintText;
   final VoidCallback? onPopupDismissed; // NUEVO
@@ -51,7 +51,7 @@ class UbicacionDropdown extends StatelessWidget {
           },
           onDismissed: onPopupDismissed, // NUEVO
         ),
-        onChanged: onChanged,
+        onChanged: onChanged ?? (_) {},
         items: listaUbicaciones,
         selectedItem: selectedItem,
       ),

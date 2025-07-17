@@ -1,5 +1,6 @@
 import 'package:deposito/config/router/router.dart';
 import 'package:deposito/models/menu.dart';
+import 'package:deposito/models/ubicacion_almacen.dart';
 import 'package:deposito/provider/menu_provider.dart';
 import 'package:deposito/provider/product_provider.dart';
 import 'package:flutter/material.dart';
@@ -70,6 +71,9 @@ List<Widget> _filaBotones2(List<Opcion> opciones, BuildContext context) {
         onTap: () {
           productProvider.setMenu(opt.ruta);
           productProvider.setTitle(opt.texto);
+          if(opt.ruta == '/inventario') {
+            Provider.of<ProductProvider>(context, listen: false).setUbicacion(UbicacionAlmacen.empty());
+          }
           appRouter.push(opt.ruta);
         },
         onLongPress: () async {

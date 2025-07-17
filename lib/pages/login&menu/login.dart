@@ -1,3 +1,4 @@
+import 'package:deposito/provider/menu_provider.dart';
 import 'package:deposito/provider/product_provider.dart';
 import 'package:deposito/services/login_services.dart';
 import 'package:flutter/material.dart';
@@ -248,7 +249,7 @@ class _LoginState extends State<Login> {
                                             style: const TextStyle(color: Colors.black),
                                           ),
                                           const Text(
-                                            '2025.07.15+1',
+                                            '2025.07.17+1',
                                             style: TextStyle(color: Colors.black),
                                           ),
                                         ],
@@ -455,7 +456,7 @@ class _LoginState extends State<Login> {
                                                 style: const TextStyle(color: Colors.black),
                                               ),
                                               const Text(
-                                                '2025.07.15+1',
+                                                '2025.07.17+1',
                                                 style: TextStyle(color: Colors.black),
                                               ),
                                             ],
@@ -506,6 +507,7 @@ class _LoginState extends State<Login> {
           await prefs.remove('username');
         }
         permisos = await _loginServices.getPermisos(context, context.read<ProductProvider>().token);
+        Provider.of<MenuProvider>(context, listen: false).loadQuickAccess();
         Provider.of<ProductProvider>(context, listen: false).setPermisos(permisos);
         appRouter.go('/almacen');
       } else {

@@ -4,6 +4,7 @@ import 'package:deposito/models/almacen.dart';
 import 'package:deposito/models/client.dart';
 import 'package:deposito/models/codigo_barras.dart';
 import 'package:deposito/models/producto_deposito.dart';
+import 'package:deposito/models/ubicacion_almacen.dart';
 import 'package:deposito/provider/ubicacion_provider.dart';
 import 'package:deposito/services/product_services.dart';
 import 'package:deposito/services/qr_services.dart';
@@ -264,6 +265,24 @@ class _ProductPageState extends State<ProductPage> {
                                     style: const TextStyle(fontSize: 16),
                                   ),
                                   subtitle: Text('Existencia actual: ${ubicacion.existenciaActualUbi}'),
+                                  trailing: TextButton(
+                                    onPressed: () {
+                                      Provider.of<ProductProvider>(context, listen: false).setUbicacion(
+                                        UbicacionAlmacen(
+                                          almacenId: almacenSeleccionado!.almacenId,
+                                          codUbicacion: ubicacion.codUbicacion,
+                                          descripcion: ubicacion.descUbicacion,
+                                          almacenUbicacionId: ubicacion.almacenUbicacionId,
+                                          capacidad: ubicacion.capacidad,
+                                          orden: ubicacion.orden, 
+                                          tipoUbicacion: '',
+                                          // Agrega otros campos necesarios según tu modelo UbicacionAlmacen
+                                        )
+                                      );
+                                      appRouter.push('/inventario');
+                                    },
+                                    child: const Text('Conteo')
+                                  ),
                                 );
                               },
                             );

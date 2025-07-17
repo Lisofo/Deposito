@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:deposito/provider/menu_provider.dart';
 import 'package:deposito/provider/product_provider.dart';
 import 'package:deposito/widgets/carteles.dart';
 import 'package:dio/dio.dart';
@@ -34,6 +35,7 @@ class LoginServices {
         print(response.data['nombre']);
         Provider.of<ProductProvider>(context, listen: false).setToken(response.data['token']);
         Provider.of<ProductProvider>(context, listen: false).setUsuarioId(response.data['uid']);
+        Provider.of<MenuProvider>(context, listen: false).setUsuarioId(response.data['uid']);
         Provider.of<ProductProvider>(context, listen: false).setUsuarioName(response.data['nombre']);
       } else { 
         print(response.statusMessage);

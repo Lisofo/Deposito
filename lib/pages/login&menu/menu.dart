@@ -1,5 +1,6 @@
 import 'package:deposito/config/router/router.dart';
 import 'package:deposito/models/menu.dart';
+import 'package:deposito/models/ubicacion_almacen.dart';
 import 'package:deposito/provider/menu_provider.dart';
 import 'package:deposito/provider/product_provider.dart';
 import 'package:deposito/widgets/icon_string.dart';
@@ -115,7 +116,7 @@ class _MenuPageState extends State<MenuPage> {
                       style: const TextStyle(color: Colors.white),
                     ),
                     const Text(
-                      '2025.07.15+1',
+                      '2025.07.17+1',
                       style: TextStyle(color: Colors.white),
                     ),
                   ],
@@ -229,6 +230,9 @@ class _MenuPageState extends State<MenuPage> {
                 try {
                   productProvider.setMenu(opt.ruta);
                   productProvider.setTitle(opt.texto);
+                  if(opt.ruta == '/inventario') {
+                    Provider.of<ProductProvider>(context, listen: false).setUbicacion(UbicacionAlmacen.empty());
+                  }
                   await appRouter.push(opt.ruta);
                 } finally {
                   if (mounted) {
@@ -308,6 +312,8 @@ class _MenuPageState extends State<MenuPage> {
             ),
             TextButton(
               onPressed: () {
+                Provider.of<ProductProvider>(context, listen: false).setUsuarioId(0);
+                Provider.of<MenuProvider>(context, listen: false).setUsuarioId(0);
                 appRouter.go('/login');
                 Navigator.of(context).pop();
               },
