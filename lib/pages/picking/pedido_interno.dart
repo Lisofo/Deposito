@@ -4,11 +4,9 @@ import 'package:deposito/config/router/pages.dart';
 import 'package:deposito/config/router/router.dart';
 import 'package:deposito/models/almacen.dart';
 import 'package:deposito/models/orden_picking.dart';
-import 'package:deposito/provider/product_provider.dart';
 import 'package:deposito/services/picking_services.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
 
 class PedidoInterno extends StatefulWidget {
   const PedidoInterno({super.key});
@@ -438,7 +436,7 @@ class _PedidoInternoState extends State<PedidoInterno> {
                 child: Icon(Icons.inventory_2, color: colors.onPrimary,)
               ),
             ] else ...[
-              if(order.tipo == 'C' || order.tipo == 'C') ...[
+              if(order.tipo == 'C' || order.tipo == 'TE') ...[
                 ElevatedButton(
                   onPressed: order.estado == 'CERRADO' ? null : () => _iniciarDirectamente(),
                   style: ElevatedButton.styleFrom(

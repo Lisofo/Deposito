@@ -51,7 +51,7 @@ class UbicacionDropdown extends StatelessWidget {
           },
           onDismissed: onPopupDismissed, // NUEVO
         ),
-        onChanged: onChanged ?? (_) {},
+        onChanged: onChanged,
         items: listaUbicaciones,
         selectedItem: selectedItem,
       ),

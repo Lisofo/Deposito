@@ -120,12 +120,13 @@ class _InventarioPageState extends State<InventarioPage> {
                 UbicacionDropdown(
                   listaUbicaciones: listaUbicaciones, 
                   selectedItem: ubicacionSeleccionada.almacenId == 0 ? null : ubicacionSeleccionada,
-                  onChanged: productProvider.ubicacion.almacenUbicacionId != 0 ? (_) {} : (value) {
+                  onChanged: (value) {
                     ubicacionSeleccionada = value!;
                     Provider.of<ProductProvider>(context, listen: false).setUbicacion(ubicacionSeleccionada);
                     appRouter.push('/editarInventario');
                     setState(() {});
                   },
+                  enabled: productProvider.ubicacion.almacenUbicacionId == 0, // This will disable the dropdown completely
                   hintText: 'Seleccione una ubicacion',
                 ),
                 const SizedBox(height: 20,),
@@ -164,18 +165,29 @@ class _InventarioPageState extends State<InventarioPage> {
           ],
         ],
       ),
-      bottomNavigationBar: Row(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          CustomButton(
-            text: 'Revisar',
-            tamano: 24,
-            onPressed: () async {
-              appRouter.push('/revisarInventario');
-            }
-          )
-        ],
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            CustomButton(
+              text: 'Revisar',
+              tamano: 24,
+              onPressed: () async {
+                appRouter.push('/revisarInventario');
+              }
+            ),
+            if (context.read<ProductProvider>().ubicacion.almacenUbicacionId != 0)
+              CustomButton(
+                text: 'Siguiente',
+                tamano: 24,
+                onPressed: () async {
+                  appRouter.push('/editarInventario');
+                }
+              ),
+          ],
+        ),
       ),
     );
   }
