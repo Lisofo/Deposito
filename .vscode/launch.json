@@ -1,32 +1,49 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "Dart (Production)",
-            "type": "dart",
-            "request": "launch",
-            "program": "lib/main.dart",
-            "args": [
-                "--flavor",
-                "production", // Especifica el flavor aquí
-                "--dart-define-from-file",
-                "config_prod.json"
-            ]
-        },
-        {
-            "name": "Dart (QA)",
-            "type": "dart",
-            "request": "launch",
-            "program": "lib/main.dart",
-            "args": [
-                "--flavor",
-                "qa", // Especifica el flavor aquí
-                "--dart-define-from-file",
-                "config.json" // Cambia el archivo de configuración si es necesario
-            ]
-        }
-    ]
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Familcar QA",
+      "type": "dart",
+      "request": "launch",
+      "program": "lib/main.dart",
+      "args": [
+        "--flavor", "familcarQa",
+        "--dart-define", "FLAVOR=familcar",
+        "--dart-define", "IS_PROD=false"
+      ]
+    },
+    {
+      "name": "Familcar Prod",
+      "type": "dart",
+      "request": "launch",
+      "program": "lib/main.dart",
+      "args": [
+        "--flavor", "familcarProd",
+        "--dart-define", "FLAVOR=familcar",
+        "--dart-define", "IS_PROD=true"
+      ]
+    },
+    {
+      "name": "Alsur QA",
+      "type": "dart",
+      "request": "launch",
+      "program": "lib/main.dart",
+      "args": [
+        "--flavor", "alsurQa",
+        "--dart-define", "FLAVOR=alsur",
+        "--dart-define", "IS_PROD=false"
+      ]
+    },
+    {
+      "name": "Alsur Prod",
+      "type": "dart",
+      "request": "launch",
+      "program": "lib/main.dart",
+      "args": [
+        "--flavor", "alsurProd",
+        "--dart-define", "FLAVOR=alsur",
+        "--dart-define", "IS_PROD=true"
+      ]
+    }
+  ]
 }

@@ -41,7 +41,7 @@ android {
         applicationId = "com.example.deposito"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode
+        versionCode = flutter.versionCode.toInteger()
         versionName = flutter.versionName
     }
 
@@ -50,18 +50,47 @@ android {
             signingConfig = signingConfigs.debug
         }
     }
-
+    
     flavorDimensions "default"
     productFlavors {
-        production {
+        familcarProd {
             dimension "default"
-            applicationId "com.integral_WMS.prod"
-            versionNameSuffix "-prod"
+            applicationId "com.integralwms.familcar.prod"
+            versionNameSuffix "-familcar-prod"
+            resValue "string", "app_name", "Integral WMS"
         }
-        qa {
+        familcarQa {
             dimension "default"
-            applicationId "com.integral_WMS.qa"
-            versionNameSuffix "-qa"
+            applicationId "com.integralwms.familcar.qa"
+            versionNameSuffix "-familcar-qa"
+            resValue "string", "app_name", "Integral WMS"
+        }
+        alsurProd {
+            dimension "default"
+            applicationId "com.integralwms.alsur.prod"
+            versionNameSuffix "-alsur-prod"
+            resValue "string", "app_name", "Integral WMS"
+        }
+        alsurQa {
+            dimension "default"
+            applicationId "com.integralwms.alsur.qa"
+            versionNameSuffix "-alsur-qa"
+            resValue "string", "app_name", "Integral WMS"
+        }
+    }
+
+    sourceSets {
+        familcarProd {
+            res.srcDirs = ['src/familcar/res']
+        }
+        familcarQa {
+            res.srcDirs = ['src/familcar/res']
+        }
+        alsurProd {
+            res.srcDirs = ['src/alsur/res']
+        }
+        alsurQa {
+            res.srcDirs = ['src/alsur/res']
         }
     }
 }

@@ -12,9 +12,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'config/config_env.dart';
 
+const String flavor = String.fromEnvironment('FLAVOR');
+const bool isProd = bool.fromEnvironment('IS_PROD', defaultValue: false);
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await ConfigEnv.loadFromAssets(flavor, isProd);
 
   final prefs = await SharedPreferences.getInstance();
   final bool camDisponible = prefs.getBool('camDisponible') ?? false;

@@ -7,7 +7,7 @@ import 'package:deposito/config/router/router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
+const String flavor = String.fromEnvironment('FLAVOR');
 
 class Login extends StatefulWidget {
   const Login({super.key});
@@ -47,6 +47,17 @@ class _LoginState extends State<Login> {
     }
   }
 
+  String getLogoPath() {
+    switch (flavor.toLowerCase()) {
+      case 'familcar':
+        return 'images/familcarLogo.png';
+      case 'alsur':
+        return 'images/alsurLogo.jpg';
+      default:
+        return 'images/familcarLogo.png'; // fallback
+    }
+  }
+
   @override
   void dispose() {
     usernameController.dispose();
@@ -78,7 +89,7 @@ class _LoginState extends State<Login> {
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 Image.asset(
-                                  'images/familcarLogo.png',
+                                  getLogoPath(),
                                   fit: BoxFit.fill,
                                 ),
                                 const SizedBox(height: 8),
