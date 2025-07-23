@@ -1,15 +1,13 @@
 // ignore_for_file: unused_field
 
+import 'package:deposito/config/router/pages.dart';
 import 'package:deposito/config/router/router.dart';
 import 'package:deposito/models/almacen.dart';
 import 'package:deposito/models/ubicacion_almacen.dart';
-import 'package:deposito/pages/picking/picking_products_compra.dart';
-import 'package:deposito/provider/product_provider.dart';
 import 'package:deposito/widgets/custom_speed_dial.dart';
 import 'package:deposito/widgets/escaner_pda.dart';
 import 'package:deposito/widgets/ubicacion_dropdown.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 
 class PickingCompra extends StatefulWidget {
@@ -79,6 +77,14 @@ class _PickingCompraState extends State<PickingCompra> {
                 'Orden ${ordenPicking.numeroDocumento}', //- Línea ${provider.currentLineIndex + 1}/${lineas.length}', 
                 style: TextStyle(color: colors.onPrimary),
               );
+            }, 
+          ),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () {
+              Navigator.of(context).popUntil((route) => route.settings.name == '/pickingInterno');
+              final router = GoRouter.of(context);
+              router.pushReplacement('/pickingInterno');
             },
           ),
         ),

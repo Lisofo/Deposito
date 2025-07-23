@@ -364,6 +364,53 @@ class PickingProductsEntradaState extends State<PickingProductsEntrada> {
     }
   }
 
+  Future<void> _handleRefresh() async {
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+
+      final provider = Provider.of<ProductProvider>(context, listen: false);
+      final pickingServices = PickingServices();
+      
+      // Obtener los datos frescos del servidor
+      final ordenActualizada = await pickingServices.getLineasOrder(
+        context,
+        provider.ordenPickingInterna.pickId,
+        provider.almacen.almacenId,
+        provider.token,
+      );
+
+      if (ordenActualizada != null && ordenActualizada.lineas != null) {
+        // Actualizar cada línea en la pantalla con los nuevos datos
+        for (int i = 0; i < ordenActualizada.lineas!.length; i++) {
+          final nuevaLinea = ordenActualizada.lineas![i];
+          
+          // Actualizar el controlador de cantidad
+          _quantityControllers[i]?.text = nuevaLinea.cantidadPickeada.toString();
+          _previousQuantities[i] = nuevaLinea.cantidadPickeada;
+          
+          // Actualizar la línea en el provider
+          provider.updateLineaPicking(i, nuevaLinea);
+        }
+        
+        // Actualizar la orden completa en el provider
+        provider.setOrdenPickingInterna(ordenActualizada);
+      }
+
+      setState(() {
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _error = 'Error al actualizar: ${e.toString()}';
+      });
+      _showSingleSnackBar('Error al actualizar los datos', backgroundColor: Colors.red);
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
@@ -436,95 +483,99 @@ class PickingProductsEntradaState extends State<PickingProductsEntrada> {
   }
 
   Widget _buildProductList(OrdenPicking ordenPicking) {
-    return ListView.builder(
-      itemCount: ordenPicking.lineas!.length,
-      itemBuilder: (context, index) {
-        final line = ordenPicking.lineas![index];
-        return Card(
-          margin: const EdgeInsets.all(8),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  line.descripcion,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text('Código: ${line.codItem}'),
-                Text('ID: ${line.itemId}'),
-                const SizedBox(height: 8),
-                LinearProgressIndicator(
-                  value: _calculateProgress(line, index),
-                  backgroundColor: Colors.grey[300],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    Text(
-                      '${int.tryParse(_quantityControllers[index]?.text ?? '0') ?? 0} / ${line.cantidadPedida}',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: (int.tryParse(_quantityControllers[index]?.text ?? '0') ?? 0) > 0 ? 
-                          Colors.green : Colors.blue,
-                      ),
+    return RefreshIndicator(
+      onRefresh: _handleRefresh,
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(), // Necesario para el pull to refresh
+        itemCount: ordenPicking.lineas!.length,
+        itemBuilder: (context, index) {
+          final line = ordenPicking.lineas![index];
+          return Card(
+            margin: const EdgeInsets.all(8),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    line.descripcion,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
                     ),
-                    Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.remove),
-                          onPressed: _isPatching ? null : () => _decrementProductQuantity(index),
+                  ),
+                  const SizedBox(height: 8),
+                  Text('Código: ${line.codItem}'),
+                  Text('ID: ${line.itemId}'),
+                  const SizedBox(height: 8),
+                  LinearProgressIndicator(
+                    value: _calculateProgress(line, index),
+                    backgroundColor: Colors.grey[300],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      Text(
+                        '${int.tryParse(_quantityControllers[index]?.text ?? '0') ?? 0} / ${line.cantidadPedida}',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: (int.tryParse(_quantityControllers[index]?.text ?? '0') ?? 0) > 0 ? 
+                            Colors.green : Colors.blue,
                         ),
-                        SizedBox(
-                          width: 60,
-                          child: AbsorbPointer(
-                            absorbing: _isPatching,
-                            child: TextField(
-                              controller: _quantityControllers[index],
-                              keyboardType: TextInputType.number,
-                              textAlign: TextAlign.center,
-                              enabled: !_isPatching,
-                              decoration: const InputDecoration(
-                                border: OutlineInputBorder(),
-                                contentPadding: EdgeInsets.symmetric(vertical: 8),
-                              ),
-                              onChanged: (value) => _updateProductQuantity(index, value),
-                              onEditingComplete: () async {
-                                if (_isPatching) return;
-                                
-                                final newQuantity = int.tryParse(_quantityControllers[index]?.text ?? '0') ?? 0;
-                                if (newQuantity != _previousQuantities[index]) {
-                                  final success = await _patchSingleLine(index, newQuantity);
-                                  if (!success) {
-                                    setState(() {
-                                      _quantityControllers[index]?.text = _previousQuantities[index].toString();
-                                    });
+                      ),
+                      Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.remove),
+                            onPressed: _isPatching ? null : () => _decrementProductQuantity(index),
+                          ),
+                          SizedBox(
+                            width: 60,
+                            child: AbsorbPointer(
+                              absorbing: _isPatching,
+                              child: TextField(
+                                controller: _quantityControllers[index],
+                                keyboardType: TextInputType.number,
+                                textAlign: TextAlign.center,
+                                enabled: !_isPatching,
+                                decoration: const InputDecoration(
+                                  border: OutlineInputBorder(),
+                                  contentPadding: EdgeInsets.symmetric(vertical: 8),
+                                ),
+                                onChanged: (value) => _updateProductQuantity(index, value),
+                                onEditingComplete: () async {
+                                  if (_isPatching) return;
+                                  
+                                  final newQuantity = int.tryParse(_quantityControllers[index]?.text ?? '0') ?? 0;
+                                  if (newQuantity != _previousQuantities[index]) {
+                                    final success = await _patchSingleLine(index, newQuantity);
+                                    if (!success) {
+                                      setState(() {
+                                        _quantityControllers[index]?.text = _previousQuantities[index].toString();
+                                      });
+                                    }
                                   }
-                                }
-                                FocusScope.of(context).requestFocus(focoDeScanner);
-                              },
+                                  FocusScope.of(context).requestFocus(focoDeScanner);
+                                },
+                              ),
                             ),
                           ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.add),
-                          onPressed: _isPatching ? null : () => _incrementProductQuantity(index),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
+                          IconButton(
+                            icon: const Icon(Icons.add),
+                            onPressed: _isPatching ? null : () => _incrementProductQuantity(index),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 

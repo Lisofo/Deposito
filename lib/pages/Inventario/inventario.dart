@@ -1,9 +1,8 @@
 // ignore_for_file: unused_field
 
+import 'package:deposito/config/router/pages.dart';
 import 'package:deposito/models/almacen.dart';
 import 'package:deposito/models/ubicacion_almacen.dart';
-import 'package:deposito/pages/Inventario/editar_inventario.dart';
-import 'package:deposito/provider/product_provider.dart';
 import 'package:deposito/services/almacen_services.dart';
 import 'package:deposito/widgets/cargando.dart';
 import 'package:deposito/widgets/custom_speed_dial.dart';
@@ -13,7 +12,6 @@ import 'package:flutter/material.dart';
 import 'package:deposito/config/router/router.dart';
 import 'package:deposito/models/product.dart';
 import 'package:deposito/widgets/custom_button.dart';
-import 'package:provider/provider.dart';
 import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 
 class InventarioPage extends StatefulWidget {
@@ -48,7 +46,6 @@ class _InventarioPageState extends State<InventarioPage> {
 
   @override
   void dispose() {
-    // Cancelar cualquier foco o listener
     focoDeScanner.dispose();
     textController.dispose();
     super.dispose();
@@ -57,7 +54,6 @@ class _InventarioPageState extends State<InventarioPage> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Esto asegura que cuando volvemos a esta página, el foco se restablezca correctamente
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         focoDeScanner.requestFocus();
@@ -77,7 +73,6 @@ class _InventarioPageState extends State<InventarioPage> {
     final colors = Theme.of(context).colorScheme;
     final productProvider = context.watch<ProductProvider>();
   
-    // Si hay una ubicación guardada en el provider, usarla como seleccionada inicialmente
     if (productProvider.ubicacion.almacenUbicacionId != 0 && 
         ubicacionSeleccionada.almacenId == 0) {
       ubicacionSeleccionada = productProvider.ubicacion;
@@ -99,7 +94,13 @@ class _InventarioPageState extends State<InventarioPage> {
             backgroundColor: WidgetStatePropertyAll(colors.primary)
           ),
           onPressed: () async {
-            appRouter.pop();
+            if (productProvider.ubicacion.almacenUbicacionId == 0) {
+              appRouter.pop();
+            } else {
+              
+              final router = GoRouter.of(context);
+              router.pushReplacement('/paginaProducto');
+            }
           },
           icon: const Icon(Icons.arrow_back,),
         ),
@@ -126,7 +127,7 @@ class _InventarioPageState extends State<InventarioPage> {
                     appRouter.push('/editarInventario');
                     setState(() {});
                   },
-                  enabled: productProvider.ubicacion.almacenUbicacionId == 0, // This will disable the dropdown completely
+                  enabled: productProvider.ubicacion.almacenUbicacionId == 0,
                   hintText: 'Seleccione una ubicacion',
                 ),
                 const SizedBox(height: 20,),
@@ -195,7 +196,6 @@ class _InventarioPageState extends State<InventarioPage> {
   Future<void> _scanBarcode() async {
     if (!mounted) return;
     
-    // Desenfoca antes de abrir el escáner para evitar problemas
     focoDeScanner.unfocus();
     
     final code = await SimpleBarcodeScanner.scanBarcode(
@@ -224,18 +224,15 @@ class _InventarioPageState extends State<InventarioPage> {
 
       if (!mounted) return;
 
-      // Cancelar cualquier foco o proceso pendiente
       focoDeScanner.unfocus();
       textController.clear();
       
-      // Actualizar el estado y navegar
       if (mounted) {
         Provider.of<ProductProvider>(context, listen: false).setUbicacion(ubicacionEncontrada);
         setState(() {
           ubicacionSeleccionada = ubicacionEncontrada;
         });
         
-        // Utiliza await para asegurarse de que la navegación se complete
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (context) => const EditarInventario(),
@@ -250,7 +247,6 @@ class _InventarioPageState extends State<InventarioPage> {
     }
   }
 
-
   void _resetSearch() {
     ubicacionSeleccionada = UbicacionAlmacen.empty();
     focoDeScanner.requestFocus();
@@ -261,12 +257,10 @@ class _InventarioPageState extends State<InventarioPage> {
     if (value.isNotEmpty) {
       print('Valor escaneado: $value');
       try {
-        // Buscar la ubicación correspondiente al código escaneado
         final ubicacionEncontrada = listaUbicaciones.firstWhere(
           (element) => element.codUbicacion == value || element.descripcion.contains(value),
         );
         
-        // Verificar que la ubicación escaneada coincida con la seleccionada (si hay una)
         if (ubicacionSeleccionada.almacenId != 0 && ubicacionEncontrada.codUbicacion != ubicacionSeleccionada.codUbicacion) {
           await error('La ubicación escaneada no coincide con la seleccionada');
           return;
@@ -309,4 +303,3 @@ class _InventarioPageState extends State<InventarioPage> {
     );
   }
 }
-

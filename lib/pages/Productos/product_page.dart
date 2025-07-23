@@ -36,8 +36,8 @@ class _ProductPageState extends State<ProductPage> {
   final ScrollController listController = ScrollController();
   late ScaffoldMessengerState scaffoldMessenger;
   late List<Almacene> almacenes = [];
-  late Almacene? almacenSeleccionado = Almacene.empty(); // Almacén seleccionado
-  late List<Ubicacione> ubicaciones = []; // Ubicaciones del almacén seleccionado
+  late Almacene? almacenSeleccionado = Almacene.empty();
+  late List<Ubicacione> ubicaciones = [];
   late List<CodigoBarras> codigos = [];
   final _qrServices = QrServices();
   final TextEditingController codBarrasController = TextEditingController();
@@ -63,6 +63,15 @@ class _ProductPageState extends State<ProductPage> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     scaffoldMessenger = ScaffoldMessenger.of(context);
+    
+    // Recargar datos cuando la página vuelva a ser visible
+    // ignore: deprecated_member_use
+    ModalRoute.of(context)?.addScopedWillPopCallback(() async {
+      if (mounted) {
+        cargarDatos();
+      }
+      return true;
+    });
   }
 
   cargarDatos() async {
@@ -93,7 +102,6 @@ class _ProductPageState extends State<ProductPage> {
     });
   }
 
-  // Método para manejar la selección de un almacén
   void seleccionarAlmacen(Almacene almacen) {
     setState(() {
       almacenSeleccionado = almacen;
@@ -171,9 +179,8 @@ class _ProductPageState extends State<ProductPage> {
                             ),
                             const SizedBox(height: 10),
                             const Text('Almacenes:'),
-                            // Scroll horizontal para los almacenes
                             SizedBox(
-                              height: 100, // Altura fija para el contenedor de almacenes
+                              height: 100,
                               child: ListView.builder(
                                 scrollDirection: Axis.horizontal,
                                 itemCount: item.almacenes.length,
@@ -211,7 +218,6 @@ class _ProductPageState extends State<ProductPage> {
                                 },
                               ),
                             ),
-                            // Mostrar ubicaciones del almacén seleccionado
                           ],
                         ),
                       );
@@ -276,7 +282,6 @@ class _ProductPageState extends State<ProductPage> {
                                           capacidad: ubicacion.capacidad,
                                           orden: ubicacion.orden, 
                                           tipoUbicacion: '',
-                                          // Agrega otros campos necesarios según tu modelo UbicacionAlmacen
                                         )
                                       );
                                       appRouter.push('/inventario');
