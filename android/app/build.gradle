@@ -77,6 +77,18 @@ android {
             versionNameSuffix "-alsur-qa"
             resValue "string", "app_name", "Integral WMS"
         }
+        trackitProd {
+            dimension "default"
+            applicationId "com.integralwms.trackit.prod"
+            versionNameSuffix "-trackit-prod"
+            resValue "string", "app_name", "Integral WMS"
+        }
+        trackitQa {
+            dimension "default"
+            applicationId "com.integralwms.trackit.qa"
+            versionNameSuffix "-trackit-qa"
+            resValue "string", "app_name", "Integral WMS"
+        }
     }
 
     sourceSets {
@@ -91,6 +103,12 @@ android {
         }
         alsurQa {
             res.srcDirs = ['src/alsur/res']
+        }
+        trackitProd {
+            res.srcDirs = ['src/trackit/res']
+        }
+        trackitQa {
+            res.srcDirs = ['src/trackit/res']
         }
     }
 }

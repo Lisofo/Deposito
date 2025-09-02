@@ -44,6 +44,28 @@
         "--dart-define", "FLAVOR=alsur",
         "--dart-define", "IS_PROD=true"
       ]
+    },
+    {
+      "name": "TrackIT QA",
+      "type": "dart",
+      "request": "launch",
+      "program": "lib/main.dart",
+      "args": [
+        "--flavor", "trackitQa",
+        "--dart-define", "FLAVOR=trackit",
+        "--dart-define", "IS_PROD=false"
+      ]
+    },
+    {
+      "name": "TrackIT Prod",
+      "type": "dart",
+      "request": "launch",
+      "program": "lib/main.dart",
+      "args": [
+        "--flavor", "trackitProd",
+        "--dart-define", "FLAVOR=trackit",
+        "--dart-define", "IS_PROD=true"
+      ]
     }
   ]
 }

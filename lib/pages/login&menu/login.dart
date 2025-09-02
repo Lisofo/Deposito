@@ -53,6 +53,8 @@ class _LoginState extends State<Login> {
         return 'images/familcarLogo.png';
       case 'alsur':
         return 'images/alsurLogo.jpg';
+      case 'trackit':
+        return 'images/LogoTransparent.png';
       default:
         return 'images/familcarLogo.png'; // fallback
     }
@@ -260,7 +262,7 @@ class _LoginState extends State<Login> {
                                             style: const TextStyle(color: Colors.black),
                                           ),
                                           const Text(
-                                            '2025.07.21+1',
+                                            '2025.09.01+1',
                                             style: TextStyle(color: Colors.black),
                                           ),
                                         ],
@@ -286,7 +288,7 @@ class _LoginState extends State<Login> {
                              height: MediaQuery.of(context).size.height * 0.6,
                              width: MediaQuery.of(context).size.width / 2,
                               child:Image.asset(
-                                'images/familcarLogo.png',
+                                getLogoPath(),
                                 fit: BoxFit.fill,
                               ),
                             ),
@@ -467,7 +469,7 @@ class _LoginState extends State<Login> {
                                                 style: const TextStyle(color: Colors.black),
                                               ),
                                               const Text(
-                                                '2025.07.21+1',
+                                                '2025.09.01+1',
                                                 style: TextStyle(color: Colors.black),
                                               ),
                                             ],
