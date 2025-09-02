@@ -70,63 +70,103 @@ set /p PLATFORM_OPTION=Opcion:
 :: Confirmación
 echo.
 echo ========================================
-echo Compilando: !FLAVOR_NAME! (!FLAVOR_SUFFIX!) en modo !BUILD_MODE!
-echo Plataforma: !PLATFORM_OPTION!
+echo Compilando: %FLAVOR_NAME% (%FLAVOR_SUFFIX%) en modo %BUILD_MODE%
+echo Plataforma: %PLATFORM_OPTION%
 echo ========================================
 
 :: --- APK ---
 if "%PLATFORM_OPTION%"=="1" (
-    flutter build apk --flavor !FLAVOR_NAME!!FLAVOR_SUFFIX! --!BUILD_MODE! --dart-define=FLAVOR=!FLAVOR_NAME! --dart-define=IS_PROD=!IS_PROD!
+    flutter build apk --flavor %FLAVOR_NAME%%FLAVOR_SUFFIX% --%BUILD_MODE% --dart-define=FLAVOR=%FLAVOR_NAME% --dart-define=IS_PROD=%IS_PROD%
 )
 
 :: --- Web ---
 if "%PLATFORM_OPTION%"=="2" (
     echo Limpiando recursos web...
-    if exist web\icons (
-        rmdir /S /Q web\icons
+    if exist web\icons rmdir /S /Q web\icons
+    if exist web\manifest.json del /Q web\manifest.json
+    if exist web\favicon.png del /Q web\favicon.png
+    
+    echo Verificando assets web para %FLAVOR_NAME%...
+    if not exist "web_assets\%FLAVOR_NAME%\" (
+        echo Error: No se encuentran assets web para %FLAVOR_NAME%
+        echo Asegúrate de que existe la carpeta: web_assets\%FLAVOR_NAME%\
+        pause
+        exit /b
     )
-    if exist web\manifest.json (
-        del /Q web\manifest.json
-    )
-    if exist web\favicon.png (
-        del /Q web\favicon.png
-    )
-    echo Copiando archivos web para !FLAVOR_NAME!...
-    xcopy /E /Y /I web_assets\!FLAVOR_NAME!\* web\
-    flutter build web --!BUILD_MODE! --dart-define=FLAVOR=!FLAVOR_NAME! --dart-define=IS_PROD=!IS_PROD!
+    
+    echo Copiando archivos web para %FLAVOR_NAME%...
+    xcopy /E /Y /I "web_assets\%FLAVOR_NAME%\*" "web\"
+    flutter build web --%BUILD_MODE% --dart-define=FLAVOR=%FLAVOR_NAME% --dart-define=IS_PROD=%IS_PROD%
 )
 
 :: --- Windows ---
 if "%PLATFORM_OPTION%"=="3" (
+    echo Verificando icono de Windows para %FLAVOR_NAME%...
+    if not exist "windows_assets\%FLAVOR_NAME%\app_icon.ico" (
+        echo Error: No se encuentra el icono de Windows para %FLAVOR_NAME%
+        echo Asegúrate de que existe el archivo: windows_assets\%FLAVOR_NAME%\app_icon.ico
+        pause
+        exit /b
+    )
+    
     echo Copiando icono para Windows...
-    copy /Y windows_assets\!FLAVOR_NAME!\app_icon.ico windows\runner\resources\app_icon.ico
-    flutter build windows --!BUILD_MODE! --dart-define=FLAVOR=!FLAVOR_NAME! --dart-define=IS_PROD=!IS_PROD!
+    copy /Y "windows_assets\%FLAVOR_NAME%\app_icon.ico" "windows\runner\resources\app_icon.ico"
+    flutter build windows --%BUILD_MODE% --dart-define=FLAVOR=%FLAVOR_NAME% --dart-define=IS_PROD=%IS_PROD%
 )
 
 :: --- Todas las plataformas ---
 if "%PLATFORM_OPTION%"=="4" (
     :: APK
-    flutter build apk --flavor !FLAVOR_NAME!!FLAVOR_SUFFIX! --!BUILD_MODE! --dart-define=FLAVOR=!FLAVOR_NAME! --dart-define=IS_PROD=!IS_PROD!
+    echo Compilando APK...
+    flutter build apk --flavor %FLAVOR_NAME%%FLAVOR_SUFFIX% --%BUILD_MODE% --dart-define=FLAVOR=%FLAVOR_NAME% --dart-define=IS_PROD=%IS_PROD%
+    if errorlevel 1 (
+        echo Error al compilar APK
+        pause
+        exit /b
+    )
 
     :: Web
+    echo Compilando Web...
     echo Limpiando recursos web...
-    if exist web\icons (
-        rmdir /S /Q web\icons
+    if exist web\icons rmdir /S /Q web\icons
+    if exist web\manifest.json del /Q web\manifest.json
+    if exist web\favicon.png del /Q web\favicon.png
+    
+    echo Verificando assets web para %FLAVOR_NAME%...
+    if not exist "web_assets\%FLAVOR_NAME%\" (
+        echo Error: No se encuentran assets web para %FLAVOR_NAME%
+        echo Asegúrate de que existe la carpeta: web_assets\%FLAVOR_NAME%\
+        pause
+        exit /b
     )
-    if exist web\manifest.json (
-        del /Q web\manifest.json
+    
+    echo Copiando archivos web para %FLAVOR_NAME%...
+    xcopy /E /Y /I "web_assets\%FLAVOR_NAME%\*" "web\"
+    flutter build web --%BUILD_MODE% --dart-define=FLAVOR=%FLAVOR_NAME% --dart-define=IS_PROD=%IS_PROD%
+    if errorlevel 1 (
+        echo Error al compilar Web
+        pause
+        exit /b
     )
-    if exist web\favicon.png (
-        del /Q web\favicon.png
-    )
-    echo Copiando archivos web para !FLAVOR_NAME!...
-    xcopy /E /Y /I web_assets\!FLAVOR_NAME!\* web\
-    flutter build web --!BUILD_MODE! --dart-define=FLAVOR=!FLAVOR_NAME! --dart-define=IS_PROD=!IS_PROD!
 
     :: Windows
+    echo Compilando Windows...
+    echo Verificando icono de Windows para %FLAVOR_NAME%...
+    if not exist "windows_assets\%FLAVOR_NAME%\app_icon.ico" (
+        echo Error: No se encuentra el icono de Windows para %FLAVOR_NAME%
+        echo Asegúrate de que existe el archivo: windows_assets\%FLAVOR_NAME%\app_icon.ico
+        pause
+        exit /b
+    )
+    
     echo Copiando icono para Windows...
-    copy /Y windows_assets\!FLAVOR_NAME!\app_icon.ico windows\runner\resources\app_icon.ico
-    flutter build windows --!BUILD_MODE! --dart-define=FLAVOR=!FLAVOR_NAME! --dart-define=IS_PROD=!IS_PROD!
+    copy /Y "windows_assets\%FLAVOR_NAME%\app_icon.ico" "windows\runner\resources\app_icon.ico"
+    flutter build windows --%BUILD_MODE% --dart-define=FLAVOR=%FLAVOR_NAME% --dart-define=IS_PROD=%IS_PROD%
+    if errorlevel 1 (
+        echo Error al compilar Windows
+        pause
+        exit /b
+    )
 )
 
 pause

@@ -46,6 +46,7 @@ class _ProductPageState extends State<ProductPage> {
   late bool editUbi = false;
   late bool editCodBarras = false;
   late Almacene almacenCargado = Almacene.empty();
+  bool _verMasModelo = false;
 
   @override
   void initState() {
@@ -138,260 +139,329 @@ class _ProductPageState extends State<ProductPage> {
             )
           ],
         ),
-        body: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(4.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                middleBody(),
-                const SizedBox(
-                  height: 20,
-                ),
-                SizedBox(
-                  height: 400,
-                  child: ListView.builder(
-                    controller: listController,
-                    itemCount: _variantes!.length,
-                    itemBuilder: (context, i) {
-                      var item = _variantes![i];
-                      var stockAlmacen = item.almacenes.firstWhere(
-                        (Almacene alamacen) => alamacen.almacenId == almacen.almacenId
-                      ).stockAlmacen;
-                      
-                      return Card(
-                        margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                        elevation: 2,
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Título (equivalente al title de ListTile)
-                              Text(
-                                item.codItem,
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
+        body: buscando 
+          ? const Center(child: CircularProgressIndicator())
+          : _variantes!.isEmpty || _variantes == null 
+            ? const Center(child: Text('El Producto no existe', style: TextStyle(fontSize: 24)))
+            : LayoutBuilder(
+                builder: (context, constraints) {
+                  return SingleChildScrollView(
+                    child: Padding(
+                      padding: const EdgeInsets.all(4.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Encabezado con descripción del producto
+                          Padding(
+                            padding: const EdgeInsets.only(left: 10, right: 10, top: 10),
+                            child: Container(
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(5),
                               ),
-                              const SizedBox(height: 12),
-                              
-                              // Contenido (equivalente al subtitle de ListTile)
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
-                                  // Primera mitad: Información textual
-                                  Expanded(
-                                    flex: MediaQuery.of(context).size.width < 600 ? 1 : 3,
+                                  Center(
+                                    child: Text(
+                                      productoNuevo.descripcion,
+                                      style: const TextStyle(fontSize: 24),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          // En tu ListView.builder, modifica la parte del texto del modelo:
+                          ListView.builder(
+                            controller: listController,
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: _variantes!.length,
+                            itemBuilder: (context, i) {
+                              var item = _variantes![i];
+                              var stockAlmacen = item.almacenes.firstWhere(
+                                (Almacene alamacen) => alamacen.almacenId == almacen.almacenId
+                              ).stockAlmacen;
+                              
+                              // Determina si el texto necesita ser recortado
+                              bool textoLargo = productoNuevo.modelos.length > 200;
+                              String textoMostrar = _verMasModelo 
+                                ? productoNuevo.modelos 
+                                : (textoLargo 
+                                    ? '${productoNuevo.modelos.substring(0, 150)}...' 
+                                    : productoNuevo.modelos);
+                              
+                              return Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      item.codItem,
+                                      style: const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Expanded(
+                                          flex: MediaQuery.of(context).size.width < 600 ? 1 : 3,
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'Stock Total: ${item.stockTotal}',
+                                                style: const TextStyle(fontSize: 18),
+                                              ),
+                                              const SizedBox(height: 10),
+                                              Text(
+                                                'Stock del Almacen ${almacen.descripcion}: $stockAlmacen',
+                                                style: const TextStyle(fontSize: 18),
+                                              ),
+                                              const SizedBox(height: 10),
+                                              const Text('Modelos:'),
+                                              if (textoLargo)
+                                                TextButton(
+                                                  onPressed: () {
+                                                    setState(() {
+                                                      _verMasModelo = !_verMasModelo;
+                                                    });
+                                                  },
+                                                  child: Text(
+                                                    _verMasModelo ? 'Ver menos' : 'Ver más',
+                                                    style: const TextStyle(
+                                                      color: Colors.blue,
+                                                      fontSize: 14,
+                                                    ),
+                                                  ),
+                                                ),
+                                              const SizedBox(height: 10),
+                                              Text(
+                                                textoMostrar,
+                                                textAlign: TextAlign.start,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        
+                                        if(productoNuevo.fotosUrl.isNotEmpty)
+                                          Expanded(
+                                            flex: 1,
+                                            child: InkWell(
+                                              onTap: () {
+                                                final productProvider = Provider.of<ProductProvider>(context, listen: false);
+                                                productProvider.setFotos(productoNuevo.fotosUrl);
+                                                appRouter.push('/simpleProductPage');
+                                              },
+                                              child: Image.network(
+                                                productoNuevo.fotosUrl[0],
+                                                width: double.infinity,
+                                                height: 120,
+                                                fit: BoxFit.contain,
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+
+                          // Sección de Almacenes (fuera del ListView.builder)
+                          const Padding(
+                            padding: EdgeInsets.only(left: 16.0, top: 10),
+                            child: Text(
+                              'Almacenes:',
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          SizedBox(
+                            height: 100,
+                            child: ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: _variantes!.isNotEmpty ? _variantes![0].almacenes.length : 0,
+                              itemBuilder: (context, index) {
+                                var almacenItem = _variantes![0].almacenes[index];
+                                return GestureDetector(
+                                  onTap: () {
+                                    ubicacionProvider.setUbicaciones([]);
+                                    seleccionarAlmacen(almacenItem);
+                                    ubicacionProvider.setUbicaciones(almacenItem.ubicaciones);
+                                  },
+                                  child: Container(
+                                    margin: const EdgeInsets.all(8),
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: almacenSeleccionado?.almacenId == almacenItem.almacenId 
+                                        ? Colors.blue[100] 
+                                        : Colors.grey[200],
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: almacenSeleccionado?.almacenId == almacenItem.almacenId 
+                                          ? Colors.blue 
+                                          : Colors.transparent,
+                                        width: 2
+                                      ),
+                                    ),
                                     child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          'Stock Total: ${item.stockTotal}',
-                                          style: const TextStyle(fontSize: 18),
+                                          almacenItem.descAlmacen,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                         ),
-                                        const SizedBox(height: 10),
-                                        Text(
-                                          'Stock del Almacen ${almacen.descripcion}: $stockAlmacen',
-                                          style: const TextStyle(fontSize: 18),
-                                        ),
-                                        const SizedBox(height: 10),
-                                        const Text('Modelos:'),
-                                        const SizedBox(height: 10),
-                                        Text(
-                                          productoNuevo.modelos,
-                                          textAlign: TextAlign.start,
-                                        ),
+                                        const SizedBox(height: 4),
+                                        Text('Stock: ${almacenItem.stockAlmacen}'),
                                       ],
                                     ),
                                   ),
-                                  
-                                  // Segunda mitad: Imagen
-                                  if(productoNuevo.fotosUrl.isNotEmpty)
-                                    Expanded(
-                                      flex: 1,
-                                      child: InkWell(
-                                        onTap: () {
-                                          final productProvider = Provider.of<ProductProvider>(context, listen: false);
-                                          productProvider.setFotos(productoNuevo.fotosUrl);
-                                          appRouter.push('/simpleProductPage');
-                                        },
-                                        child: Image.network(
-                                          productoNuevo.fotosUrl[0],
-                                          width: double.infinity,
-                                          height: 120,
-                                          fit: BoxFit.contain,
-                                        ),
-                                      ),
-                                    ),
-                                ],
+                                );
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+
+                          if (almacenSeleccionado!.almacenId != 0)
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 10),
+                              Padding(
+                                padding: const EdgeInsets.only(left: 16.0),
+                                child: Text(
+                                  'Ubicaciones del almacen ${almacenSeleccionado!.descAlmacen}:',
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                               ),
                               const SizedBox(height: 10),
-                              const Text('Almacenes:'),
-                              SizedBox(
-                                height: 100,
-                                child: ListView.builder(
-                                  scrollDirection: Axis.horizontal,
-                                  itemCount: item.almacenes.length,
+                              if(editUbi)
+                              Padding(
+                                padding: const EdgeInsets.only(left: 16.0),
+                                child: TextButton(
+                                  onPressed: () {
+                                    Provider.of<ProductProvider>(context, listen: false).setAlmacenUbicacion(almacenSeleccionado!);
+                                    appRouter.push('/editUbicaciones');
+                                  },
+                                  child: const Text('Editar ubicaciones')
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              if (ubicacionProvider.ubicaciones.isEmpty)
+                                const Padding(
+                                  padding: EdgeInsets.only(left: 16.0),
+                                  child: Text(
+                                    'Ubicación vacía',
+                                    style: TextStyle(fontSize: 16),
+                                  ),
+                                ),
+                              if (ubicacionProvider.ubicaciones.isNotEmpty)
+                                ListView.builder(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  itemCount: ubicacionProvider.ubicaciones.length,
                                   itemBuilder: (context, index) {
-                                    var almacen = item.almacenes[index];
-                                    return GestureDetector(
-                                      onTap: () {
-                                        ubicacionProvider.setUbicaciones([]);
-                                        seleccionarAlmacen(almacen);
-                                        ubicacionProvider.setUbicaciones(almacen.ubicaciones);
-                                      },
-                                      child: Container(
-                                        margin: const EdgeInsets.all(8),
-                                        padding: const EdgeInsets.all(12),
-                                        decoration: BoxDecoration(
-                                          color: Colors.grey[200],
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: Column(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              almacen.descAlmacen,
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text('Stock: ${almacen.stockAlmacen}'),
-                                          ],
-                                        ),
+                                    var ubicacion = ubicacionProvider.ubicaciones[index];
+                                    return ListTile(
+                                      title: Text(
+                                        '${ubicacion.codUbicacion} ${ubicacion.descUbicacion}',
+                                        style: const TextStyle(fontSize: 16),
+                                      ),
+                                      subtitle: Text('Existencia actual: ${ubicacion.existenciaActualUbi}'),
+                                      trailing: TextButton(
+                                        onPressed: () {
+                                          Provider.of<ProductProvider>(context, listen: false).setUbicacion(
+                                            UbicacionAlmacen(
+                                              almacenId: almacenSeleccionado!.almacenId,
+                                              codUbicacion: ubicacion.codUbicacion,
+                                              descripcion: ubicacion.descUbicacion,
+                                              almacenUbicacionId: ubicacion.almacenUbicacionId,
+                                              capacidad: ubicacion.capacidad,
+                                              orden: ubicacion.orden, 
+                                              tipoUbicacion: '',
+                                            )
+                                          );
+                                          appRouter.push('/inventario');
+                                        },
+                                        child: const Text('Conteo')
                                       ),
                                     );
                                   },
                                 ),
-                              ),
                             ],
                           ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                if (almacenSeleccionado!.almacenId != 0)
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 10),
-                    Text(
-                      'Ubicaciones del almacen ${almacenSeleccionado!.descAlmacen}:',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    if(editUbi)
-                    TextButton(
-                      onPressed: () {
-                        Provider.of<ProductProvider>(context, listen: false).setAlmacenUbicacion(almacenSeleccionado!);
-                        appRouter.push('/editUbicaciones');
-                      },
-                      child: const Text('Editar ubicaciones')
-                    ),
-                    const SizedBox(height: 10),
-                    if (ubicacionProvider.ubicaciones.isEmpty)
-                      const Text(
-                        'Ubicación vacía',
-                        style: TextStyle(fontSize: 16),
-                      ),
-                    if (ubicacionProvider.ubicaciones.isNotEmpty)
-                      SizedBox(
-                        height: 300,
-                        child: Consumer<UbicacionProvider>(
-                          builder: (context, listaProvider, child) {
-                            return ListView.builder(
-                              shrinkWrap: false,
+                          const SizedBox(height: 5),
+                          Padding(
+                            padding: const EdgeInsets.only(left: 16.0),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text('Codigos ya asignados:',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                if(editCodBarras)
+                                TextButton(
+                                  onPressed: () async {
+                                    await postCB(context);
+                                  },
+                                  child: const Text('Agregar codigo +')
+                                )
+                              ],
+                            ),
+                          ),
+                          if(codigos.isEmpty) ... [
+                            const SizedBox(height: 10),
+                            const Padding(
+                              padding: EdgeInsets.only(left: 16.0),
+                              child: Text('Este item no tiene codigos asignados'),
+                            )
+                          ] else ... [
+                            const SizedBox(height: 5),
+                            ListView.builder(
+                              shrinkWrap: true,
                               physics: const NeverScrollableScrollPhysics(),
-                              itemCount: listaProvider.ubicaciones.length,
-                              itemBuilder: (context, index) {
-                                var ubicacion = listaProvider.ubicaciones[index];
+                              itemCount: codigos.length,
+                              itemBuilder: (context, i) {
+                                var codigo = codigos[i];
                                 return ListTile(
-                                  title: Text(
-                                    '${ubicacion.codUbicacion} ${ubicacion.descUbicacion}',
-                                    style: const TextStyle(fontSize: 16),
-                                  ),
-                                  subtitle: Text('Existencia actual: ${ubicacion.existenciaActualUbi}'),
-                                  trailing: TextButton(
-                                    onPressed: () {
-                                      Provider.of<ProductProvider>(context, listen: false).setUbicacion(
-                                        UbicacionAlmacen(
-                                          almacenId: almacenSeleccionado!.almacenId,
-                                          codUbicacion: ubicacion.codUbicacion,
-                                          descripcion: ubicacion.descUbicacion,
-                                          almacenUbicacionId: ubicacion.almacenUbicacionId,
-                                          capacidad: ubicacion.capacidad,
-                                          orden: ubicacion.orden, 
-                                          tipoUbicacion: '',
-                                        )
-                                      );
-                                      appRouter.push('/inventario');
+                                  title: Text(codigo.codigoBarra),
+                                  trailing: editCodBarras ? IconButton(
+                                    onPressed: () async {
+                                      await borrarCodBarra(context, codigo);
                                     },
-                                    child: const Text('Conteo')
-                                  ),
+                                    icon: const Icon(Icons.delete, color: Colors.red,)
+                                  ) : const SizedBox(),
                                 );
                               },
-                            );
-                          }
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 5,),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text('Codigos ya asignados:',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                            ),
+                          ],
+                          const SizedBox(height: 20),
+                        ],
                       ),
                     ),
-                    if(editCodBarras)
-                    TextButton(
-                      onPressed: () async {
-                        await postCB(context);
-                      },
-                      child: const Text('Agregar codigo +')
-                    )
-                  ],
-                ),
-                if(codigos.isEmpty) ... [
-                  const SizedBox(height: 10,),
-                  const Text('Este item no tiene codigos asignados')
-                ] else ... [
-                  const SizedBox(height: 5,),
-                  SizedBox(
-                    height: 300,
-                    child: ListView.builder(
-                      itemCount: codigos.length,
-                      itemBuilder: (context, i) {
-                        var codigo = codigos[i];
-                        return ListTile(
-                          title: Text(codigo.codigoBarra),
-                          trailing: editCodBarras ? IconButton(
-                            onPressed: () async {
-                              await borrarCodBarra(context, codigo);
-                            },
-                            icon: const Icon(Icons.delete, color: Colors.red,)
-                          ) : const SizedBox(),
-                        );
-                      },
-                    ),
-                  )
-                ]
-              ],
-            ),
-          ),
-        ),
+                  );
+                },
+              ),
       ),
     );
   }
@@ -476,34 +546,5 @@ class _ProductPageState extends State<ProductPage> {
         );
       },
     );
-  }
-
-  Widget middleBody() {
-    final colores = Theme.of(context).colorScheme;
-
-    return buscando ? const Center(child: CircularProgressIndicator())
-      : _variantes!.isEmpty || _variantes == null ? const Center(child: Text('El Producto no existe', style: TextStyle(fontSize: 24)),)
-        : Padding(
-          padding: const EdgeInsets.only(left: 10, right: 10, top: 10),
-          child: Container(
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(5),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Center(
-                  child: Text(
-                    productoNuevo.descripcion,
-                    style: const TextStyle(fontSize: 24),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
   }
 }
