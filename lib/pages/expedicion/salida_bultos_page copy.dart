@@ -15,14 +15,14 @@ import 'package:provider/provider.dart';
 import 'package:deposito/models/orden_picking.dart';
 import 'package:deposito/services/picking_services.dart';
 
-class SalidaBultosScreenCopia extends StatefulWidget {
-  const SalidaBultosScreenCopia({super.key});
+class SalidaBultosScreenOriginal extends StatefulWidget {
+  const SalidaBultosScreenOriginal({super.key});
 
   @override
-  SalidaBultosScreenCopiaState createState() => SalidaBultosScreenCopiaState();
+  SalidaBultosScreenOriginalState createState() => SalidaBultosScreenOriginalState();
 }
 
-class SalidaBultosScreenCopiaState extends State<SalidaBultosScreenCopia> {
+class SalidaBultosScreenOriginalState extends State<SalidaBultosScreenOriginal> {
   
   OrdenPicking? _ordenSeleccionada;
   Bulto? _bultoActual;
@@ -346,22 +346,7 @@ class SalidaBultosScreenCopiaState extends State<SalidaBultosScreenCopia> {
     if (_vistaMonitor) return;
     
     final colors = Theme.of(context).colorScheme;
-    
-    // Determinar si es el primer bulto (no hay bultos activos)
-    final bool esPrimerBulto = _bultos.isEmpty;
-    
-    // Filtrar tipos de bulto según el caso
-    List<TipoBulto> tiposDisponibles = [];
-    
-    if (esPrimerBulto) {
-      // Para el primer bulto, usar solo tipoBultoId = 4 (VIRTUAL)
-      tiposDisponibles = tipoBultos.where((tipo) => tipo.tipoBultoId == 4).toList();
-    } else {
-      // Para bultos adicionales, excluir VIRTUAL
-      tiposDisponibles = tipoBultos.where((tipo) => tipo.codTipoBulto != "VIRTUAL").toList();
-    }
-    
-    if (tiposDisponibles.isEmpty) {
+    if (tipoBultos.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('No hay tipos de bulto disponibles')),
       );
@@ -372,13 +357,11 @@ class SalidaBultosScreenCopiaState extends State<SalidaBultosScreenCopia> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text(esPrimerBulto 
-            ? 'Creando primer bulto (VIRTUAL)' 
-            : 'Seleccionar tipo de bulto'),
+          title: const Text('Seleccionar tipo de bulto'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              children: tiposDisponibles.map((tipo) {
+              children: tipoBultos.map((tipo) {
                 return ListTile(
                   leading: getIcon(tipo.icon, context, colors.secondary),
                   title: Text(tipo.descripcion),
@@ -578,17 +561,7 @@ class SalidaBultosScreenCopiaState extends State<SalidaBultosScreenCopia> {
   void _mostrarDialogoCierreBultos() {
     if (_vistaMonitor) return;
     
-    // Primero filtrar los bultos no virtuales
-    final bultosNoVirtuales = _bultos.where((bulto) {
-      final tipoBulto = tipoBultos.firstWhere(
-        (t) => t.tipoBultoId == bulto.tipoBultoId,
-        orElse: () => TipoBulto.empty()
-      );
-      return tipoBulto.codTipoBulto != "VIRTUAL";
-    }).toList();
-
-    // Crear selecciones solo para bultos no virtuales
-    final List<bool> selecciones = List.filled(bultosNoVirtuales.length, false);
+    final List<bool> selecciones = List.filled(_bultos.length, false);
     ModoEnvio? metodoEnvio;
     FormaEnvio? empresaEnvioSeleccionada;
     FormaEnvio? transportistaSeleccionado;
@@ -609,7 +582,7 @@ class SalidaBultosScreenCopiaState extends State<SalidaBultosScreenCopia> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const Text('Seleccionar bultos:'),
-                    ...bultosNoVirtuales.asMap().entries.map((entry) {
+                    ..._bultos.asMap().entries.map((entry) {
                       final index = entry.key;
                       final bulto = entry.value;
                       final tipoBulto = tipoBultos.firstWhere(
@@ -773,7 +746,7 @@ class SalidaBultosScreenCopiaState extends State<SalidaBultosScreenCopia> {
                       // Procesar cada bulto seleccionado
                       for (int i = 0; i < selecciones.length; i++) {
                         if (selecciones[i]) {
-                          final bulto = bultosNoVirtuales[i];
+                          final bulto = _bultos[i];
                           
                           // 1. Actualizar datos del bulto con PUT
                           // ignore: unused_local_variable
@@ -830,12 +803,11 @@ class SalidaBultosScreenCopiaState extends State<SalidaBultosScreenCopia> {
                       if (mounted) {
                         setState(() {
                           // Mover bultos cerrados a la lista de cerrados
-                          final bultosACerrar = bultosNoVirtuales.where((bulto) => 
-                              selecciones[bultosNoVirtuales.indexOf(bulto)]).toList();
+                          final bultosACerrar = _bultos.where((bulto) => selecciones[_bultos.indexOf(bulto)]).toList();
                           _bultosCerrados.addAll(bultosACerrar);
                           
                           // Eliminar de la lista de bultos activos
-                          _bultos.removeWhere((bulto) => bultosACerrar.contains(bulto));
+                          _bultos.removeWhere((bulto) => selecciones[_bultos.indexOf(bulto)]);
                           
                           // Actualizar bulto actual si es necesario
                           if (_bultos.isEmpty) {
@@ -869,20 +841,6 @@ class SalidaBultosScreenCopiaState extends State<SalidaBultosScreenCopia> {
 
   void _eliminarBulto(Bulto bulto) {
     if (_vistaMonitor) return;
-    
-    // Obtener el tipo de bulto para verificar si es VIRTUAL
-    final tipoBulto = tipoBultos.firstWhere(
-      (t) => t.tipoBultoId == bulto.tipoBultoId,
-      orElse: () => TipoBulto.empty()
-    );
-    
-    // No permitir eliminar bultos VIRTUAL
-    if (tipoBulto.codTipoBulto == "VIRTUAL") {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No se pueden eliminar bultos virtuales')),
-      );
-      return;
-    }
     
     showDialog(
       context: context,
@@ -1345,7 +1303,7 @@ class SalidaBultosScreenCopiaState extends State<SalidaBultosScreenCopia> {
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         ),
                         onPressed: _mostrarDialogoTipoBulto,
-                        child: Text(_bultos.isEmpty ? 'Comenzar' : 'Crear Nuevo Bulto', style: TextStyle(color: colors.onPrimary)),
+                        child: Text('Crear Nuevo Bulto', style: TextStyle(color: colors.onPrimary)),
                       ),
                     if (_bultos.isNotEmpty)
                       Tooltip(

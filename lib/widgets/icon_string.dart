@@ -32,7 +32,8 @@ final _icons = <String, IconData>{
   'monitor' : Icons.monitor,
   'handshake' : Icons.handshake,
   'shopping_bag' : Icons.shopping_bag,
-  'local_shipping' : Icons.local_shipping
+  'local_shipping' : Icons.local_shipping,
+  'settings_ethernet' : Icons.settings_ethernet,
 };
 
 Icon getIcon(String iconName, BuildContext context, Color colors) {

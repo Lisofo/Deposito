@@ -65,7 +65,7 @@ class AppRouter {
         GoRoute(path: '/monitor', builder: (context, state) => const MonitorPage()),
         GoRoute(path: '/qrPage', builder: (context, state) => const QrPage()),
         GoRoute(path: '/expedicionPaquetes', builder: (context, state) => const SeleccionOrdenesScreen()),
-        GoRoute(path: '/salidaBultos', builder: (context, state) => const SalidaBultosScreen()),
+        GoRoute(path: '/salidaBultos', builder: (context, state) => const SalidaBultosScreenCopia()),
         GoRoute(path: '/expedicionDespacho', builder: (context, state) => const DespachoPage()),
       ],
     );

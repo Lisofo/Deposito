@@ -446,8 +446,8 @@ class _ListaPickingState extends State<ListaPicking> {
                   Text('Cliente: ${orden.codEntidad} - ${orden.nombre}'),
                   Text('RUC: ${orden.ruc}'),
                   Text(orden.transaccion),
-                  Text('Fecha: ${DateFormat('dd/MM/yyyy').format(orden.fechaDate)}'),
-                  Text("Fecha última mod.: ${DateFormat('dd/MM/yyyy HH:mm').format(orden.fechaDate)}"),
+                  Text("Fecha: ${DateFormat('dd/MM/yyyy HH:mm').format(orden.fechaDate)}"),
+                  Text(orden.comentario)
                 ],
               ),
             ),

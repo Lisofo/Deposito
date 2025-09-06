@@ -69,7 +69,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
         almacen.almacenId,
         token, 
         tipo: 'V,P,TS',
-        estado: 'CERRADO',
+        estado: 'CERRADO, EMBALAJE, PAPEL',
         fechaDateDesde: fechaDesde,
         fechaDateHasta: fechaHasta,
         nombre: cliente,
