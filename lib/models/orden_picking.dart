@@ -38,6 +38,7 @@ class OrdenPicking {
   late String modificadoPor;
   late DateTime fechaModificadoPor;
   late List<PickingLinea>? lineas;
+  late String   modalidad;
 
   OrdenPicking({
     required this.pickId,
@@ -69,6 +70,7 @@ class OrdenPicking {
     required this.creadoPor,
     required this.modificadoPor,
     required this.fechaModificadoPor,
+    required this.modalidad,
   });
 
   factory OrdenPicking.fromJson(Map<String, dynamic> json) => OrdenPicking(
@@ -87,6 +89,7 @@ class OrdenPicking {
     almacenIdDestino: json["almacenIdDestino"] as int? ?? 0,
     prioridad: json["prioridad"] as String? ?? '',
     comentario: json["comentario"] as String? ?? '',
+    modalidad: json["modalidad"] as String? ?? '',
     cantLineas: json["cantLineas"] as int? ?? 0,
     tInfoEmpresaWsId: json["tInfoEmpresaWSId"] as int? ?? 0,
     usuId: json["usuId"] as int? ?? 0,
@@ -129,7 +132,8 @@ class OrdenPicking {
     "entidadId": entidadId,
     "codEntidad": codEntidad,
     "ruc": ruc,
-    "nombre": nombre,
+    "nombre": nombre, 
+    "modalidad": modalidad, 
     "telefono": telefono,
     "localidad": localidad,
     "porcentajeCompletado": porcentajeCompletado,
@@ -161,6 +165,7 @@ class OrdenPicking {
     codEntidad = '';
     ruc = '';
     nombre = '';
+    modalidad = '';
     telefono = '';
     localidad = '';
     creadoPor = '';
@@ -174,6 +179,7 @@ class OrdenPicking {
     String? serie,
     int? transaccionId,
     String? transaccion,
+    String? modalidad,
     String? tipo,
     String? descTipo,
     int? movimientoId,
@@ -227,6 +233,7 @@ class OrdenPicking {
       porcentajeCompletado: porcentajeCompletado ?? this.porcentajeCompletado,
       creadoPor: creadoPor ?? this.creadoPor,
       modificadoPor: modificadoPor ?? this.modificadoPor,
+      modalidad: modalidad ?? this.modalidad,
       fechaModificadoPor: fechaModificadoPor ?? this.fechaModificadoPor,
       lineas: lineas ?? (this.lineas != null ? List.from(this.lineas!) : null),
     );

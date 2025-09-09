@@ -1,3 +1,5 @@
+// ignore_for_file: file_names
+
 import 'package:deposito/models/bulto.dart';
 import 'package:deposito/models/entrega.dart';
 import 'package:deposito/models/forma_envio.dart';
