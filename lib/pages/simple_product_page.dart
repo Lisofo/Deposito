@@ -40,8 +40,8 @@ class _SimpleProductPageState extends State<SimpleProductPage> {
     almacen = context.read<ProductProvider>().almacen;
     token = context.read<ProductProvider>().token;
     raiz = context.read<ProductProvider>().raiz;
-    fotos = context.read<ProductProvider>().fotos;
     productoNuevo = await ProductServices().getProductoDeposito(context, raiz, token);
+    fotos = productoNuevo.fotosUrl;
     setState(() {});
   }
 

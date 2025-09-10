@@ -178,35 +178,41 @@ class Bulto {
 }
 
 class BultoItem {
-  final int bultoLinId;
-  final int bultoId;
-  final int pickLineaId;
+  late int pickId;
+  late int pickLineaId;
+  late int bultoLinId;
+  late int bultoId;
+  late int itemId;
   late int cantidad;
   late int cantidadMaxima;
-  late String codigoRaiz;
-  late String codigo;
-  late String descripcion;
+  late String raiz;
+  late String codItem;
+  late String item;
 
   BultoItem({
+    required this.pickId,
+    required this.pickLineaId,
     required this.bultoLinId,
     required this.bultoId,
-    required this.pickLineaId,
+    required this.itemId,
     required this.cantidad,
-    required this.codigoRaiz,
-    required this.codigo,
     required this.cantidadMaxima,
-    required this.descripcion,
+    required this.raiz,
+    required this.codItem,
+    required this.item,
   });
 
   factory BultoItem.fromJson(Map<String, dynamic> json) => BultoItem(
+    pickId: json["pickId"] as int? ?? 0,
+    pickLineaId: json["pickLineaId"] as int? ?? 0,
     bultoLinId: json["bultoLinId"] as int? ?? 0,
     bultoId: json["bultoId"] as int? ?? 0,
-    pickLineaId: json["pickLineaId"] as int? ?? 0,
+    itemId: json["itemId"] as int? ?? 0,
     cantidad: json["cantidad"] as int? ?? 0,
-    codigoRaiz: '',
-    codigo: '',
     cantidadMaxima: 0,
-    descripcion: ''
+    raiz: json["raiz"] as String? ?? '',
+    codItem: json['codItem'] as String? ?? '',
+    item: json['item'] as String? ?? ''
   );
 
   Map<String, dynamic> toJson() => {
@@ -222,31 +228,36 @@ class BultoItem {
     pickLineaId: 0,
     cantidad: 0,
     cantidadMaxima: 0,
-    codigoRaiz: '',
-    codigo: '',
-    descripcion: '',
+    raiz: '',
+    codItem: '',
+    item: '',
+    pickId: 0,
+    itemId: 0,
   );
 
   BultoItem copyWith({
+    int? pickId,
+    int? pickLineaId,
     int? bultoLinId,
     int? bultoId,
-    int? pickLineaId,
+    int? itemId,
     int? cantidad,
     int? cantidadMaxima,
-    String? codigoRaiz,
-    String? codigo,
-    String? descripcion,
+    String? raiz,
+    String? codItem,
+    String? item,
   }) {
     return BultoItem(
+      pickId: pickId ?? this.pickId,
+      pickLineaId: pickLineaId ?? this.pickLineaId,
       bultoLinId: bultoLinId ?? this.bultoLinId,
       bultoId: bultoId ?? this.bultoId,
-      pickLineaId: pickLineaId ?? this.pickLineaId,
+      itemId: itemId ?? this.itemId,
       cantidad: cantidad ?? this.cantidad,
       cantidadMaxima: cantidadMaxima ?? this.cantidadMaxima,
-      codigoRaiz: codigoRaiz ?? this.codigoRaiz,
-      codigo: codigo ?? this.codigo,
-      descripcion: descripcion ?? this.descripcion,
+      raiz: raiz ?? this.raiz,
+      codItem: codItem ?? this.codItem,
+      item: item ?? this.item,
     );
   }
-
 }

@@ -317,14 +317,14 @@ class SalidaBultosScreenOriginalState extends State<SalidaBultosScreenOriginal> 
         }
         
         final nuevoItem = BultoItem(
-          codigo: value,
-          codigoRaiz: linea.codItem,
+          codItem: value,
+          raiz: linea.codItem,
           cantidad: 1,
-          descripcion: linea.descripcion,
+          item: linea.descripcion,
           cantidadMaxima: linea.cantidadPickeada,
           bultoId: _bultoActual!.bultoId,
           bultoLinId: 0,
-          pickLineaId: linea.pickLineaId
+          pickLineaId: linea.pickLineaId, pickId: linea.pickId, itemId: linea.itemId
         );
         
         setState(() {
@@ -445,7 +445,7 @@ class SalidaBultosScreenOriginalState extends State<SalidaBultosScreenOriginal> 
     if (_vistaMonitor) return;
     
     final controller = TextEditingController(text: item.cantidad.toString());
-    final (cantidadEnOtrosBultos, _) = _getCantidadVerificadaYMaxima(item.codigoRaiz, item.pickLineaId);
+    final (cantidadEnOtrosBultos, _) = _getCantidadVerificadaYMaxima(item.raiz, item.pickLineaId);
     final FocusNode focusNode = FocusNode();
 
     showDialog(
@@ -895,8 +895,8 @@ class SalidaBultosScreenOriginalState extends State<SalidaBultosScreenOriginal> 
         
         return item.copyWith(
           cantidadMaxima: linea.cantidadPickeada,
-          descripcion: linea.descripcion,
-          codigoRaiz: linea.codItem,
+          item: linea.descripcion,
+          raiz: linea.codItem,
         );
       }).toList();
 
@@ -1106,9 +1106,9 @@ class SalidaBultosScreenOriginalState extends State<SalidaBultosScreenOriginal> 
                                 itemCount: _bultoActual!.contenido.length,
                                 itemBuilder: (context, index) {
                                   final item = _bultoActual!.contenido[index];
-                                  final (verificadaTotal, maximaTotal) = _getCantidadVerificadaYMaxima(item.codigoRaiz, item.pickLineaId);
+                                  final (verificadaTotal, maximaTotal) = _getCantidadVerificadaYMaxima(item.raiz, item.pickLineaId);
                                   return ListTile(
-                                    title: Text('${item.codigoRaiz} - ${item.descripcion}'),
+                                    title: Text('${item.raiz} - ${item.item}'),
                                     subtitle: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
