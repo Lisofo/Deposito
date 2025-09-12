@@ -38,7 +38,8 @@ class OrdenPicking {
   late String modificadoPor;
   late DateTime fechaModificadoPor;
   late List<PickingLinea>? lineas;
-  late String   modalidad;
+  late String modalidad;
+  late String metodoEnvio;
 
   OrdenPicking({
     required this.pickId,
@@ -71,6 +72,7 @@ class OrdenPicking {
     required this.modificadoPor,
     required this.fechaModificadoPor,
     required this.modalidad,
+    required this.metodoEnvio
   });
 
   factory OrdenPicking.fromJson(Map<String, dynamic> json) => OrdenPicking(
@@ -90,6 +92,7 @@ class OrdenPicking {
     prioridad: json["prioridad"] as String? ?? '',
     comentario: json["comentario"] as String? ?? '',
     modalidad: json["modalidad"] as String? ?? '',
+    metodoEnvio: json["metodoEnvio"] as String? ?? '',
     cantLineas: json["cantLineas"] as int? ?? 0,
     tInfoEmpresaWsId: json["tInfoEmpresaWSId"] as int? ?? 0,
     usuId: json["usuId"] as int? ?? 0,
@@ -135,6 +138,7 @@ class OrdenPicking {
     "nombre": nombre, 
     "modalidad": modalidad, 
     "telefono": telefono,
+    "metodoEnvio": metodoEnvio,
     "localidad": localidad,
     "porcentajeCompletado": porcentajeCompletado,
     "lineas": List<dynamic>.from(lineas!.map((x) => x.toJson())),
@@ -166,6 +170,7 @@ class OrdenPicking {
     ruc = '';
     nombre = '';
     modalidad = '';
+    metodoEnvio = '';
     telefono = '';
     localidad = '';
     creadoPor = '';
@@ -204,6 +209,7 @@ class OrdenPicking {
     String? modificadoPor,
     DateTime? fechaModificadoPor,
     List<PickingLinea>? lineas,
+    String? metodoEnvio,
   }) {
     return OrdenPicking(
       pickId: pickId ?? this.pickId,
@@ -214,6 +220,7 @@ class OrdenPicking {
       tipo: tipo ?? this.tipo,
       descTipo: descTipo ?? this.descTipo,
       movimientoId: movimientoId ?? this.movimientoId,
+      metodoEnvio: metodoEnvio ?? this.metodoEnvio,
       fechaDate: fechaDate ?? this.fechaDate,
       fechaDocumento: fechaDocumento ?? this.fechaDocumento,
       estado: estado ?? this.estado,
@@ -256,6 +263,7 @@ class PickingLinea {
   late int itemId;
   late int cantidadPedida;
   late int cantidadPickeada;
+  late int cantidadVerificada;
   late String tipoLineaAdicional;
   late int lineaIdOriginal;
   late String codItem;
@@ -270,6 +278,7 @@ class PickingLinea {
     required this.itemId,
     required this.cantidadPedida,
     required this.cantidadPickeada,
+    required this.cantidadVerificada,
     required this.tipoLineaAdicional,
     required this.lineaIdOriginal,
     required this.codItem,
@@ -285,6 +294,7 @@ class PickingLinea {
     itemId: json["itemId"] as int? ?? 0,
     cantidadPedida: json["cantidadPedida"] as int? ?? 0,
     cantidadPickeada: json["cantidadPickeada"] as int? ?? 0,
+    cantidadVerificada: json["cantidadVerificada"] as int? ?? 0,
     tipoLineaAdicional: json["tipoLineaAdicional"] as String? ?? '',
     lineaIdOriginal: json["lineaIdOriginal"] as int? ?? 0,
     codItem: json["codItem"] as String? ?? '',
@@ -302,6 +312,7 @@ class PickingLinea {
     "itemId": itemId,
     "cantidadPedida": cantidadPedida,
     "cantidadPickeada": cantidadPickeada,
+    "cantidadVerificada": cantidadVerificada,
     "tipoLineaAdicional": tipoLineaAdicional,
     "lineaIdOriginal": lineaIdOriginal,
     "codItem": codItem,
@@ -317,6 +328,7 @@ class PickingLinea {
     itemId = 0;
     cantidadPedida = 0;
     cantidadPickeada = 0;
+    cantidadVerificada = 0;
     tipoLineaAdicional = '';
     lineaIdOriginal = 0;
     codItem = '';
@@ -332,6 +344,7 @@ class PickingLinea {
     int? itemId,
     int? cantidadPedida,
     int? cantidadPickeada,
+    int? cantidadVerificada,
     String? tipoLineaAdicional,
     int? lineaIdOriginal,
     String? codItem,
@@ -346,6 +359,7 @@ class PickingLinea {
       itemId: itemId ?? this.itemId,
       cantidadPedida: cantidadPedida ?? this.cantidadPedida,
       cantidadPickeada: cantidadPickeada ?? this.cantidadPickeada,
+      cantidadVerificada: cantidadVerificada ?? this.cantidadVerificada,
       tipoLineaAdicional: tipoLineaAdicional ?? this.tipoLineaAdicional,
       lineaIdOriginal: lineaIdOriginal ?? this.lineaIdOriginal,
       codItem: codItem ?? this.codItem,

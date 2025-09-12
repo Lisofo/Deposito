@@ -310,6 +310,7 @@ class PickingProductsState extends State<PickingProducts> {
       itemId: currentLine.itemId,
       cantidadPedida: currentLine.cantidadPedida,
       cantidadPickeada: totalPicked,
+      cantidadVerificada: currentLine.cantidadVerificada,
       tipoLineaAdicional: currentLine.tipoLineaAdicional,
       lineaIdOriginal: currentLine.lineaIdOriginal,
       codItem: currentLine.codItem,

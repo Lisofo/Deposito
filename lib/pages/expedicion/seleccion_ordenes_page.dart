@@ -9,6 +9,7 @@ import 'package:deposito/services/entrega_services.dart';
 import 'package:deposito/services/picking_services.dart';
 import 'package:deposito/widgets/carteles.dart';
 import 'package:deposito/widgets/escaner_pda.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:deposito/widgets/filtros_expedicion.dart';
@@ -38,6 +39,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
   bool _isLoading = true;
   bool camera = false;
   String token = '';
+  int _groupValue = 0;
 
   @override
   void initState() {
@@ -69,7 +71,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
         almacen.almacenId,
         token, 
         tipo: 'V,P,TS',
-        estado: 'CERRADO, EMBALAJE, PAPEL',
+        estado: _groupValue != -1 ? ['CERRADO', 'EMBALAJE', 'E. PARCIAL'][_groupValue] : null,
         fechaDateDesde: fechaDesde,
         fechaDateHasta: fechaHasta,
         nombre: cliente,
@@ -176,6 +178,24 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
                       _manteneFocoScanner();
                     },
                     cantidadDeOrdenes: _ordenes.length,
+                  ),
+                  CupertinoSegmentedControl<int>(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    groupValue: _groupValue,
+                    borderColor: colors.primary,
+                    selectedColor: colors.primary,
+                    unselectedColor: Colors.white,
+                    children: {
+                      0: buildSegment('Cerrado'),
+                      1: buildSegment('Embalaje'),
+                      2: buildSegment('Entrega parcial'),
+                    },
+                    onValueChanged: (newValue) {
+                      setState(() {
+                        _groupValue = newValue;
+                        _loadData();
+                      });
+                    },
                   ),
                   Expanded(
                     child: _ordenes.isEmpty
@@ -417,6 +437,19 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
             ),
             TextSpan(text: value),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget buildSegment(String text) {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      child: FittedBox(
+        fit: BoxFit.contain,
+        child: Text(
+          text,
+          style: const TextStyle(fontSize: 14),
         ),
       ),
     );
