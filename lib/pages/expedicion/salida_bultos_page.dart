@@ -254,7 +254,7 @@ class VerificacionBultoVirtualPageState extends State<VerificacionBultoVirtualPa
       
       final (cantidadVerificada, maxima) = _getCantidadVerificadaYMaxima(linea.codItem, linea.pickLineaId);
       if (cantidadVerificada < maxima) {
-        return false;
+        return true;
       }
     }
     return true;
@@ -697,13 +697,6 @@ class VerificacionBultoVirtualPageState extends State<VerificacionBultoVirtualPa
   }
 
   // Obtener la cantidad verificada de un producto específico en el bulto virtual
-  int _getCantidadVerificadaProducto(int pickLineaId) {
-    if (_bultoVirtual == null) return 0;
-    
-    return _bultoVirtual!.contenido
-        .where((item) => item.pickLineaId == pickLineaId)
-        .fold(0, (sum, item) => sum + item.cantidad);
-  }
 
   Widget _buildProductosSection() {
     return Card(
@@ -844,7 +837,6 @@ class VerificacionBultoVirtualPageState extends State<VerificacionBultoVirtualPa
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final isWideScreen = MediaQuery.of(context).size.width > 800;
 
     return SafeArea(
       child: Scaffold(

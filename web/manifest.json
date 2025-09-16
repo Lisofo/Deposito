@@ -1,6 +1,6 @@
 {
-    "name": "alsur_deposito",
-    "short_name": "alsur_deposito",
+    "name": "deposito",
+    "short_name": "deposito",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

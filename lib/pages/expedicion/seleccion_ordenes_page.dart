@@ -71,7 +71,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
         almacen.almacenId,
         token, 
         tipo: 'V,P,TS',
-        estado: _groupValue != -1 ? ['CERRADO', 'EMBALAJE', 'E. PARCIAL'][_groupValue] : null,
+        estado: _groupValue != -1 ? ['CERRADO, PAPEL', 'EMBALAJE, PAPEL', 'E. PARCIAL, PAPEL'][_groupValue] : null,
         fechaDateDesde: fechaDesde,
         fechaDateHasta: fechaHasta,
         nombre: cliente,
