@@ -77,8 +77,14 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
         widget.token
       );
       
+      // Filtrar bultos cerrados excluyendo los VIRTUAL
+      final bultosCerradosFiltrados = bultosExistentes.where((b) => 
+        b.estado == 'CERRADO' && 
+        b.tipoBultoId != widget.bultoVirtual.tipoBultoId // Excluir bultos VIRTUAL
+      ).toList();
+      
       setState(() {
-        _bultosCerrados = bultosExistentes.where((b) => b.estado == 'CERRADO').toList();
+        _bultosCerrados = bultosCerradosFiltrados;
         _entregaFinalizada = widget.entrega.estado == 'finalizado' || _bultosCerrados.isNotEmpty;
       });
     } catch (e) {
@@ -492,6 +498,12 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
   }
 
   Widget _buildBultosCerrados() {
+    final colors = Theme.of(context).colorScheme;
+    // Filtrar nuevamente por si acaso (aunque ya se filtró en _cargarBultosCerrados)
+    final bultosNoVirtuales = _bultosCerrados.where((b) => 
+      b.tipoBultoId != widget.bultoVirtual.tipoBultoId
+    ).toList();
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -501,10 +513,10 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
         ),
         const SizedBox(height: 16),
         
-        if (_bultosCerrados.isEmpty)
+        if (bultosNoVirtuales.isEmpty)
           const Text('No hay bultos cerrados', style: TextStyle(color: Colors.grey)),
         
-        ..._bultosCerrados.map((bulto) {
+        ...bultosNoVirtuales.map((bulto) {
           final tipoBulto = widget.tipoBultos.firstWhere(
             (t) => t.tipoBultoId == bulto.tipoBultoId,
             orElse: () => TipoBulto.empty()
@@ -514,7 +526,6 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
             margin: const EdgeInsets.only(bottom: 12),
             child: ListTile(
               leading: getIcon(tipoBulto.icon, context, Colors.green),
-              // title: Text('Bulto ${bulto.nroBulto}/${bulto.totalBultos} - ${tipoBulto.descripcion}'),
               title: Text('Bulto ${tipoBulto.descripcion}'),
               subtitle: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -523,35 +534,45 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
                   if (bulto.comentario!.isNotEmpty) Text('Comentario: ${bulto.comentario}'),
                 ],
               ),
-              // trailing: IconButton(
-              //   icon: const Icon(Icons.visibility),
-              //   onPressed: () => _verDetallesBulto(bulto),
-              // ),
             ),
           );
         }),
         
-        const SizedBox(height: 20),
+        const SizedBox(height: 10),
         ElevatedButton.icon(
-          icon: const Icon(Icons.print),
+          icon: Icon(Icons.print, color: colors.onPrimary,),
           label: const Text('Reimprimir Etiquetas'),
           onPressed: _reimprimirEtiquetas,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: colors.primary,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+          ),
+        ),
+        const SizedBox(height: 10),
+        ElevatedButton.icon(
+          icon: Icon(Icons.print, color: colors.onPrimary,),
+          label: const Text('Reimprimir Entrega'),
+          onPressed: () {},
           style: ElevatedButton.styleFrom(
             backgroundColor: Theme.of(context).primaryColor,
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(vertical: 16),
           ),
         ),
-        
-        const SizedBox(height: 16),
+        const SizedBox(height: 10),
         ElevatedButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () {
+            // Navegar hacia atrás hasta encontrar la pantalla SeleccionOrdenesScreen
+            Navigator.of(context).popUntil((route) => route.settings.name == '/expedicionPaquetes');
+          },
           child: const Text('Volver'),
         ),
       ],
     );
   }
 
+  // ignore: unused_element
   void _verDetallesBulto(Bulto bulto) {
     showDialog(
       context: context,

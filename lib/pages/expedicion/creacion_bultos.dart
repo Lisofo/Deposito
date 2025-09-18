@@ -636,6 +636,7 @@ class CreacionBultosPageState extends State<CreacionBultosPage> {
     // Obtener la cantidad actual en el bulto virtual para este producto
     final cantidadEnVirtual = _getCantidadEnVirtual(item.pickLineaId);
 
+    // ignore: unused_local_variable
     int diferencia = 0;
 
     showDialog(

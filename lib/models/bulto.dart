@@ -16,6 +16,7 @@ class Bulto {
   final int? agenciaUFId;
   final int tipoBultoId;
   final String? comentario;
+  final String icon;
   final int? retiroId;
   final int armadoPorUsuId;
   final int? nroBulto;
@@ -42,6 +43,7 @@ class Bulto {
     this.telefono,
     this.agenciaUFId,
     required this.tipoBultoId,
+    required this.icon,
     this.comentario,
     this.retiroId,
     required this.armadoPorUsuId,
@@ -65,6 +67,7 @@ class Bulto {
     modoEnvioId: json["modoEnvioId"] as int?,
     agenciaTrId: json["agenciaTrId"] as int?,
     comentarioEnvio: json["comentarioEnvio"] as String?,
+    icon: json["icon"] as String? ?? '',
     direccion: json["direccion"] as String?,
     localidad: json["localidad"] as String?,
     telefono: json["telefono"] as String?,
@@ -105,6 +108,7 @@ class Bulto {
     "totalBultos": totalBultos,
     "despachoId": despachoId,
     "devolucionId": devolucionId,
+    "icon": icon,
     "incluyeFactura": incluyeFactura,
   };
 
@@ -117,7 +121,8 @@ class Bulto {
     almacenId: 0,
     tipoBultoId: 0,
     armadoPorUsuId: 0,
-    contenido: []
+    contenido: [],
+    icon: '',
   );
 
   Bulto copyWith({
@@ -133,6 +138,7 @@ class Bulto {
     int? agenciaTrId,
     String? comentarioEnvio,
     String? direccion,
+    String? icon,
     String? localidad,
     String? telefono,
     int? agenciaUFId,
@@ -173,6 +179,7 @@ class Bulto {
       devolucionId: devolucionId ?? this.devolucionId,
       incluyeFactura: incluyeFactura ?? this.incluyeFactura,
       contenido: contenido ?? this.contenido,
+      icon: icon ?? this.icon,
     );
   }
 }

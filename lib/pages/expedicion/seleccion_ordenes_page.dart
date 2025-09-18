@@ -8,7 +8,6 @@ import 'package:deposito/models/orden_picking.dart';
 import 'package:deposito/services/entrega_services.dart';
 import 'package:deposito/services/picking_services.dart';
 import 'package:deposito/widgets/carteles.dart';
-import 'package:deposito/widgets/escaner_pda.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -71,7 +70,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
         almacen.almacenId,
         token, 
         tipo: 'V,P,TS',
-        estado: _groupValue != -1 ? ['CERRADO, PAPEL', 'EMBALAJE, PAPEL', 'E. PARCIAL, PAPEL'][_groupValue] : null,
+        estado: _groupValue != -1 ? ['PREPARADO, PAPEL', 'EMBALAJE, PAPEL', 'E. PARCIAL, PAPEL'][_groupValue] : null,
         fechaDateDesde: fechaDesde,
         fechaDateHasta: fechaHasta,
         nombre: cliente,
@@ -186,7 +185,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
                     selectedColor: colors.primary,
                     unselectedColor: Colors.white,
                     children: {
-                      0: buildSegment('Cerrado'),
+                      0: buildSegment('Preparado'),
                       1: buildSegment('Embalaje'),
                       2: buildSegment('Entrega parcial'),
                     },
@@ -226,6 +225,20 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
                         )
                       : Column(
                         children: [
+                          Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: TextFormField(
+                              focusNode: focoDeScanner,
+                              controller: textController,
+                              decoration: const InputDecoration(
+                                labelText: 'Escanear orden',
+                                border: OutlineInputBorder(),
+                                suffixIcon: Icon(Icons.barcode_reader),
+                              ),
+                              onFieldSubmitted: procesarEscaneoUbicacion,
+                              autofocus: true,
+                            ),
+                          ),
                           Expanded(
                             child: ListView.builder(
                               itemCount: _ordenes.length,
@@ -234,11 +247,6 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
                                 return _buildOrdenItem(orden);
                               },
                             ),
-                          ),
-                          EscanerPDA(
-                            onScan: procesarEscaneoUbicacion,
-                            focusNode: focoDeScanner,
-                            controller: textController
                           ),
                         ],
                       ),
@@ -461,7 +469,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
         return Colors.orange;
       case 'EN PROCESO':
         return Colors.blue;
-      case 'CERRADO':
+      case 'PREPARADO':
         return Colors.green;
       case 'CANCELADO':
         return Colors.red;

@@ -4,9 +4,11 @@ import 'package:deposito/models/forma_envio.dart';
 import 'package:deposito/services/entrega_services.dart';
 import 'package:deposito/widgets/carteles.dart';
 import 'package:deposito/widgets/escaner_pda.dart';
+import 'package:deposito/widgets/icon_string.dart';
 import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:intl/intl.dart';
 
 class DespachoPage extends StatefulWidget {
   const DespachoPage({super.key});
@@ -77,15 +79,19 @@ class DespachoPageState extends State<DespachoPage> {
     try {
       String? estado;
       if (_groupValueBultos != 0) {
-        estado = ['PENDIENTE', 'CERRADO', 'DESPACHADO'][_groupValueBultos - 1];
+        estado = ['PENDIENTE', 'CERRADO', 'RETIRADO'][_groupValueBultos - 1];
       }
       
-      bultos = await EntregaServices().getBultos(
+      // Obtener todos los bultos
+      List<Bulto> todosBultos = await EntregaServices().getBultos(
         context, 
         token, 
         estado: estado,
         agenciaTrId: agenciaTrId,
       );
+      
+      // Filtrar bultos - excluir los que tienen tipoBultoId = 4
+      bultos = todosBultos.where((bulto) => bulto.tipoBultoId != 4).toList();
       
       if (mounted) {
         setState(() {
@@ -102,11 +108,11 @@ class DespachoPageState extends State<DespachoPage> {
   }
 
   bool _todosBultosDespachados() {
-    return selectedBultos.isNotEmpty && selectedBultos.every((b) => b.estado == 'DESPACHADO');
+    return selectedBultos.isNotEmpty && selectedBultos.every((b) => b.estado == 'RETIRADO');
   }
 
   bool _esBultoImprimible(Bulto bulto) {
-    return (bulto.estado == 'CERRADO' || bulto.estado == 'DESPACHADO') && bulto.retiroId != null;
+    return (bulto.estado == 'CERRADO' || bulto.estado == 'RETIRADO') && bulto.retiroId != null;
   }
 
   void _mantenerFocoScanner() {
@@ -123,10 +129,13 @@ class DespachoPageState extends State<DespachoPage> {
     try {
       var bultoEncontrado = bultos.firstWhere((bulto) => bulto.bultoId == int.parse(value));
       
-      if (!selectedBultos.contains(bultoEncontrado)) {
+      // Verificar que el bulto no sea del tipo 4 antes de agregarlo
+      if (bultoEncontrado.tipoBultoId != 4 && !selectedBultos.contains(bultoEncontrado)) {
         setState(() {
           selectedBultos.add(bultoEncontrado);
         });
+      } else if (bultoEncontrado.tipoBultoId == 4) {
+        Carteles.showDialogs(context, 'Este tipo de bulto no puede ser procesado', false, false, false);
       }
       
       textController.clear();
@@ -217,7 +226,7 @@ class DespachoPageState extends State<DespachoPage> {
                 0: Text('Todos'),
                 1: Text('Pendiente'),
                 2: Text('Cerrado'),
-                3: Text('Despachado'),
+                3: Text('Retirado'),
               },
               onValueChanged: (newValue) {
                 setState(() {
@@ -250,7 +259,9 @@ class DespachoPageState extends State<DespachoPage> {
   }
 
   Widget _buildBultoItem(Bulto bulto) {
+    final colors = Theme.of(context).colorScheme;
     final isSelected = selectedBultos.contains(bulto);
+    late String fechaDate = DateFormat('dd/MM/yyyy HH:mm', 'es').format(bulto.fechaDate);
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       elevation: 2,
@@ -263,12 +274,14 @@ class DespachoPageState extends State<DespachoPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
+                  getIcon(bulto.icon, context, colors.primary),
+                  const SizedBox(width: 10,),
                   Text(
                     'Bulto #${bulto.bultoId}',
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
+                  const Expanded(child: SizedBox()),
                   Text(
                     bulto.estado,
                     style: TextStyle(
@@ -287,6 +300,7 @@ class DespachoPageState extends State<DespachoPage> {
               if (bulto.retiroId != null)
                 Text('Retiro ID: ${bulto.retiroId}'),
               const SizedBox(height: 8),
+              Text('Fecha: $fechaDate'),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -305,32 +319,37 @@ class DespachoPageState extends State<DespachoPage> {
   }
 
   Widget _buildActionButtons() {
-    if (selectedBultos.length == 1 && _esBultoImprimible(selectedBultos.first)) {
-      return Row(
-        children: [
-          _buildImprimirButton(),
-          _buildDespacharButton(),
-        ],
-      );
-    }
-    return _buildDespacharButton();
+    return SizedBox(
+      height: 70, // Altura fija para los botones
+      child: selectedBultos.length == 1 && _esBultoImprimible(selectedBultos.first)
+          ? Row(
+              children: [
+                _buildImprimirButton(),
+                _buildDespacharButton(),
+              ],
+            )
+          : _buildDespacharButton(),
+    );
   }
 
   Widget _buildImprimirButton() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          minimumSize: const Size(double.infinity, 50),
-          backgroundColor: Colors.green,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+    final colors = Theme.of(context).colorScheme;
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            minimumSize: const Size.fromHeight(50),
+            backgroundColor: colors.primary,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
           ),
-        ),
-        onPressed: () => _confirmarImpresion(),
-        child: const Text(
-          'IMPRIMIR RETIRO',
-          style: TextStyle(fontSize: 18, color: Colors.white),
+          onPressed: () => _confirmarImpresion(),
+          child: const Text(
+            'IMPRIMIR RETIRO',
+            style: TextStyle(fontSize: 16, color: Colors.white),
+          ),
         ),
       ),
     );
@@ -338,20 +357,25 @@ class DespachoPageState extends State<DespachoPage> {
 
   Widget _buildDespacharButton() {
     final colors = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          minimumSize: const Size(25, 50),
-          backgroundColor: _todosBultosDespachados() ? Colors.orange : colors.primary,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            minimumSize: const Size.fromHeight(50),
+            backgroundColor: _todosBultosDespachados() ? colors.secondary : colors.primary,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
           ),
-        ),
-        onPressed: _todosBultosDespachados() ? _showDevolucionDialog : _showDespachoDialog,
-        child: Text(
-          _todosBultosDespachados() ? 'DEVOLVER (${selectedBultos.length})' : 'DESPACHAR (${selectedBultos.length})',
-          style: const TextStyle(fontSize: 18, color: Colors.white),
+          onPressed: _todosBultosDespachados() ? _showDevolucionDialog : _showDespachoDialog,
+          child: Text(
+            _todosBultosDespachados() 
+                ? 'DEVOLVER (${selectedBultos.length})' 
+                : 'Retirar (${selectedBultos.length})',
+            style: const TextStyle(fontSize: 16, color: Colors.white),
+            textAlign: TextAlign.center,
+          ),
         ),
       ),
     );
@@ -421,13 +445,19 @@ class DespachoPageState extends State<DespachoPage> {
       case 'Preparado': return Colors.blue;
       case 'Listo': return Colors.green;
       case 'CERRADO': return Colors.purple;
-      case 'DESPACHADO': return Colors.teal;
+      case 'RETIRADO': return Colors.teal;
       case 'DEVUELTO': return Colors.red;
       default: return Colors.grey;
     }
   }
 
   void _toggleSeleccionBulto(Bulto bulto) {
+    // No permitir seleccionar bultos con tipoBultoId = 4
+    if (bulto.tipoBultoId == 4) {
+      Carteles.showDialogs(context, 'Este tipo de bulto no puede ser seleccionado', false, false, false);
+      return;
+    }
+    
     setState(() {
       if (selectedBultos.contains(bulto)) {
         selectedBultos.remove(bulto);
@@ -492,7 +522,7 @@ class DespachoPageState extends State<DespachoPage> {
               _procesarDespacho();
               Navigator.pop(context);
             },
-            child: const Text('CONFIRMAR DESPACHO'),
+            child: const Text('CONFIRMAR RETIRO'),
           ),
         ],
       ),
@@ -577,7 +607,7 @@ class DespachoPageState extends State<DespachoPage> {
     if (selectedBultos.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('No hay bultos seleccionados para despachar'),
+          content: Text('No hay bultos seleccionados para retirar'),
           backgroundColor: Colors.red,
         ),
       );
@@ -612,7 +642,7 @@ class DespachoPageState extends State<DespachoPage> {
       if (response.retiroId != 0) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${selectedBultos.length} bultos despachados a $retira'),
+            content: Text('${selectedBultos.length} bultos retirados a $retira'),
             duration: const Duration(seconds: 3),
           ),
         );
@@ -621,7 +651,7 @@ class DespachoPageState extends State<DespachoPage> {
         setState(() {
           for (var bulto in bultos) {
             if (selectedBultos.contains(bulto)) {
-              bulto = bulto.copyWith(estado: 'DESPACHADO');
+              bulto = bulto.copyWith(estado: 'RETIRADO');
             }
           }
           selectedBultos.clear();
@@ -642,7 +672,7 @@ class DespachoPageState extends State<DespachoPage> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error al despachar: ${e.toString()}'),
+          content: Text('Error al retirar: ${e.toString()}'),
           backgroundColor: Colors.red,
         ),
       );

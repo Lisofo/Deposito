@@ -44,7 +44,7 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
   late List<OrdenPicking> _ordenes = [];
   final List<Bulto> _bultosCerrados = [];
   List<PickingLinea> _lineasOrdenSeleccionada = [];
-  bool _procesandoCierre = false;
+  final bool _procesandoCierre = false;
 
   @override
   void initState() {
@@ -860,7 +860,7 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
                   title: Text(item.item),
                   subtitle: Text('Cantidad: ${item.cantidad}'),
                 )
-              ).toList(),
+              ),
             ],
           ),
         ),

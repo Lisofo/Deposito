@@ -167,7 +167,7 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
             fechaDateDesde: _fechaDesdeOrdenes,
             fechaDateHasta: _fechaHastaOrdenes,
             estado: _groupValueOrdenes != 0 
-                ? ['PENDIENTE', 'EN PROCESO', 'CERRADO'][_groupValueOrdenes - 1] 
+                ? ['PENDIENTE', 'EN PROCESO', 'PREPARADO'][_groupValueOrdenes - 1] 
                 : null,
             numeroDocumento: _searchControllerNumeroDoc.text.isNotEmpty ? _searchControllerNumeroDoc.text : null,
             nombre: _searchControllerNombre.text.isNotEmpty ? _searchControllerNombre.text : null,
@@ -343,7 +343,7 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
             0: Text('Todos'),
             1: Text('Pendiente'),
             2: Text('En Proceso'),
-            3: Text('Cerrado'),
+            3: Text('Preparado'),
           },
           onValueChanged: (newValue) {
             setState(() {
@@ -1239,7 +1239,7 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
         return Colors.orange;
       case 'EN PROCESO':
         return Colors.blue;
-      case 'CERRADO':
+      case 'PREPARADO':
         return Colors.green;
       case 'CANCELADO':
         return Colors.red;

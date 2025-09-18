@@ -119,7 +119,7 @@ class _ListaPickingState extends State<ListaPicking> {
         prioridad: _selectedPrioridad != 'TODAS' ? _selectedPrioridad : null,
         fechaDateDesde: _fechaDesde,
         fechaDateHasta: _fechaHasta,
-        estado: _groupValue != -1 ? ['PENDIENTE', 'EN PROCESO', 'CERRADO'][_groupValue] : null,
+        estado: _groupValue != -1 ? ['PENDIENTE', 'EN PROCESO', 'PREPARADO'][_groupValue] : null,
         numeroDocumento: _searchControllerNumeroDoc.text.isNotEmpty ? _searchControllerNumeroDoc.text : null,
         nombre: _searchControllerNombre.text.isNotEmpty ? _searchControllerNombre.text : null,
         modUsuId: _groupValue == 0 ? null : context.read<ProductProvider>().uId
@@ -277,7 +277,7 @@ class _ListaPickingState extends State<ListaPicking> {
           children: {
             0: buildSegment('Pendiente'),
             1: buildSegment('En Proceso'),
-            2: buildSegment('Cerrado'),
+            2: buildSegment('Preparado'),
             -1: buildSegment('Mis ordenes'),
           },
           onValueChanged: (newValue) {
@@ -548,7 +548,7 @@ class _ListaPickingState extends State<ListaPicking> {
         return Colors.orange;
       case 'EN PROCESO':
         return Colors.blue;
-      case 'CERRADO':
+      case 'PREPARADO':
         return Colors.green;
       case 'CANCELADO':
         return Colors.red;
