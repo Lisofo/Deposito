@@ -45,6 +45,7 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
   final List<Bulto> _bultosCerrados = [];
   List<PickingLinea> _lineasOrdenSeleccionada = [];
   final bool _procesandoCierre = false;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -61,6 +62,7 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
   void dispose() {
     _codigoController.dispose();
     focoDeScanner.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -640,48 +642,9 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Detalles de la Orden:',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text('Cliente: ${_ordenSeleccionada!.nombre}'),
-            Text('Tipo: ${_ordenSeleccionada!.descTipo}'),
-            if (_ordenSeleccionada!.metodoEnvio == 'MOSTRADOR')
-              Text('Tipo de entrega: MOSTRADOR', style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.orange.shade700
-              )),
-            const SizedBox(height: 10),
-            const Text(
               'Productos:',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
-            
-            // Campo de escaneo (solo visible si no está finalizada)
-            if (!_vistaMonitor && !_entregaFinalizada)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 16.0),
-                child: TextField(
-                  focusNode: focoDeScanner,
-                  controller: _codigoController,
-                  decoration: InputDecoration(
-                    labelText: 'Escanear código de producto',
-                    border: const OutlineInputBorder(),
-                    suffixIcon: const Icon(Icons.barcode_reader),
-                    enabled: !_vistaMonitor && !_entregaFinalizada,
-                  ),
-                  onSubmitted: (value) async {
-                    await procesarEscaneoUbicacion(value);
-                    _codigoController.clear();
-                    FocusScope.of(context).requestFocus(focoDeScanner);
-                  },
-                  autofocus: true,
-                  readOnly: _vistaMonitor || _entregaFinalizada,
-                ),
-              ),
             
             _isLoadingLineas
               ? const Center(child: CircularProgressIndicator())
@@ -691,6 +654,7 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
                       constraints: const BoxConstraints(maxHeight: double.infinity),
                       child: ListView.builder(
                         shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
                         itemCount: _ordenSeleccionada!.modalidad == 'PAPEL' 
                             ? _lineasOrdenSeleccionada.length // Mostrar todas las líneas para PAPEL
                             : _lineasOrdenSeleccionada.where((linea) => linea.cantidadPickeada != 0).length, // Filtrar para WMS
@@ -706,48 +670,87 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
                           );
                           
                           return Container(
-                            decoration: BoxDecoration(
-                              color: verificada == maxima ? Colors.green.shade200 : (verificada < maxima && verificada >= 1) ? Colors.yellow.shade200 : Colors.white,
-                            ),
-                            child: ListTile(
-                              leading: GestureDetector(
-                                onTap: _entregaFinalizada ? null : () => _navigateToSimpleProductPage(linea),
-                                child: SizedBox(
-                                  height: MediaQuery.of(context).size.height * 0.15,
-                                  width: MediaQuery.of(context).size.width * 0.1,
-                                  child: Image.network(
-                                    linea.fotosUrl,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return const Placeholder(child: Text('No Image'));
-                                    },
-                                  ),
-                                ),
-                              ),
-                              title: Text('${linea.pickLineaId} - ${linea.codItem} - ${linea.descripcion}'),
-                              subtitle: Column(
+                            color: verificada == maxima ? Colors.green.shade50 : (verificada < maxima && verificada >= 1) ? Colors.yellow.shade50 : Colors.white,
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text('Pickeado: ${linea.cantidadPickeada}/${linea.cantidadPedida}'),
-                                  Text('Total verificado: $verificada/$maxima'),
-                                  if (itemVerificado?.cantidad != null)
-                                    Text('En este bulto: ${itemVerificado?.cantidad}'),
-                                ],
-                              ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  if (verificada >= maxima)
-                                    const Icon(Icons.check_circle, color: Colors.green),
-                                  if (!_vistaMonitor && !_entregaFinalizada && itemVerificado != null) ...[
-                                    IconButton(
-                                      icon: const Icon(Icons.edit),
-                                      onPressed: () => _editarCantidadItem(itemVerificado),
+                                  // Imagen
+                                  GestureDetector(
+                                    onTap: _entregaFinalizada ? null : () => _navigateToSimpleProductPage(linea),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(6),
+                                      child: Container(
+                                        width: 60,
+                                        height: 60,
+                                        margin: const EdgeInsets.only(right: 12),
+                                        child: Image.network(
+                                          linea.fotosUrl,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (context, error, stackTrace) {
+                                            return Container(
+                                              color: Colors.grey[200],
+                                              child: const Icon(Icons.inventory_2, color: Colors.grey),
+                                            );
+                                          },
+                                        ),
+                                      ),
                                     ),
-                                    IconButton(
-                                      icon: const Icon(Icons.delete, color: Colors.red),
-                                      onPressed: () => _eliminarItem(itemVerificado),
+                                  ),
+                                  
+                                  // Información
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          '${linea.codItem} - ${linea.descripcion}',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                          ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),                                        
+                                        const SizedBox(height: 6),
+                                        Wrap(
+                                          spacing: 12,
+                                          children: [
+                                            _buildInfoBadge('Pickeado', '${linea.cantidadPickeada}/${linea.cantidadPedida}'),
+                                            _buildInfoBadge('Verificado', '$verificada/$maxima'),
+                                            if (itemVerificado?.cantidad != null)
+                                              _buildInfoBadge('Bulto', '${itemVerificado?.cantidad}'),
+                                          ],
+                                        ),
+                                      ],
                                     ),
-                                  ],
+                                  ),
+                                  
+                                  // Acciones
+                                  Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      if (verificada >= maxima)
+                                        const Icon(Icons.check_circle, color: Colors.green, size: 20),
+                                      if (!_vistaMonitor && !_entregaFinalizada && itemVerificado != null) ...[
+                                        Column(
+                                          children: [
+                                            IconButton(
+                                              icon: const Icon(Icons.edit, size: 18),
+                                              onPressed: () => _editarCantidadItem(itemVerificado),
+                                              padding: EdgeInsets.zero,
+                                            ),
+                                            IconButton(
+                                              icon: const Icon(Icons.delete, size: 18, color: Colors.red),
+                                              onPressed: () => _eliminarItem(itemVerificado),
+                                              padding: EdgeInsets.zero,
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ],
+                                  ),
                                 ],
                               ),
                             ),
@@ -758,6 +761,16 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildInfoBadge(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+        Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+      ],
     );
   }
 
@@ -874,6 +887,30 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
     );
   }
 
+  Widget _buildScannerField() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.all(16.0),
+      child: TextField(
+        focusNode: focoDeScanner,
+        controller: _codigoController,
+        decoration: InputDecoration(
+          labelText: 'Escanear código de producto',
+          border: const OutlineInputBorder(),
+          suffixIcon: const Icon(Icons.barcode_reader),
+          enabled: !_vistaMonitor && !_entregaFinalizada,
+        ),
+        onSubmitted: (value) async {
+          await procesarEscaneoUbicacion(value);
+          _codigoController.clear();
+          FocusScope.of(context).requestFocus(focoDeScanner);
+        },
+        autofocus: true,
+        readOnly: _vistaMonitor || _entregaFinalizada,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
@@ -890,139 +927,183 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
           ),
           iconTheme: IconThemeData(color: colors.onPrimary),
         ),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (_vistaMonitor)
-                Container(
-                  padding: const EdgeInsets.all(16.0),
-                  color: Colors.orange[100],
-                  child: const Text(
-                    'MODO MONITOR: Solo visualización',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.orange,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              
-              if (_entregaFinalizada)
-                Container(
-                  padding: const EdgeInsets.all(16.0),
-                  color: Colors.green[100],
-                  child: const Text(
-                    'ENTREGA FINALIZADA - MODO SOLO LECTURA',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-                
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Seleccionar Orden:',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      DropdownButtonFormField<OrdenPicking>(
-                        value: _ordenSeleccionada,
-                        items: _ordenes.map((OrdenPicking orden) {
-                          return DropdownMenuItem<OrdenPicking>(
-                            value: orden,
-                            child: Text('${orden.serie}-${orden.numeroDocumento} - ${orden.nombre}'),
-                          );
-                        }).toList(),
-                        onChanged: (_entregaFinalizada || _ordenes.length <= 1) ? null : (OrdenPicking? nuevaOrden) {
-                          if (nuevaOrden != null) {
-                            setState(() {
-                              _ordenSeleccionada = nuevaOrden;
-                            });
-                            _cargarLineasOrden(nuevaOrden);
-                          }
-                        },
-                        decoration: InputDecoration(
-                          border: const OutlineInputBorder(),
-                          enabled: !_entregaFinalizada && _ordenes.length > 1
-                        ),
-                        isExpanded: true,
-                        disabledHint: _ordenSeleccionada != null 
-                            ? Text('${_ordenSeleccionada!.numeroDocumento}-${_ordenSeleccionada!.serie} - ${_ordenSeleccionada!.nombre}')
-                            : null,
-                      ),
-                    ],
-                  ),
+        body: CustomScrollView(
+          controller: _scrollController,
+          slivers: [
+            // Campo de escaneo fijo en la parte superior
+            if (!_vistaMonitor && !_entregaFinalizada)
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: _ScannerHeaderDelegate(
+                  minHeight: 80.0,
+                  maxHeight: 80.0,
+                  child: _buildScannerField(),
                 ),
               ),
-              const SizedBox(height: 20),            
-              if (_ordenSeleccionada != null) ...[
-                const SizedBox(height: 20),
-                _buildProductosSection(),
-                const SizedBox(height: 20),
-                _buildBultosCerradosSection(), // Nueva sección agregada
-              ],
-            ],
-          ),
+            
+            // Contenido principal
+            SliverToBoxAdapter(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (_vistaMonitor)
+                    Container(
+                      padding: const EdgeInsets.all(16.0),
+                      color: Colors.orange[100],
+                      child: const Text(
+                        'MODO MONITOR: Solo visualización',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.orange,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  
+                  if (_entregaFinalizada)
+                    Container(
+                      padding: const EdgeInsets.all(16.0),
+                      color: Colors.green[100],
+                      child: const Text(
+                        'ENTREGA FINALIZADA - MODO SOLO LECTURA',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Seleccionar Orden:',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              SizedBox(
+                                width: MediaQuery.of(context).size.width * 0.6,
+                                child: DropdownButtonFormField<OrdenPicking>(
+                                  value: _ordenSeleccionada,
+                                  items: _ordenes.map((OrdenPicking orden) {
+                                    return DropdownMenuItem<OrdenPicking>(
+                                      value: orden,
+                                      child: Text('${orden.serie}-${orden.numeroDocumento} - ${orden.nombre}'),
+                                    );
+                                  }).toList(),
+                                  onChanged: (_entregaFinalizada || _ordenes.length <= 1) ? null : (OrdenPicking? nuevaOrden) {
+                                    if (nuevaOrden != null) {
+                                      setState(() {
+                                        _ordenSeleccionada = nuevaOrden;
+                                      });
+                                      _cargarLineasOrden(nuevaOrden);
+                                    }
+                                  },
+                                  decoration: InputDecoration(
+                                    border: const OutlineInputBorder(),
+                                    enabled: !_entregaFinalizada && _ordenes.length > 1
+                                  ),
+                                  isExpanded: true,
+                                  disabledHint: _ordenSeleccionada != null 
+                                      ? Text('${_ordenSeleccionada!.numeroDocumento}-${_ordenSeleccionada!.serie} - ${_ordenSeleccionada!.nombre}')
+                                      : null,
+                                ),
+                              ),
+                              if (_ordenSeleccionada != null && MediaQuery.of(context).size.width > 600)
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    const Text(
+                                      'Detalles de la Orden:',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 10),
+                                    Text('Cliente: ${_ordenSeleccionada!.nombre}'),
+                                    Text('Tipo: ${_ordenSeleccionada!.descTipo}'),
+                                    if (_ordenSeleccionada!.metodoEnvio == 'MOSTRADOR')
+                                      Text('Tipo de entrega: MOSTRADOR', style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.orange.shade700
+                                      )),
+                                  ],
+                                )
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),            
+                  if (_ordenSeleccionada != null) ...[
+                    _buildProductosSection(),
+                    const SizedBox(height: 20),
+                    _buildBultosCerradosSection(),
+                  ],
+                ],
+              ),
+            ),
+          ],
         ),
         bottomNavigationBar: _vistaMonitor 
             ? null 
             : _entregaFinalizada
                 ? BottomAppBar(
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.print),
-                    label: const Text('Reimprimir Etiquetas'),
-                    onPressed: _reimprimirEtiquetas,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: colors.primary,
-                      foregroundColor: colors.onPrimary,
-                    ),
-                  ),
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.inventory_2),
-                    label: const Text('Ver Bultos'),
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => SalidaCierreBultosPage(
-                            entrega: entrega,
-                            ordenSeleccionada: _ordenSeleccionada!,
-                            bultoVirtual: _bultoVirtual!,
-                            tipoBultos: tipoBultos,
-                            modoEnvios: modoEnvios,
-                            transportistas: transportistas,
-                            empresasEnvio: empresasEnvio,
-                            token: token,
-                            modoReadOnly: true, // Modo readonly
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          ElevatedButton.icon(
+                            icon: const Icon(Icons.print),
+                            label: const Text('Reimprimir Etiquetas'),
+                            onPressed: _reimprimirEtiquetas,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: colors.primary,
+                              foregroundColor: colors.onPrimary,
+                            ),
                           ),
-                        ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
+                          ElevatedButton.icon(
+                            icon: const Icon(Icons.inventory_2),
+                            label: const Text('Ver Bultos'),
+                            onPressed: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => SalidaCierreBultosPage(
+                                    entrega: entrega,
+                                    ordenSeleccionada: _ordenSeleccionada!,
+                                    bultoVirtual: _bultoVirtual!,
+                                    tipoBultos: tipoBultos,
+                                    modoEnvios: modoEnvios,
+                                    transportistas: transportistas,
+                                    empresasEnvio: empresasEnvio,
+                                    token: token,
+                                    modoReadOnly: true, // Modo readonly
+                                  ),
+                                ),
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-          )
+                  )
                 : BottomAppBar(
                     notchMargin: 10,
                     elevation: 0,
@@ -1059,5 +1140,36 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
                   ),
       ),
     );
+  }
+}
+
+// Delegate para el header fijo del scanner
+class _ScannerHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final double minHeight;
+  final double maxHeight;
+  final Widget child;
+
+  _ScannerHeaderDelegate({
+    required this.minHeight,
+    required this.maxHeight,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return SizedBox.expand(child: child);
+  }
+
+  @override
+  double get maxExtent => maxHeight;
+
+  @override
+  double get minExtent => minHeight;
+
+  @override
+  bool shouldRebuild(_ScannerHeaderDelegate oldDelegate) {
+    return maxHeight != oldDelegate.maxHeight ||
+        minHeight != oldDelegate.minHeight ||
+        child != oldDelegate.child;
   }
 }
