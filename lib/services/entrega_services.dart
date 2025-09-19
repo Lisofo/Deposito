@@ -169,6 +169,27 @@ class EntregaServices {
     }
   }
 
+  Future<Entrega> cerrarEntrega(BuildContext context, int entregaId, String token) async {
+    String link = '$apirUrl/api/v1/entrega/$entregaId/cerrar';
+
+    try {
+      var headers = {'Authorization': token};
+      var resp = await _dio.request(
+        link,
+        options: Options(
+          method: 'POST',
+          headers: headers,
+        ),
+      );
+      statusCode = 1;
+      return Entrega.fromJson(resp.data);
+    } catch (e) {
+      statusCode = 0;
+      errorManagment(e, context);
+      return Entrega.empty();
+    }
+  }
+
   Future<List<Bulto>> getBultosEntrega(BuildContext context, int entregaId, String token) async {
     String link = '$apirUrl/api/v1/entrega/$entregaId/bultos';
 

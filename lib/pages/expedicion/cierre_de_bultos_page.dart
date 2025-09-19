@@ -223,10 +223,9 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
       
       await _cerrarBultoVirtual(_comentarioController.text, _incluyeFactura);
       
-      await EntregaServices().patchEntregaEstado(
+      await EntregaServices().cerrarEntrega(
         context,
         widget.entrega.entregaId,
-        'finalizado',
         widget.token,
       );
       

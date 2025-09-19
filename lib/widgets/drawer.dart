@@ -35,6 +35,7 @@ class _BotonesDrawerState extends State<BotonesDrawer> {
           final List<Ruta> rutas = snapshot.data as List<Ruta>;
 
           return ListView.builder(
+            controller: ScrollController(),
             itemCount: rutas.length,
             itemBuilder: (context, index) {
               final Ruta ruta = rutas[index];

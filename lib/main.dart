@@ -62,15 +62,28 @@ class MyCustomScrollBehavior extends MaterialScrollBehavior {
 
   @override
   Widget buildScrollbar(BuildContext context, Widget child, ScrollableDetails details) {
-    return Scrollbar(
-      controller: details.controller,
-      thumbVisibility: true, // Hacer visible siempre
-      trackVisibility: true, // Mostrar también el track
-      thickness: 6, // Grosor de la barra
-      radius: const Radius.circular(10), // Bordes redondeados
-      interactive: true, // Permite interactuar directamente con la barra
-      child: child,
-    );
+    // Verificar si el controlador ya está attached antes de usarlo
+    if (details.controller!.hasClients && details.controller!.positions.length == 1) {
+      return Scrollbar(
+        controller: details.controller,
+        thumbVisibility: true,
+        trackVisibility: true,
+        thickness: 6,
+        radius: const Radius.circular(10),
+        interactive: true,
+        child: child,
+      );
+    } else {
+      // Si el controlador está compartido, crear uno nuevo
+      return Scrollbar(
+        thumbVisibility: true,
+        trackVisibility: true,
+        thickness: 6,
+        radius: const Radius.circular(10),
+        interactive: true,
+        child: child,
+      );
+    }
   }
 }
 

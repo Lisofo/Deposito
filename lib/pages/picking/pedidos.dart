@@ -117,7 +117,7 @@ class _ListaPickingState extends State<ListaPicking> {
         token, 
         tipo: menuSplitted[1],
         prioridad: _selectedPrioridad != 'TODAS' ? _selectedPrioridad : null,
-        fechaDateDesde: _fechaDesde,
+        fechaDateDesde: _groupValue == -1 ? DateTime.now() : _fechaDesde,
         fechaDateHasta: _fechaHasta,
         estado: _groupValue != -1 ? ['PENDIENTE', 'EN PROCESO', 'PREPARADO'][_groupValue] : null,
         numeroDocumento: _searchControllerNumeroDoc.text.isNotEmpty ? _searchControllerNumeroDoc.text : null,

@@ -16,13 +16,51 @@ class MenuPage extends StatefulWidget {
   State<MenuPage> createState() => _MenuPageState();
 }
 
-class _MenuPageState extends State<MenuPage> {
+class _MenuPageState extends State<MenuPage> 
+  with AutomaticKeepAliveClientMixin, RouteAware {
   bool _isNavigating = false; // Flag para controlar navegaciones simultáneas
+  final _routeObserver = RouteObserver<ModalRoute<void>>();
+
+  @override
+  bool get wantKeepAlive => true; // Preservar el estado del widget
 
   @override
   void initState() {
     super.initState();
     _initializeData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _addRouteObserver();
+    });
+  }
+
+  @override
+  void dispose() {
+    _removeRouteObserver();
+    super.dispose();
+  }
+
+  void _addRouteObserver() {
+    final route = ModalRoute.of(context);
+    if (route != null) {
+      _routeObserver.subscribe(this, route);
+    }
+  }
+
+  void _removeRouteObserver() {
+    _routeObserver.unsubscribe(this);
+  }
+
+  @override
+  void didPopNext() {
+    // Se llama cuando la página vuelve a ser visible después de que se popea una ruta
+    super.didPopNext();
+    print('Página volvió a ser visible');
+    if (_isNavigating && mounted) {
+      print('Forzando reset de _isNavigating en didPopNext');
+      setState(() {
+        _isNavigating = false;
+      });
+    }
   }
 
   Future<void> _initializeData() async {
@@ -33,6 +71,8 @@ class _MenuPageState extends State<MenuPage> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // IMPORTANTE: Llamar al método del padre
+    
     final colors = Theme.of(context).colorScheme;
     final menuProvider = context.watch<MenuProvider>();
     final productProvider = context.read<ProductProvider>();
@@ -116,7 +156,7 @@ class _MenuPageState extends State<MenuPage> {
                       style: const TextStyle(color: Colors.white),
                     ),
                     const Text(
-                      '2025.09.18+1',
+                      '2025.09.17+1',
                       style: TextStyle(color: Colors.white),
                     ),
                   ],
@@ -226,17 +266,40 @@ class _MenuPageState extends State<MenuPage> {
           onTap: _isNavigating 
             ? null
             : () async {
+                print('Navegando a: ${opt.ruta}');
+                if (!mounted) return;
+                
                 setState(() => _isNavigating = true);
+                print('_isNavigating = true');
+                
                 try {
                   productProvider.setMenu(opt.ruta);
                   productProvider.setTitle(opt.texto);
                   if(opt.ruta == '/inventario') {
                     Provider.of<ProductProvider>(context, listen: false).setUbicacion(UbicacionAlmacen.empty());
                   }
-                  await appRouter.push(opt.ruta);
+                  
+                  // Pequeño delay para asegurar que la UI se actualice
+                  await Future.delayed(const Duration(milliseconds: 50));
+                  
+                  // Navegación con timeout para evitar bloqueos eternos
+                  final navigationFuture = appRouter.push(opt.ruta);
+                  await navigationFuture.timeout(const Duration(seconds: 5), onTimeout: () {
+                    print('Timeout en navegación a ${opt.ruta}');
+                    return null;
+                  });
+                  
+                } catch (e) {
+                  print('Error en navegación: $e');
                 } finally {
+                  // Asegurarnos de resetear el estado incluso si hay errores
                   if (mounted) {
-                    setState(() => _isNavigating = false);
+                    setState(() {
+                      _isNavigating = false;
+                      print('_isNavigating = false (finally)');
+                    });
+                  } else {
+                    print('Widget no montado, no se puede resetear _isNavigating');
                   }
                 }
               },

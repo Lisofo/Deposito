@@ -319,7 +319,17 @@ class _PedidoInternoState extends State<PedidoInterno> {
                         child: ListTile(
                           leading: const Icon(Icons.inventory),
                           title: Text(order.lineas![i].descripcion),
-                          subtitle: Text('Código: ${order.lineas![i].codItem}'),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text('Código: ${order.lineas![i].codItem}'),
+                              if(modoAutomatico == false)
+                                for (var ubicacion in order.lineas![i].ubicaciones)
+                                  if (ubicacion.existenciaActual > 0)
+                                    Text('${ubicacion.codUbicacion} (Disp: ${ubicacion.existenciaActual})'),
+                            ],
+                          ),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
