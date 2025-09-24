@@ -95,7 +95,7 @@ class _PedidoInternoState extends State<PedidoInterno> {
   Future<void> _activarModoManual() async {
     final provider = context.read<ProductProvider>();
     
-    if (order.estado == 'PENDIENTE') {
+    if (order.estado == 'PENDIENTE' || order.estado == 'INCOMPLETO') {
       orderProvider = await PickingServices().putOrderPicking(
         context, 
         order.pickId, 
@@ -128,7 +128,7 @@ class _PedidoInternoState extends State<PedidoInterno> {
   Future<void> _activarModoAutomatico() async {
     final provider = context.read<ProductProvider>();
     
-    if (order.estado == 'PENDIENTE') {
+    if (order.estado == 'PENDIENTE' || order.estado == 'INCOMPLETO') {
       orderProvider = await PickingServices().putOrderPicking(
         context, 
         order.pickId, 
@@ -445,7 +445,7 @@ class _PedidoInternoState extends State<PedidoInterno> {
                 ),
                 child: Icon(Icons.inventory_2, color: colors.onPrimary,)
               ),
-            ] else ...[
+            ] else if (order.estado != 'PREPARADO') ...[
               if(order.tipo == 'C' || order.tipo == 'TE') ...[
                 ElevatedButton(
                   onPressed: order.estado == 'CERRADO' ? null : () => _iniciarDirectamente(),
@@ -482,7 +482,6 @@ class _PedidoInternoState extends State<PedidoInterno> {
                   ),
                 ),
               ],
-              
               ElevatedButton(
                 onPressed: (order.estado == 'CERRADO' || order.estado == 'PENDIENTE') ? null : () => _mostrarDialogoConfirmacion('finalizar'),
                 style: ElevatedButton.styleFrom(
@@ -494,8 +493,7 @@ class _PedidoInternoState extends State<PedidoInterno> {
                   style: TextStyle(color: Colors.white, fontSize: 16),
                 ),
               ),
-            ]
-            
+            ]            
           ],
         ),
       ),

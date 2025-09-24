@@ -516,39 +516,84 @@ class PickingProductsState extends State<PickingProducts> {
 
   Widget _buildProductInfo(PickingLinea line) {
     return Card(
+      color: _allProductsPickeadInLine() ? Colors.green.shade500 : (line.cantidadPickeada < line.cantidadPedida && line.cantidadPickeada > 0) ? Colors.yellow.shade300 : Colors.white,
       margin: const EdgeInsets.all(16),
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            const SizedBox(height: 8),
-            Text(
-              line.descripcion,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+            // Columna de información del producto
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 8),
+                  Text(
+                    line.descripcion,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text('Código: ${line.codItem}'),
+                  const SizedBox(height: 16),
+                  
+                  // LinearProgressIndicator con constraints explícitas
+                  Container(
+                    width: double.infinity, // O un valor fijo si prefieres
+                    constraints: const BoxConstraints(minHeight: 4, maxHeight: 8),
+                    child: LinearProgressIndicator(
+                      value: _calculateProgress(line),
+                      backgroundColor: Colors.grey[300],
+                      minHeight: 4,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${int.tryParse(_quantityController.text) ?? 0} / ${line.cantidadPedida}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: _allProductsPickeadInLine() ? Colors.black : Colors.blue,
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 8),
-            Text('Código: ${line.codItem}'),
-            const SizedBox(height: 16),
-            LinearProgressIndicator(
-              value: _calculateProgress(line),
-              backgroundColor: Colors.grey[300],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '${int.tryParse(_quantityController.text) ?? 0} / ${line.cantidadPedida}',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: _allProductsPickeadInLine() ? Colors.green : Colors.blue,
+            
+            // Imagen del producto
+            GestureDetector(
+              onTap: () => _navigateToSimpleProductPage(line),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: Container(
+                  width: 120,
+                  height: 120,
+                  margin: const EdgeInsets.only(left: 12),
+                  child: Image.network(
+                    line.fotosUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        color: Colors.grey[200],
+                        child: const Icon(Icons.inventory_2, color: Colors.grey),
+                      );
+                    },
+                  ),
+                ),
               ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  void _navigateToSimpleProductPage(PickingLinea linea) {    
+    final productProvider = Provider.of<ProductProvider>(context, listen: false);
+    
+    productProvider.setRaiz(linea.codItem);
+    appRouter.push('/simpleProductPage'); 
   }
 
   Future<void> procesarEscaneoUbicacion(String value) async {
@@ -573,7 +618,8 @@ class PickingProductsState extends State<PickingProducts> {
       if (mismoProducto) {
         // Incrementamos directamente en 1 sin esperar la respuesta del patch
         setState(() {
-          _quantityController.text = (int.tryParse(_quantityController.text) ?? 0 + 1).toString();
+          final currentQuantity = int.tryParse(_quantityController.text) ?? 0;
+          _quantityController.text = (currentQuantity + 1).toString();
         });
         
         // Ejecutamos el patch en segundo plano
@@ -629,7 +675,8 @@ class PickingProductsState extends State<PickingProducts> {
       if (mismoProducto) {
         // Incrementamos directamente en 1 sin esperar la respuesta del patch
         setState(() {
-          _quantityController.text = (int.tryParse(_quantityController.text) ?? 0 + 1).toString();
+          final currentQuantity = int.tryParse(_quantityController.text) ?? 0;
+          _quantityController.text = (currentQuantity + 1).toString();
         });
         
         // Ejecutamos el patch en segundo plano

@@ -9,6 +9,14 @@ class SummaryScreen extends StatelessWidget {
   final List<PickingLinea>? processedLines;
   const SummaryScreen({super.key, required this.processedLines});
 
+  // Función para validar si se puede completar el picking
+  bool _puedeCompletarPicking(List<PickingLinea>? lineas) {
+    if (lineas == null || lineas.isEmpty) return false;
+    
+    // Verificar si al menos una línea tiene al menos 1 unidad pickeada
+    return lineas.any((linea) => linea.cantidadPickeada > 0);
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<ProductProvider>(context);
@@ -38,16 +46,26 @@ class SummaryScreen extends StatelessWidget {
                 color: Colors.white,
                 padding: const EdgeInsets.all(16),
                 child: ElevatedButton(
-                  onPressed: () async {
-                    await _completarPicking(context, provider, ordenPicking, token);
-                  },
+                  onPressed: _puedeCompletarPicking(processedLines)
+                      ? () async {
+                          await _completarPicking(context, provider, ordenPicking, token);
+                        }
+                      : null, // Deshabilitar si no puede completar
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     backgroundColor: colors.primary,
                   ),
-                  child: Text(
-                    'Completar Picking',
-                    style: TextStyle(fontSize: 16, color: colors.onPrimary),
+                  child: Tooltip(
+                    message: _puedeCompletarPicking(processedLines) 
+                        ? 'Completar picking' 
+                        : 'Debe haber al menos una línea con unidades pickeadas',
+                    child: Text(
+                      'Completar Picking',
+                      style: TextStyle(
+                        fontSize: 16, 
+                        color: colors.onPrimary,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -254,6 +272,14 @@ class SummaryScreen extends StatelessWidget {
   }
 
   Future<void> _completarPicking(BuildContext context, ProductProvider provider, OrdenPicking ordenPicking, String token) async {
+    // Validación adicional por seguridad
+    if (!_puedeCompletarPicking(processedLines)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se puede completar el picking: ninguna línea tiene unidades pickeadas')),
+      );
+      return;
+    }
+
     try {
       final confirm = await showDialog<bool>(
         context: context,
@@ -284,7 +310,7 @@ class SummaryScreen extends StatelessWidget {
       final orderProvider = await PickingServices().putOrderPicking(
         context, 
         ordenPicking.pickId, 
-        'cerrado',
+        'PREPARADO',
         0,
         token
       );
@@ -299,9 +325,9 @@ class SummaryScreen extends StatelessWidget {
         provider.resetCurrentLineIndex();
         
         // Forzar navegación limpia
-        Navigator.of(context).popUntil((route) => route.settings.name == '/pickingInterno');
+        Navigator.of(context).popUntil((route) => route.settings.name == context.read<ProductProvider>().menu);
         final router = GoRouter.of(context);
-        router.pushReplacement('/pickingInterno');
+        router.pushReplacement(context.read<ProductProvider>().menu);
         
       } else {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -4,7 +4,7 @@ import 'package:deposito/widgets/carteles.dart';
 import 'package:deposito/widgets/custom_speed_dial.dart';
 import 'package:deposito/widgets/escaner_pda.dart';
 import 'package:deposito/widgets/filtros_picking.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:deposito/widgets/segmented_buttons.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:deposito/config/router/router.dart';
@@ -119,10 +119,10 @@ class _ListaPickingState extends State<ListaPicking> {
         prioridad: _selectedPrioridad != 'TODAS' ? _selectedPrioridad : null,
         fechaDateDesde: _groupValue == -1 ? DateTime.now() : _fechaDesde,
         fechaDateHasta: _fechaHasta,
-        estado: _groupValue != -1 ? ['PENDIENTE', 'EN PROCESO', 'PREPARADO'][_groupValue] : null,
+        estado: _groupValue != -1 ? ['PENDIENTE', 'EN PROCESO', 'INCOMPLETO', 'PENDIENTE, EN PROCESO'][_groupValue] : 'PREPARADO',
         numeroDocumento: _searchControllerNumeroDoc.text.isNotEmpty ? _searchControllerNumeroDoc.text : null,
         nombre: _searchControllerNombre.text.isNotEmpty ? _searchControllerNombre.text : null,
-        modUsuId: _groupValue == 0 ? null : context.read<ProductProvider>().uId
+        modUsuId: (_groupValue == 0 || _groupValue == 3) ? null : context.read<ProductProvider>().uId
       );
       
       if (result != null && _pickingServices.statusCode == 1) {
@@ -268,18 +268,8 @@ class _ListaPickingState extends State<ListaPicking> {
           },
           cantidadDeOrdenes: _filteredOrdenes.length,
         ),
-        CupertinoSegmentedControl<int>(
-          padding: const EdgeInsets.symmetric(horizontal: 10),
+        CustomSegmentedControl(
           groupValue: _groupValue,
-          borderColor: colors.primary,
-          selectedColor: colors.primary,
-          unselectedColor: Colors.white,
-          children: {
-            0: buildSegment('Pendiente'),
-            1: buildSegment('En Proceso'),
-            2: buildSegment('Preparado'),
-            -1: buildSegment('Mis ordenes'),
-          },
           onValueChanged: (newValue) {
             setState(() {
               _groupValue = newValue;
@@ -287,6 +277,14 @@ class _ListaPickingState extends State<ListaPicking> {
               _loadData();
             });
           },
+          options: const {
+            3: 'Todos',
+            0: 'Pendiente',
+            1: 'En Proceso',
+            2: 'Incompleto',
+            -1: 'Preparado',
+          },
+          usePickingStyle: true, // ← Esto aplica el estilo específico
         ),
         const SizedBox(height: 10),
         Padding(

@@ -105,11 +105,8 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
     } else {
       setState(() {
         _ordenes = productProvider.ordenesExpedicion;
-        
-        if (_ordenes.length == 1) {
-          _ordenSeleccionada = _ordenes[0];
-          _lineasOrdenSeleccionada = _ordenSeleccionada!.lineas ?? [];
-        }
+        _ordenSeleccionada = _ordenes[0];
+        _lineasOrdenSeleccionada = _ordenSeleccionada!.lineas ?? [];
       });
     }
 
@@ -232,24 +229,36 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
 
   (int verificada, int maxima) _getCantidadVerificadaYMaxima(String codigoRaiz, int pickLineaId) {
     try {
+      // Buscar la línea correctamente
       final linea = _lineasOrdenSeleccionada.firstWhere(
         (linea) => linea.pickLineaId == pickLineaId,
+        orElse: () => PickingLinea.empty(),
       );
       
-      final verificada = _bultoVirtual != null 
-        ? _bultoVirtual!.contenido
-          .where((item) => item.pickLineaId == pickLineaId)
-          .fold(0, (sum, item) => sum + item.cantidad)
-        : 0;
-      
-      // Si la modalidad es PAPEL, usar cantidadPedida como máximo
-      if (_ordenSeleccionada?.modalidad == 'PAPEL') {
-        return (verificada, linea.cantidadPedida);
-      } else {
-        // Para WMS, usar cantidadPickeada como máximo
-        return (verificada, linea.cantidadPickeada);
+      // Si no se encuentra la línea, retornar (0, 0)
+      if (linea.pickLineaId == 0) {
+        return (0, 0);
       }
+      
+      // Calcular cantidad verificada
+      int verificada = 0;
+      if (_bultoVirtual != null) {
+        verificada = _bultoVirtual!.contenido
+          .where((item) => item.pickLineaId == pickLineaId)
+          .fold(0, (sum, item) => sum + item.cantidad);
+      }
+      
+      // Determinar la cantidad máxima según modalidad
+      int maxima;
+      if (_ordenSeleccionada?.modalidad == 'PAPEL') {
+        maxima = linea.cantidadPedida;
+      } else {
+        maxima = linea.cantidadPickeada;
+      }
+      
+      return (verificada, maxima);
     } catch (e) {
+      // En caso de error, retornar valores por defecto
       return (0, 0);
     }
   }
@@ -266,6 +275,30 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
       }
     }
     return true;
+  }
+
+  bool _verificarCompletitudTodasOrdenes() {
+    for (var orden in _ordenes) {
+      final lineasOrden = orden.lineas ?? [];
+      
+      for (var linea in lineasOrden) {
+        // Para WMS, solo verificar líneas con cantidadPickeada > 0
+        if (orden.modalidad == 'WMS' && linea.cantidadPickeada == 0) {
+          continue;
+        }
+        
+        // Para PAPEL, verificar todas las líneas
+        final (cantidadVerificada, maxima) = _getCantidadVerificadaYMaxima(linea.codItem, linea.pickLineaId);
+        
+        // Debug: Mostrar valores para diagnóstico
+        debugPrint('Línea ${linea.pickLineaId}: Verificada=$cantidadVerificada, Máxima=$maxima');
+        
+        if (cantidadVerificada < maxima) {
+          return false; // Encontré una línea incompleta
+        }
+      }
+    }
+    return true; // Todas las líneas están completas
   }
 
   Future<void> procesarEscaneoUbicacion(String value) async {
@@ -572,7 +605,6 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
     }
   }
 
-
   Future<void> _cargarItemsBulto(Bulto bulto) async {
     if (bulto.bultoId == 0) return;
 
@@ -670,13 +702,12 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
                           );
                           
                           return Container(
-                            color: verificada == maxima ? Colors.green.shade50 : (verificada < maxima && verificada >= 1) ? Colors.yellow.shade50 : Colors.white,
+                            color: verificada == maxima ? Colors.green.shade500 : (verificada < maxima && verificada >= 1) ? Colors.yellow.shade300 : Colors.white,
                             child: Padding(
                               padding: const EdgeInsets.all(12),
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // Imagen
                                   GestureDetector(
                                     onTap: _entregaFinalizada ? null : () => _navigateToSimpleProductPage(linea),
                                     child: ClipRRect(
@@ -698,8 +729,6 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
                                       ),
                                     ),
                                   ),
-                                  
-                                  // Información
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -719,20 +748,14 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
                                           children: [
                                             _buildInfoBadge('Pickeado', '${linea.cantidadPickeada}/${linea.cantidadPedida}'),
                                             _buildInfoBadge('Verificado', '$verificada/$maxima'),
-                                            if (itemVerificado?.cantidad != null)
-                                              _buildInfoBadge('Bulto', '${itemVerificado?.cantidad}'),
                                           ],
                                         ),
                                       ],
                                     ),
                                   ),
-                                  
-                                  // Acciones
                                   Column(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      if (verificada >= maxima)
-                                        const Icon(Icons.check_circle, color: Colors.green, size: 20),
                                       if (!_vistaMonitor && !_entregaFinalizada && itemVerificado != null) ...[
                                         Column(
                                           children: [
@@ -768,8 +791,8 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-        Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+        Text(label, style: const TextStyle(fontSize: 12, color: Colors.black)),
+        Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
       ],
     );
   }
@@ -783,26 +806,92 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
     appRouter.push('/simpleProductPage'); 
   }
 
-  void _mostrarDialogoCierreBultos() {
+  // Método modificado: Ahora incluye verificación de completitud y manejo de errores
+  void _mostrarDialogoCierreBultos() async {
     if (_vistaMonitor || _entregaFinalizada) return;
     
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => SalidaCierreBultosPage(
-          entrega: entrega,
-          ordenSeleccionada: _ordenSeleccionada!,
-          bultoVirtual: _bultoVirtual!,
-          tipoBultos: tipoBultos,
-          modoEnvios: modoEnvios,
-          transportistas: transportistas,
-          empresasEnvio: empresasEnvio,
-          token: token,
+    // Verificar si todas las líneas de todas las órdenes están completas
+    final todasCompletas = _verificarCompletitudTodasOrdenes();
+    
+    bool continuar = true;
+    bool verificacionParcial = false;
+    
+    // Si hay líneas incompletas, mostrar diálogo de confirmación
+    if (!todasCompletas) {
+      continuar = await _mostrarDialogoConfirmacionIncompleto();
+      verificacionParcial = true;
+    }
+    
+    if (!continuar) {
+      return; // El usuario canceló
+    }
+    
+    try {
+      // Llamar al servicio de verificación con el parámetro correspondiente
+      final resultado = await EntregaServices().verificarEntrega(
+        context, 
+        entrega.entregaId, 
+        _bultoVirtual!.bultoId, 
+        verificacionParcial, 
+        token
+      );
+      
+      if (!resultado) {
+        // Si la verificación falla, mostrar error y no navegar
+        Carteles.showDialogs(context, 'Error al verificar la entrega', false, false, false);
+        return;
+      }
+      
+      // Navegar a la pantalla de cierre solo si la verificación fue exitosa
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => SalidaCierreBultosPage(
+            entrega: entrega,
+            ordenSeleccionada: _ordenSeleccionada!,
+            bultoVirtual: _bultoVirtual!,
+            tipoBultos: tipoBultos,
+            modoEnvios: modoEnvios,
+            transportistas: transportistas,
+            empresasEnvio: empresasEnvio,
+            token: token,
+          ),
         ),
-      ),
-    ).then((_) {
-      // Cuando regresemos de la pantalla de cierre, actualizamos el estado
-      _cargarDatosIniciales(); // Recargar datos para ver cambios
-    });
+      ).then((_) {
+        // Cuando regresemos de la pantalla de cierre, actualizamos el estado
+        _cargarDatosIniciales(); // Recargar datos para ver cambios
+      });
+      
+    } catch (e) {
+      // Manejar errores del servicio
+      Carteles.showDialogs(context, 'Error al verificar la entrega: ${e.toString()}', false, false, false);
+    }
+  }
+
+  // Nuevo método: Mostrar diálogo de confirmación cuando hay líneas incompletas
+  Future<bool> _mostrarDialogoConfirmacionIncompleto() async {
+    return await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Verificación incompleta'),
+          content: const Text(
+            'Hay líneas que no han sido verificadas completamente. '
+            '¿Desea continuar igual?'
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Continuar'),
+            ),
+          ],
+        );
+      },
+    ) ?? false;
   }
 
   Widget _buildBultosCerradosSection() {
@@ -911,6 +1000,61 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
     );
   }
 
+  Widget _buildSelectorOrdenes() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Seleccionar Orden:',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 50,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: _ordenes.length,
+                itemBuilder: (context, index) {
+                  final orden = _ordenes[index];
+                  final bool isSelected = _ordenSeleccionada?.pickId == orden.pickId;
+                  
+                  return Container(
+                    margin: const EdgeInsets.only(right: 8.0),
+                    child: ChoiceChip(
+                      label: Text(
+                        '${orden.serie}-${orden.numeroDocumento}',
+                        style: TextStyle(
+                          color: isSelected ? Colors.white : Colors.black,
+                        ),
+                      ),
+                      selected: isSelected,
+                      onSelected: _entregaFinalizada ? null : (selected) {
+                        if (selected) {
+                          setState(() {
+                            _ordenSeleccionada = orden;
+                          });
+                          _cargarLineasOrden(orden);
+                        }
+                      },
+                      backgroundColor: Colors.grey[200],
+                      selectedColor: Theme.of(context).primaryColor,
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
@@ -973,79 +1117,54 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
                         textAlign: TextAlign.center,
                       ),
                     ),
-                    
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Seleccionar Orden:',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              SizedBox(
-                                width: MediaQuery.of(context).size.width * 0.6,
-                                child: DropdownButtonFormField<OrdenPicking>(
-                                  value: _ordenSeleccionada,
-                                  items: _ordenes.map((OrdenPicking orden) {
-                                    return DropdownMenuItem<OrdenPicking>(
-                                      value: orden,
-                                      child: Text('${orden.serie}-${orden.numeroDocumento} - ${orden.nombre}'),
-                                    );
-                                  }).toList(),
-                                  onChanged: (_entregaFinalizada || _ordenes.length <= 1) ? null : (OrdenPicking? nuevaOrden) {
-                                    if (nuevaOrden != null) {
-                                      setState(() {
-                                        _ordenSeleccionada = nuevaOrden;
-                                      });
-                                      _cargarLineasOrden(nuevaOrden);
-                                    }
-                                  },
-                                  decoration: InputDecoration(
-                                    border: const OutlineInputBorder(),
-                                    enabled: !_entregaFinalizada && _ordenes.length > 1
-                                  ),
-                                  isExpanded: true,
-                                  disabledHint: _ordenSeleccionada != null 
-                                      ? Text('${_ordenSeleccionada!.numeroDocumento}-${_ordenSeleccionada!.serie} - ${_ordenSeleccionada!.nombre}')
-                                      : null,
-                                ),
+                  
+                  // Selector de órdenes horizontal
+                  _buildSelectorOrdenes(),
+                  
+                  // Detalles de la orden seleccionada (solo para pantallas grandes)
+                  if (_ordenSeleccionada != null && MediaQuery.of(context).size.width > 600)
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Detalles de la Orden Seleccionada:',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
                               ),
-                              if (_ordenSeleccionada != null && MediaQuery.of(context).size.width > 600)
+                            ),
+                            const SizedBox(height: 10),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              children: [
                                 Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text(
-                                      'Detalles de la Orden:',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 10),
                                     Text('Cliente: ${_ordenSeleccionada!.nombre}'),
                                     Text('Tipo: ${_ordenSeleccionada!.descTipo}'),
+                                  ],
+                                ),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Documento: ${_ordenSeleccionada!.serie}-${_ordenSeleccionada!.numeroDocumento}'),
                                     if (_ordenSeleccionada!.metodoEnvio == 'MOSTRADOR')
                                       Text('Tipo de entrega: MOSTRADOR', style: TextStyle(
                                         fontWeight: FontWeight.bold,
                                         color: Colors.orange.shade700
                                       )),
                                   ],
-                                )
-                            ],
-                          ),
-                        ],
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
+                  
                   const SizedBox(height: 10),            
                   if (_ordenSeleccionada != null) ...[
                     _buildProductosSection(),

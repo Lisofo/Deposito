@@ -1,4 +1,5 @@
 // salida_cierre_bultos_page.dart
+import 'package:deposito/config/router/pages.dart';
 import 'package:deposito/models/bulto.dart';
 import 'package:deposito/models/entrega.dart';
 import 'package:deposito/models/forma_envio.dart';
@@ -124,13 +125,13 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
         widget.token,
       );
 
-      await EntregaServices().patchBultoEstado(
-        context,
-        widget.entrega.entregaId,
-        widget.bultoVirtual.bultoId,
-        'CERRADO',
-        widget.token,
-      );
+      // await EntregaServices().patchBultoEstado(
+      //   context,
+      //   widget.entrega.entregaId,
+      //   widget.bultoVirtual.bultoId,
+      //   'CERRADO',
+      //   widget.token,
+      // );
     } catch (e) {
       throw Exception('Error al cerrar bulto VIRTUAL: ${e.toString()}');
     }
@@ -253,25 +254,6 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
     }
   }
 
-  Future<void> _reimprimirEtiquetas() async {
-    try {
-      // Lógica para reimprimir etiquetas
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Reimprimiendo etiquetas...')),
-      );
-      
-      await Future.delayed(const Duration(seconds: 2));
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Etiquetas reimpresas correctamente')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al reimprimir etiquetas: ${e.toString()}')),
-      );
-    }
-  }
-
   Widget _buildFormularioCierre() {
     final tiposDisponibles = widget.tipoBultos
         .where((tipo) => tipo.codTipoBulto != "VIRTUAL")
@@ -301,31 +283,11 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
                 const SizedBox(width: 16),
                 Expanded(child: Text(tipo.descripcion, style: const TextStyle(fontWeight: FontWeight.w500))),
                 const SizedBox(width: 12),
-                SizedBox(
-                  width: 100,
-                  child: TextFormField(
-                    controller: _controllers[tipo.tipoBultoId],
-                    keyboardType: TextInputType.number,
-                    textAlign: TextAlign.center,
-                    enabled: !_procesandoCierre,
-                    decoration: InputDecoration(
-                      labelText: 'Cantidad',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    ),
-                    onChanged: (value) {
-                      final cantidad = int.tryParse(value) ?? 0;
-                      setState(() {
-                        _cantidadesPorTipo[tipo.tipoBultoId] = cantidad;
-                      });
-                    },
-                  ),
-                ),
+                _buildCantidadControl(tipo.tipoBultoId),
               ],
             ),
           );
         }),
-        
         const SizedBox(height: 20),
         const Text('Método de envío:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
         const SizedBox(height: 8),
@@ -360,7 +322,6 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
             },
           ),
         ),
-        
         if (_metodoEnvio?.modoEnvioId == 2) ...[
           const SizedBox(height: 16),
           const Text('Transportista:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
@@ -392,7 +353,6 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
               },
             ),
           ),
-          
           const SizedBox(height: 16),
           const Text('Empresa de envío:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
           const SizedBox(height: 8),
@@ -436,7 +396,6 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
             ),
           ),
         ],
-        
         const SizedBox(height: 16),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
@@ -457,7 +416,6 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
             controlAffinity: ListTileControlAffinity.leading,
           ),
         ),
-        
         const SizedBox(height: 16),
         const Text('Comentario:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
         const SizedBox(height: 8),
@@ -471,7 +429,6 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           ),
         ),
-        
         const SizedBox(height: 20),
         Row(
           mainAxisAlignment: MainAxisAlignment.end,
@@ -541,7 +498,7 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
         ElevatedButton.icon(
           icon: Icon(Icons.print, color: colors.onPrimary,),
           label: const Text('Reimprimir Etiquetas'),
-          onPressed: _reimprimirEtiquetas,
+          onPressed: _mostrarPopupReimprimirEtiquetas, // ← Nuevo método
           style: ElevatedButton.styleFrom(
             backgroundColor: colors.primary,
             foregroundColor: Colors.white,
@@ -551,8 +508,8 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
         const SizedBox(height: 10),
         ElevatedButton.icon(
           icon: Icon(Icons.print, color: colors.onPrimary,),
-          label: const Text('Reimprimir Entrega'),
-          onPressed: () {},
+          label: const Text('Imprimir Detalle de Entrega'),
+          onPressed: _mostrarPopupImprimirDetalle, // ← Nuevo método
           style: ElevatedButton.styleFrom(
             backgroundColor: Theme.of(context).primaryColor,
             foregroundColor: Colors.white,
@@ -564,8 +521,9 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
           onPressed: () {
             // Navegar hacia atrás hasta encontrar la pantalla SeleccionOrdenesScreen
             Navigator.of(context).popUntil((route) => route.settings.name == '/expedicionPaquetes');
+            GoRouter.of(context).pushReplacement('/expedicionPaquetes');
           },
-          child: const Text('Volver'),
+          child: const Text('Finalizar'),
         ),
       ],
     );
@@ -605,6 +563,232 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
     );
   }
 
+  Widget _buildCantidadControl(int tipoBultoId) {
+    final cantidad = _cantidadesPorTipo[tipoBultoId] ?? 0;
+    final controller = _controllers[tipoBultoId]!;
+    
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey[300]!),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Botón de disminuir
+          IconButton(
+            icon: const Icon(Icons.remove, size: 20),
+            onPressed: _procesandoCierre ? null : () {
+              final nuevaCantidad = (cantidad - 1).clamp(0, 999);
+              _actualizarCantidad(tipoBultoId, nuevaCantidad);
+            },
+            padding: const EdgeInsets.all(4),
+            constraints: const BoxConstraints(),
+            style: IconButton.styleFrom(
+              backgroundColor: Colors.grey[100],
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(8),
+                  bottomLeft: Radius.circular(8),
+                ),
+              ),
+            ),
+          ),
+          
+          // Campo de texto en el medio
+          SizedBox(
+            width: 60,
+            child: TextFormField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              textAlign: TextAlign.center,
+              enabled: !_procesandoCierre,
+              decoration: const InputDecoration(
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              ),
+              onChanged: (value) {
+                final nuevaCantidad = int.tryParse(value) ?? 0;
+                _actualizarCantidad(tipoBultoId, nuevaCantidad);
+              },
+            ),
+          ),
+          
+          // Botón de aumentar
+          IconButton(
+            icon: const Icon(Icons.add, size: 20),
+            onPressed: _procesandoCierre ? null : () {
+              final nuevaCantidad = cantidad + 1;
+              _actualizarCantidad(tipoBultoId, nuevaCantidad);
+            },
+            padding: const EdgeInsets.all(4),
+            constraints: const BoxConstraints(),
+            style: IconButton.styleFrom(
+              backgroundColor: Colors.grey[100],
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.only(
+                  topRight: Radius.circular(8),
+                  bottomRight: Radius.circular(8),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _actualizarCantidad(int tipoBultoId, int nuevaCantidad) {
+    setState(() {
+      _cantidadesPorTipo[tipoBultoId] = nuevaCantidad;
+      _controllers[tipoBultoId]!.text = nuevaCantidad.toString();
+    });
+  }
+
+  Future<void> _mostrarPopupReimprimirEtiquetas() async {
+    final bultosNoVirtuales = _bultosCerrados.where((b) => 
+      b.tipoBultoId != widget.bultoVirtual.tipoBultoId
+    ).toList();
+
+    if (bultosNoVirtuales.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No hay bultos disponibles para imprimir')),
+      );
+      return;
+    }
+
+    final Set<int> bultosSeleccionados = {};
+
+    await showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: const Text('Reimprimir Etiquetas'),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Seleccione los bultos a imprimir:'),
+                  const SizedBox(height: 16),
+                  ...bultosNoVirtuales.map((bulto) {
+                    final tipoBulto = widget.tipoBultos.firstWhere(
+                      (t) => t.tipoBultoId == bulto.tipoBultoId,
+                      orElse: () => TipoBulto.empty()
+                    );
+                    
+                    return CheckboxListTile(
+                      title: Text('Bulto ${bulto.bultoId} - ${tipoBulto.descripcion}'),
+                      value: bultosSeleccionados.contains(bulto.bultoId),
+                      onChanged: (bool? value) {
+                        setState(() {
+                          if (value == true) {
+                            bultosSeleccionados.add(bulto.bultoId);
+                          } else {
+                            bultosSeleccionados.remove(bulto.bultoId);
+                          }
+                        });
+                      },
+                    );
+                  }),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton(
+                onPressed: bultosSeleccionados.isEmpty
+                    ? null
+                    : () async {
+                        Navigator.of(context).pop();
+                        await _reimprimirEtiquetasSeleccionadas(bultosSeleccionados.toList());
+                      },
+                child: const Text('Imprimir'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _reimprimirEtiquetasSeleccionadas(List<int> bultosIds) async {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Imprimiendo etiquetas...')),
+      );
+
+      // Imprimir cada bulto seleccionado
+      for (int bultoId in bultosIds) {
+        await EntregaServices().imprimirEtiqueta(
+          context,
+          bultoId,
+          widget.token,
+        );
+        // Pequeña pausa entre impresiones
+        await Future.delayed(const Duration(milliseconds: 500));
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${bultosIds.length} etiqueta(s) impresa(s) correctamente')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al imprimir etiquetas: ${e.toString()}')),
+      );
+    }
+  }
+
+  Future<void> _mostrarPopupImprimirDetalle() async {
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Imprimir Detalle'),
+        content: const Text('¿Desea imprimir el detalle de la entrega?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              await _imprimirDetalleEntrega();
+            },
+            child: const Text('Imprimir'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _imprimirDetalleEntrega() async {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Imprimiendo detalle de entrega...')),
+      );
+
+      // Imprimir detalle del bulto virtual (que representa la entrega completa)
+      await EntregaServices().imprimirDetalle(
+        context,
+        widget.bultoVirtual.bultoId,
+        widget.token,
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Detalle de entrega impreso correctamente')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al imprimir detalle: ${e.toString()}')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
@@ -614,6 +798,7 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
         title: Text(_entregaFinalizada ? 'Bultos Cerrados' : 'Crear y cerrar bultos'),
         backgroundColor: colors.primary,
         foregroundColor: colors.onPrimary,
+        automaticallyImplyLeading: false,
       ),
       body: _procesandoCierre
           ? const Center(child: CircularProgressIndicator())

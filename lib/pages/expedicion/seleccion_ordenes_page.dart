@@ -8,7 +8,7 @@ import 'package:deposito/models/orden_picking.dart';
 import 'package:deposito/services/entrega_services.dart';
 import 'package:deposito/services/picking_services.dart';
 import 'package:deposito/widgets/carteles.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:deposito/widgets/segmented_buttons.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:deposito/widgets/filtros_expedicion.dart';
@@ -178,23 +178,16 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
                     },
                     cantidadDeOrdenes: _ordenes.length,
                   ),
-                  CupertinoSegmentedControl<int>(
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                  CustomSegmentedControl(
                     groupValue: _groupValue,
-                    borderColor: colors.primary,
-                    selectedColor: colors.primary,
-                    unselectedColor: Colors.white,
-                    children: {
-                      0: buildSegment('Preparado'),
-                      1: buildSegment('Embalaje'),
-                      2: buildSegment('Entrega parcial'),
-                    },
                     onValueChanged: (newValue) {
                       setState(() {
                         _groupValue = newValue;
                         _loadData();
                       });
                     },
+                    options: SegmentedOptions.expedicionStates,
+                    usePickingStyle: true,
                   ),
                   Expanded(
                     child: _ordenes.isEmpty
@@ -465,11 +458,12 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
 
   Color _getStatusColor(String status) {
     switch (status.toUpperCase()) {
-      case 'PENDIENTE':
+      case 'E. PARCIAL':
         return Colors.orange;
-      case 'EN PROCESO':
+      case 'EMBALAJE':
         return Colors.blue;
       case 'PREPARADO':
+      case 'PAPEL':
         return Colors.green;
       case 'CANCELADO':
         return Colors.red;

@@ -1,9 +1,10 @@
-import 'dart:convert';
 import 'package:deposito/config/config_env.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 
 class VersionChecker {
+  static final Dio _dio = Dio();
+  
   static List<int> _parseVersion(String version) {
     final parts = version.split('-');
     final parts2 = parts[0].split('.');
@@ -35,33 +36,50 @@ class VersionChecker {
   }
 
   static Future<String> checkVersion() async {
-    late PackageInfo packageInfo;
-    late String currentVersion = '';
-    late String latestVersion = '';
-    late List<int> currentVersionParts = [];
-    late List<int> latestVersionParts = [];
-    String apiUrl = ConfigEnv.APIURL;
-
     try {
-      packageInfo = await PackageInfo.fromPlatform();
-      currentVersion = packageInfo.version;
-      currentVersionParts = _parseVersion(currentVersion);
-      final response = await http.get(Uri.parse('$apiUrl/api/config/version-check'));
+      final packageInfo = await PackageInfo.fromPlatform();
+      final currentVersion = packageInfo.version;
+      final currentVersionParts = _parseVersion(currentVersion);
+      
+      final String apiUrl = ConfigEnv.APIURL;
+      final String url = '$apiUrl/api/config/version-check';
+      final response = await _dio.request(
+        url,
+        options: Options(
+          method: 'GET',
+          responseType: ResponseType.json,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+      
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        latestVersion = data['latestVersion'];
-        latestVersionParts = _parseVersion(latestVersion);
+        final data = response.data;
+        final latestVersion = data['latestVersion'] as String;
+        final latestVersionParts = _parseVersion(latestVersion);
         
+        if (upToDate(currentVersionParts, latestVersionParts) || mayorQueLaActual(currentVersionParts, latestVersionParts)) {
+          return '/login';
+        } else {
+          return '/';
+        }
+      } else {
+        print('Error en la respuesta: ${response.statusCode}');
+        return '/'; // Fallback en caso de error
       }
-      print('funciono try');
+      
+    } on DioException catch (e) {
+      // Manejo específico de errores de Dio
+      if (e.response != null) {
+        print('Error del servidor: ${e.response?.statusCode}');
+      } else {
+        print('Error de conexión: ${e.message}');
+      }
+      return '/'; // Fallback en caso de error
     } catch (e) {
       print('Error al verificar la versión: $e');
+      return '/'; // Fallback en caso de error
     }
-    if(upToDate(currentVersionParts, latestVersionParts) || mayorQueLaActual(currentVersionParts, latestVersionParts)) {
-      return '/login';
-    } else {
-      return '/';
-    }
-    
   }
 }

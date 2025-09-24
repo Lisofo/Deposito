@@ -190,6 +190,31 @@ class EntregaServices {
     }
   }
 
+  Future<bool> verificarEntrega(BuildContext context, int entregaId, int bultoId, bool verificacionParcial, String token) async {
+    String link = '$apirUrl/api/v1/entrega/$entregaId/verificar/$bultoId';
+    var data = {
+      'verificacionParcial' : verificacionParcial
+    };
+
+    try {
+      var headers = {'Authorization': token};
+      var resp = await _dio.request(
+        link,
+        options: Options(
+          method: 'POST',
+          headers: headers,
+        ),
+        data: data
+      );
+      statusCode = resp.statusCode;
+      return true;
+    } catch (e) {
+      statusCode = 0;
+      errorManagment(e, context);
+      return false;
+    }
+  }
+
   Future<List<Bulto>> getBultosEntrega(BuildContext context, int entregaId, String token) async {
     String link = '$apirUrl/api/v1/entrega/$entregaId/bultos';
 
@@ -575,7 +600,53 @@ class EntregaServices {
       statusCode = 0;
       errorManagment(e, context);
     }
-  }  
+  }
+
+  Future<void> imprimirEtiqueta(
+    BuildContext context,
+    int bultoId,
+    String token,
+  ) async {
+    String link = '$apirUrl/api/v1/bultos/$bultoId/imprimirEtiqueta';
+
+    try {
+      var headers = {'Authorization': token};
+      await _dio.request(
+        link,
+        options: Options(
+          method: 'POST',
+          headers: headers,
+        ),
+      );
+      statusCode = 1;
+    } catch (e) {
+      statusCode = 0;
+      errorManagment(e, context);
+    }
+  }
+  
+  Future<void> imprimirDetalle(
+    BuildContext context,
+    int bultoId,
+    String token,
+  ) async {
+    String link = '$apirUrl/api/v1/bultos/$bultoId/imprimirDetalles';
+
+    try {
+      var headers = {'Authorization': token};
+      await _dio.request(
+        link,
+        options: Options(
+          method: 'POST',
+          headers: headers,
+        ),
+      );
+      statusCode = 1;
+    } catch (e) {
+      statusCode = 0;
+      errorManagment(e, context);
+    }
+  }
 
   Future<List<Retiro>> getRetiros(BuildContext context, String token) async {
     String link = '$apirUrl/api/v1/bultos/retiro';

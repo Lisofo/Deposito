@@ -5,9 +5,9 @@ import 'package:deposito/services/entrega_services.dart';
 import 'package:deposito/widgets/carteles.dart';
 import 'package:deposito/widgets/escaner_pda.dart';
 import 'package:deposito/widgets/icon_string.dart';
+import 'package:deposito/widgets/segmented_buttons.dart';
 import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
 
 class DespachoPage extends StatefulWidget {
@@ -126,6 +126,8 @@ class DespachoPageState extends State<DespachoPage> {
   Future<void> procesarEscaneoBulto(String value) async {
     if (value.isEmpty) return;
     
+    if (_groupValueBultos != 0 && _groupValueBultos != 1) return;
+
     try {
       var bultoEncontrado = bultos.firstWhere((bulto) => bulto.bultoId == int.parse(value));
       
@@ -216,24 +218,16 @@ class DespachoPageState extends State<DespachoPage> {
                 compareFn: (item, selectedItem) => item.formaEnvioId == selectedItem.formaEnvioId,
               ),
             ),
-            CupertinoSegmentedControl<int>(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
+            CustomSegmentedControl(
               groupValue: _groupValueBultos,
-              borderColor: Theme.of(context).colorScheme.primary,
-              selectedColor: Theme.of(context).colorScheme.primary,
-              unselectedColor: Colors.white,
-              children: const {
-                0: Text('Todos'),
-                1: Text('Pendiente'),
-                2: Text('Cerrado'),
-                3: Text('Retirado'),
-              },
               onValueChanged: (newValue) {
                 setState(() {
                   _groupValueBultos = newValue;
                   _cargarBultos(agenciaTrId: transportistaSeleccionado?.formaEnvioId);
                 });
               },
+              options: SegmentedOptions.bultosStates,
+              usePickingStyle: true,
             ),
             const SizedBox(height: 10),
             Expanded(
@@ -267,7 +261,7 @@ class DespachoPageState extends State<DespachoPage> {
       elevation: 2,
       color: isSelected ? Colors.blue[50] : null,
       child: InkWell(
-        onTap: () => _toggleSeleccionBulto(bulto),
+        onTap: () => (_groupValueBultos != 0 && _groupValueBultos != 1) ? _toggleSeleccionBulto(bulto) : null,
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(
@@ -301,16 +295,17 @@ class DespachoPageState extends State<DespachoPage> {
                 Text('Retiro ID: ${bulto.retiroId}'),
               const SizedBox(height: 8),
               Text('Fecha: $fechaDate'),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const SizedBox(),
-                  Checkbox(
-                    value: isSelected,
-                    onChanged: (_) => _toggleSeleccionBulto(bulto),
-                  ),
-                ],
-              ),
+              if (_groupValueBultos != 0 && _groupValueBultos != 1)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const SizedBox(),
+                    Checkbox(
+                      value: isSelected,
+                      onChanged: (_) => _toggleSeleccionBulto(bulto),
+                    ),
+                  ],
+                ),
             ],
           ),
         ),
@@ -319,64 +314,58 @@ class DespachoPageState extends State<DespachoPage> {
   }
 
   Widget _buildActionButtons() {
-    return SizedBox(
-      height: 70, // Altura fija para los botones
+    return Container(
+      height: 70,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: selectedBultos.length == 1 && _esBultoImprimible(selectedBultos.first)
           ? Row(
               children: [
-                _buildImprimirButton(),
-                _buildDespacharButton(),
+                Expanded(child: _buildImprimirButton()),
+                Expanded(child: _buildDespacharButton()),
               ],
             )
-          : _buildDespacharButton(),
+          : SizedBox(
+              width: MediaQuery.of(context).size.width > 600 ? MediaQuery.of(context).size.width * 0.4 : MediaQuery.of(context).size.width,
+              child: _buildDespacharButton())
+            ,
     );
   }
 
   Widget _buildImprimirButton() {
     final colors = Theme.of(context).colorScheme;
-    return Expanded(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            minimumSize: const Size.fromHeight(50),
-            backgroundColor: colors.primary,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-          onPressed: () => _confirmarImpresion(),
-          child: const Text(
-            'IMPRIMIR RETIRO',
-            style: TextStyle(fontSize: 16, color: Colors.white),
-          ),
+    return ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        minimumSize: const Size.fromHeight(50),
+        backgroundColor: colors.primary,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
         ),
+      ),
+      onPressed: () => _confirmarImpresion(),
+      child: const Text(
+        'IMPRIMIR RETIRO',
+        style: TextStyle(fontSize: 16, color: Colors.white),
       ),
     );
   }
 
   Widget _buildDespacharButton() {
     final colors = Theme.of(context).colorScheme;
-    return Expanded(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            minimumSize: const Size.fromHeight(50),
-            backgroundColor: _todosBultosDespachados() ? colors.secondary : colors.primary,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-          onPressed: _todosBultosDespachados() ? _showDevolucionDialog : _showDespachoDialog,
-          child: Text(
-            _todosBultosDespachados() 
-                ? 'DEVOLVER (${selectedBultos.length})' 
-                : 'Retirar (${selectedBultos.length})',
-            style: const TextStyle(fontSize: 16, color: Colors.white),
-            textAlign: TextAlign.center,
-          ),
+    return ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        minimumSize: const Size.fromHeight(50),
+        backgroundColor: _todosBultosDespachados() ? colors.secondary : colors.primary,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
         ),
+      ),
+      onPressed: _todosBultosDespachados() ? _showDevolucionDialog : _showDespachoDialog,
+      child: Text(
+        _todosBultosDespachados() 
+            ? 'DEVOLVER (${selectedBultos.length})' 
+            : 'Retirar (${selectedBultos.length})',
+        style: const TextStyle(fontSize: 16, color: Colors.white),
+        textAlign: TextAlign.center,
       ),
     );
   }

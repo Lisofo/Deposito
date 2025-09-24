@@ -16,7 +16,7 @@ import 'package:deposito/services/picking_services.dart';
 import 'package:deposito/widgets/filtros_bulto.dart';
 import 'package:deposito/widgets/filtros_entregas.dart';
 import 'package:deposito/widgets/filtros_picking.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:deposito/widgets/segmented_buttons.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -333,24 +333,16 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
   Widget _buildOrdenesTab() {
     return Column(
       children: [
-        CupertinoSegmentedControl<int>(
-          padding: const EdgeInsets.symmetric(horizontal: 10),
+        CustomSegmentedControl(
           groupValue: _groupValueOrdenes,
-          borderColor: Theme.of(context).colorScheme.primary,
-          selectedColor: Theme.of(context).colorScheme.primary,
-          unselectedColor: Colors.white,
-          children: const {
-            0: Text('Todos'),
-            1: Text('Pendiente'),
-            2: Text('En Proceso'),
-            3: Text('Preparado'),
-          },
           onValueChanged: (newValue) {
             setState(() {
               _groupValueOrdenes = newValue;
               _loadData();
             });
           },
+          options: SegmentedOptions.monitorOrdenes,
+          usePickingStyle: true,
         ),
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -387,24 +379,16 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
   Widget _buildEntregasTab() {
     return Column(
       children: [
-        CupertinoSegmentedControl<int>(
-          padding: const EdgeInsets.symmetric(horizontal: 10),
+        CustomSegmentedControl(
           groupValue: _groupValueEntregas,
-          borderColor: Theme.of(context).colorScheme.primary,
-          selectedColor: Theme.of(context).colorScheme.primary,
-          unselectedColor: Colors.white,
-          children: const {
-            0: Text('Todos'),
-            1: Text('Pendiente'),
-            2: Text('En Proceso'),
-            3: Text('Finalizada'),
-          },
           onValueChanged: (newValue) {
             setState(() {
               _groupValueEntregas = newValue;
               _loadData();
             });
           },
+          options: SegmentedOptions.monitorEntregas,
+          usePickingStyle: true,
         ),
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -440,24 +424,16 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
   Widget _buildBultosTab() {
     return Column(
       children: [
-        CupertinoSegmentedControl<int>(
-          padding: const EdgeInsets.symmetric(horizontal: 10),
+        CustomSegmentedControl(
           groupValue: _groupValueBultos,
-          borderColor: Theme.of(context).colorScheme.primary,
-          selectedColor: Theme.of(context).colorScheme.primary,
-          unselectedColor: Colors.white,
-          children: const {
-            0: Text('Todos'),
-            1: Text('Pendiente'),
-            2: Text('Cerrado'),
-            3: Text('Despachado'),
-          },
           onValueChanged: (newValue) {
             setState(() {
               _groupValueBultos = newValue;
               _loadData();
             });
           },
+          options: SegmentedOptions.monitorBultos,
+          usePickingStyle: true,
         ),
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 8.0),
