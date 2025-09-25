@@ -109,6 +109,7 @@ class SegmentedOptions {
     1: 'Pendiente',
     2: 'Cerrado',
     3: 'Retirado',
+    4: 'Devuelto'
   };
 
   static const Map<int, String> monitorOrdenes = {

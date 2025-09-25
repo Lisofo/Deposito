@@ -53,7 +53,7 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
     _cargarDatosIniciales();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        focoDeScanner.requestFocus();
+        // focoDeScanner.requestFocus();
       }
     });
   }
@@ -147,16 +147,20 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
       }
     }
 
+    transportistas.clear();
+    empresasEnvio.clear();
+
     for (var forma in formasEnvio) {
       if(forma.tr == true) {
         transportistas.add(forma);
-        transportistas.sort((a, b) => a.descripcion!.compareTo(b.descripcion.toString()));
       } 
       if (forma.envio == true) {
         empresasEnvio.add(forma);
-        empresasEnvio.sort((a, b) => a.descripcion!.compareTo(b.descripcion.toString()));
       }
     }
+
+    transportistas.sort((a, b) => a.descripcion!.compareTo(b.descripcion.toString()));
+    empresasEnvio.sort((a, b) => a.descripcion!.compareTo(b.descripcion.toString()));
   }
 
   Future<void> _crearBultoVirtual() async {
@@ -222,7 +226,7 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
     } finally {
       setState(() => _isLoadingLineas = false);
       if (mounted) {
-        focoDeScanner.requestFocus();
+        // focoDeScanner.requestFocus();
       }
     }
   }
@@ -994,7 +998,7 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
           _codigoController.clear();
           FocusScope.of(context).requestFocus(focoDeScanner);
         },
-        autofocus: true,
+        autofocus: false,
         readOnly: _vistaMonitor || _entregaFinalizada,
       ),
     );

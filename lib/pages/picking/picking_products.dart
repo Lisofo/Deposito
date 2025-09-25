@@ -610,30 +610,38 @@ class PickingProductsState extends State<PickingProducts> {
       var trimmedValue = value.trim();
       final currentLine = provider.ordenPickingInterna.lineas![provider.currentLineIndex];
       productos = await ProductServices().getProductByName(context, '', '2', provider.almacen.almacenId.toString(), trimmedValue, '0', provider.token);
-      final producto = productos[0];
+      final producto = productos.isNotEmpty ? productos[0] : Product.empty();
       bool mismoProducto = producto.raiz == currentLine.codItem;
       
       if(provider.ubicacionSeleccionada?.existenciaActual == 0) return;
 
       if (mismoProducto) {
-        // Incrementamos directamente en 1 sin esperar la respuesta del patch
-        setState(() {
-          final currentQuantity = int.tryParse(_quantityController.text) ?? 0;
-          _quantityController.text = (currentQuantity + 1).toString();
-        });
-        
-        // Ejecutamos el patch en segundo plano
-        _patchCurrentLine().then((success) {
-          if (!success) {
-            _showSingleSnackBar('Error al registrar el producto', backgroundColor: Colors.red);
-            // Si falla, restauramos el valor anterior
-            setState(() {
-              _quantityController.text = (int.tryParse(_quantityController.text) ?? 0 - 1).toString();
-            });
-          } else {
-            _showSingleSnackBar('Producto registrado correctamente');
-          }
-        });
+        // VERIFICAR SI YA SE ALCANZÓ EL MÁXIMO (AGREGAR ESTA VERIFICACIÓN)
+        final currentQuantity = int.tryParse(_quantityController.text) ?? 0;
+        if (currentQuantity < currentLine.cantidadPedida) {
+          // Incrementamos directamente en 1 sin esperar la respuesta del patch
+          setState(() {
+            _quantityController.text = (currentQuantity + 1).toString();
+          });
+          
+          // Ejecutamos el patch en segundo plano
+          _patchCurrentLine().then((success) {
+            if (!success) {
+              _showSingleSnackBar('Error al registrar el producto', backgroundColor: Colors.red);
+              // Si falla, restauramos el valor anterior
+              setState(() {
+                _quantityController.text = (int.tryParse(_quantityController.text) ?? 0 - 1).toString();
+              });
+            } else {
+              _showSingleSnackBar('Producto registrado correctamente');
+            }
+          });
+        } else {
+          _showSingleSnackBar(
+            'Ya has alcanzado la cantidad máxima para este producto',
+            backgroundColor: Colors.orange
+          );
+        }
       } else {
         _showSingleSnackBar(
           'Producto no encontrado: $value',
@@ -673,24 +681,32 @@ class PickingProductsState extends State<PickingProducts> {
       if(provider.ubicacionSeleccionada?.existenciaActual == 0) return;
 
       if (mismoProducto) {
-        // Incrementamos directamente en 1 sin esperar la respuesta del patch
-        setState(() {
-          final currentQuantity = int.tryParse(_quantityController.text) ?? 0;
-          _quantityController.text = (currentQuantity + 1).toString();
-        });
-        
-        // Ejecutamos el patch en segundo plano
-        _patchCurrentLine().then((success) {
-          if (!success) {
-            _showSingleSnackBar('Error al registrar el producto', backgroundColor: Colors.red);
-            // Si falla, restauramos el valor anterior
-            setState(() {
-              _quantityController.text = (int.tryParse(_quantityController.text) ?? 0 - 1).toString();
-            });
-          } else {
-            _showSingleSnackBar('Producto registrado correctamente');
-          }
-        });
+        // VERIFICAR SI YA SE ALCANZÓ EL MÁXIMO (AGREGAR ESTA VERIFICACIÓN)
+        final currentQuantity = int.tryParse(_quantityController.text) ?? 0;
+        if (currentQuantity < currentLine.cantidadPedida) {
+          // Incrementamos directamente en 1 sin esperar la respuesta del patch
+          setState(() {
+            _quantityController.text = (currentQuantity + 1).toString();
+          });
+          
+          // Ejecutamos el patch en segundo plano
+          _patchCurrentLine().then((success) {
+            if (!success) {
+              _showSingleSnackBar('Error al registrar el producto', backgroundColor: Colors.red);
+              // Si falla, restauramos el valor anterior
+              setState(() {
+                _quantityController.text = (int.tryParse(_quantityController.text) ?? 0 - 1).toString();
+              });
+            } else {
+              _showSingleSnackBar('Producto registrado correctamente');
+            }
+          });
+        } else {
+          _showSingleSnackBar(
+            'Ya has alcanzado la cantidad máxima para este producto',
+            backgroundColor: Colors.orange
+          );
+        }
       } else {
         _showSingleSnackBar(
           'Producto no encontrado: $barcodeScanRes',

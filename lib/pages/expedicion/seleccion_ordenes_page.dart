@@ -38,7 +38,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
   bool _isLoading = true;
   bool camera = false;
   String token = '';
-  int _groupValue = 0;
+  int _groupValue = 1;
 
   @override
   void initState() {
@@ -54,7 +54,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
   void _manteneFocoScanner() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        focoDeScanner.requestFocus();
+        // focoDeScanner.requestFocus();
       }
     });
   }
@@ -109,7 +109,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
       }
     } finally {
       setState(() => _isLoading = false);
-      _manteneFocoScanner();
+      // _manteneFocoScanner();
     }
   }
 
@@ -229,7 +229,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
                                 suffixIcon: Icon(Icons.barcode_reader),
                               ),
                               onFieldSubmitted: procesarEscaneoUbicacion,
-                              autofocus: true,
+                              autofocus: false,
                             ),
                           ),
                           Expanded(

@@ -433,11 +433,11 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
         Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            TextButton(
-              style: TextButton.styleFrom(foregroundColor: Colors.grey[700]),
-              onPressed: _procesandoCierre ? null : () => Navigator.of(context).pop(),
-              child: const Text('Cancelar'),
-            ),
+            // TextButton(
+            //   style: TextButton.styleFrom(foregroundColor: Colors.grey[700]),
+            //   onPressed: _procesandoCierre ? null : () => Navigator.of(context).pop(),
+            //   child: const Text('Cancelar'),
+            // ),
             const SizedBox(width: 12),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
@@ -793,21 +793,26 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_entregaFinalizada ? 'Bultos Cerrados' : 'Crear y cerrar bultos'),
-        backgroundColor: colors.primary,
-        foregroundColor: colors.onPrimary,
-        automaticallyImplyLeading: false,
+    return SafeArea(
+      child: PopScope(
+        canPop: false,
+        child: Scaffold(
+          appBar: AppBar(
+            title: Text(_entregaFinalizada ? 'Bultos Cerrados' : 'Crear y cerrar bultos'),
+            backgroundColor: colors.primary,
+            foregroundColor: colors.onPrimary,
+            automaticallyImplyLeading: false,
+          ),
+          body: _procesandoCierre
+              ? const Center(child: CircularProgressIndicator())
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.all(16.0),
+                  child: _entregaFinalizada || widget.modoReadOnly
+                      ? _buildBultosCerrados()
+                      : _buildFormularioCierre(),
+                ),
+        ),
       ),
-      body: _procesandoCierre
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: _entregaFinalizada || widget.modoReadOnly
-                  ? _buildBultosCerrados()
-                  : _buildFormularioCierre(),
-            ),
     );
   }
 }

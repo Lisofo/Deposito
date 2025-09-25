@@ -35,27 +35,32 @@ class _SeleccionAlmacenState extends State<SeleccionAlmacen> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     almacenes.sort((a, b) => a.descripcion.compareTo(b.descripcion));
-    // ignore: deprecated_member_use
-    return WillPopScope(
-      onWillPop: () async {
-        return await showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            surfaceTintColor: Colors.white,
-            title: const Text('¿Desea salir de la aplicación?'),
-            actions: <Widget>[
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('No'),
-              ),
-              TextButton(
-                onPressed: () => SystemNavigator.pop(),
-                child: const Text('Sí'),
-              ),
-            ],
-          ),
-        );
-      },
+    return PopScope(
+      canPop: false,
+      // onPopInvokedWithResult: (didPop, result) async {
+      //   if (didPop) return;
+
+      //   final shouldExit = await showDialog<bool>(
+      //     context: context,
+      //     builder: (context) => AlertDialog(
+      //       surfaceTintColor: Colors.white,
+      //       title: const Text('¿Desea salir de la aplicación?'),
+      //       actions: <Widget>[
+      //         TextButton(
+      //           onPressed: () => Navigator.of(context).pop(false),
+      //           child: const Text('No'),
+      //         ),
+      //         TextButton(
+      //           onPressed: () => Navigator.of(context).pop(true),
+      //           child: const Text('Sí'),
+      //         ),
+      //       ],
+      //     ),
+      //   );
+      //   if (shouldExit == true) {
+      //     SystemNavigator.pop();
+      //   }
+      // },
       child: SafeArea(
         child: Scaffold(
           appBar: AppBar(

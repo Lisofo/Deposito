@@ -604,20 +604,29 @@ class PickingProductsEntradaState extends State<PickingProductsEntrada> {
           final line = provider.ordenPickingInterna.lineas![i];
           if (producto.raiz == line.codItem) {
             final currentQuantity = int.tryParse(_quantityControllers[i]?.text ?? '0') ?? 0;
-            final newQuantity = currentQuantity + 1;
             
-            setState(() {
-              _quantityControllers[i]?.text = newQuantity.toString();
-            });
-            
-            final success = await _patchSingleLine(i, newQuantity);
-            if (!success) {
-              _showSingleSnackBar('Error al registrar el producto', backgroundColor: Colors.red);
+            // VERIFICAR SI YA SE ALCANZÓ EL MÁXIMO (AGREGAR ESTA VERIFICACIÓN)
+            if (currentQuantity < line.cantidadPedida) {
+              final newQuantity = currentQuantity + 1;
+              
               setState(() {
-                _quantityControllers[i]?.text = currentQuantity.toString();
+                _quantityControllers[i]?.text = newQuantity.toString();
               });
+              
+              final success = await _patchSingleLine(i, newQuantity);
+              if (!success) {
+                _showSingleSnackBar('Error al registrar el producto', backgroundColor: Colors.red);
+                setState(() {
+                  _quantityControllers[i]?.text = currentQuantity.toString();
+                });
+              } else {
+                _showSingleSnackBar('Producto registrado correctamente');
+              }
             } else {
-              _showSingleSnackBar('Producto registrado correctamente');
+              _showSingleSnackBar(
+                'Ya has alcanzado la cantidad máxima para ${line.descripcion}',
+                backgroundColor: Colors.orange
+              );
             }
 
             productoEncontrado = true;
@@ -678,20 +687,29 @@ class PickingProductsEntradaState extends State<PickingProductsEntrada> {
           final line = provider.ordenPickingInterna.lineas![i];
           if (producto.raiz == line.codItem) {
             final currentQuantity = int.tryParse(_quantityControllers[i]?.text ?? '0') ?? 0;
-            final newQuantity = currentQuantity + 1;
             
-            setState(() {
-              _quantityControllers[i]?.text = newQuantity.toString();
-            });
-            
-            final success = await _patchSingleLine(i, newQuantity);
-            if (!success) {
-              _showSingleSnackBar('Error al registrar el producto', backgroundColor: Colors.red);
+            // VERIFICAR SI YA SE ALCANZÓ EL MÁXIMO (AGREGAR ESTA VERIFICACIÓN)
+            if (currentQuantity < line.cantidadPedida) {
+              final newQuantity = currentQuantity + 1;
+              
               setState(() {
-                _quantityControllers[i]?.text = currentQuantity.toString();
+                _quantityControllers[i]?.text = newQuantity.toString();
               });
+              
+              final success = await _patchSingleLine(i, newQuantity);
+              if (!success) {
+                _showSingleSnackBar('Error al registrar el producto', backgroundColor: Colors.red);
+                setState(() {
+                  _quantityControllers[i]?.text = currentQuantity.toString();
+                });
+              } else {
+                _showSingleSnackBar('Producto registrado correctamente');
+              }
             } else {
-              _showSingleSnackBar('Producto registrado correctamente');
+              _showSingleSnackBar(
+                'Ya has alcanzado la cantidad máxima para ${line.descripcion}',
+                backgroundColor: Colors.orange
+              );
             }
 
             productoEncontrado = true;

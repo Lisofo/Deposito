@@ -79,7 +79,7 @@ class DespachoPageState extends State<DespachoPage> {
     try {
       String? estado;
       if (_groupValueBultos != 0) {
-        estado = ['PENDIENTE', 'CERRADO', 'RETIRADO'][_groupValueBultos - 1];
+        estado = ['PENDIENTE', 'CERRADO', 'RETIRADO', 'DEVUELTO'][_groupValueBultos - 1];
       }
       
       // Obtener todos los bultos
