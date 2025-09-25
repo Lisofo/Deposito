@@ -128,6 +128,14 @@ class ProductProvider with ChangeNotifier {
   final Map<int, List<UbicacionPicking>> _ubicacionesPicking = {};
   Map<int, List<UbicacionPicking>> get ubicacionesPicking => _ubicacionesPicking;
 
+  bool _voyDesdeMenu = false;
+  bool get voyDesdeMenu => _voyDesdeMenu;
+
+  void setVoyDesdeMenu(bool desdeMenu) {
+    _voyDesdeMenu = desdeMenu;
+    notifyListeners();
+  }
+
   void agregarUbicacionPicking(int lineaId, UbicacionPicking ubicacion) {
     if (!_ubicacionesPicking.containsKey(lineaId)) {
       _ubicacionesPicking[lineaId] = [];

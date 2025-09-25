@@ -261,7 +261,7 @@ class DespachoPageState extends State<DespachoPage> {
       elevation: 2,
       color: isSelected ? Colors.blue[50] : null,
       child: InkWell(
-        onTap: () => (_groupValueBultos != 0 && _groupValueBultos != 1) ? _toggleSeleccionBulto(bulto) : null,
+        onTap: () => (_groupValueBultos != 0 && _groupValueBultos != 1 && _groupValueBultos != 4) ? _toggleSeleccionBulto(bulto) : null,
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(

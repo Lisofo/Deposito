@@ -101,7 +101,6 @@ class SegmentedOptions {
   static const Map<int, String> expedicionStates = {
     0: 'Preparado',
     1: 'Embalaje',
-    2: 'Entrega parcial',
   };
 
   static const Map<int, String> bultosStates = {

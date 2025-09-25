@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:deposito/models/orden_picking.dart';
 import 'package:deposito/services/picking_services.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 
 class SalidaBultosPageBasica extends StatefulWidget {
   const SalidaBultosPageBasica({super.key});
@@ -27,10 +28,12 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
   OrdenPicking? _ordenSeleccionada;
   Bulto? _bultoVirtual;
   final TextEditingController _codigoController = TextEditingController();
+  final TextEditingController _codigoController2 = TextEditingController();
   final PickingServices _pickingServices = PickingServices();
   bool _isLoadingLineas = false;
   late String token;
   FocusNode focoDeScanner = FocusNode();
+  FocusNode focoDeScanner2 = FocusNode();
   Entrega entrega = Entrega.empty();
   bool _vistaMonitor = false;
   bool _entregaFinalizada = false; // Nuevo estado para controlar si la entrega está finalizada
@@ -305,7 +308,7 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
     return true; // Todas las líneas están completas
   }
 
-  Future<void> procesarEscaneoUbicacion(String value) async {
+  Future<void> procesarEscaneoUbicacion(String value, bool invisible) async {
     if (value.isEmpty || _bultoVirtual == null || _vistaMonitor || _entregaFinalizada) return;
     
     try {
@@ -429,11 +432,16 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
           _bultoVirtual!.contenido.add(nuevoItem);
         });
       }
-      
-      _codigoController.clear();
-      if (mounted) {
-        FocusScope.of(context).requestFocus(focoDeScanner);
+      if (invisible) {
+        _codigoController2.clear();
+        FocusScope.of(context).requestFocus(focoDeScanner2);
+      } else {
+        _codigoController.clear();
+        if (mounted) {
+          FocusScope.of(context).requestFocus(focoDeScanner);
+        }
       }
+      
     } catch (e) {
       Carteles.showDialogs(context, 'Error al procesar el escaneo: ${e.toString()}', false, false, false);
       if (mounted) {
@@ -816,15 +824,10 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
     
     // Verificar si todas las líneas de todas las órdenes están completas
     final todasCompletas = _verificarCompletitudTodasOrdenes();
+    bool verificacionParcial = !todasCompletas;
     
-    bool continuar = true;
-    bool verificacionParcial = false;
-    
-    // Si hay líneas incompletas, mostrar diálogo de confirmación
-    if (!todasCompletas) {
-      continuar = await _mostrarDialogoConfirmacionIncompleto();
-      verificacionParcial = true;
-    }
+    // Siempre mostrar diálogo de confirmación, incluso si está completo
+    final continuar = await _mostrarDialogoConfirmacionCierre(todasCompletas);
     
     if (!continuar) {
       return; // El usuario canceló
@@ -871,17 +874,18 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
     }
   }
 
-  // Nuevo método: Mostrar diálogo de confirmación cuando hay líneas incompletas
-  Future<bool> _mostrarDialogoConfirmacionIncompleto() async {
+  // Nuevo método: Mostrar diálogo de confirmación para el cierre (siempre se muestra)
+  Future<bool> _mostrarDialogoConfirmacionCierre(bool estaCompleto) async {
     return await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Verificación incompleta'),
-          content: const Text(
-            'Hay líneas que no han sido verificadas completamente. '
-            '¿Desea continuar igual?'
+          title: Text(estaCompleto ? 'Verificación completa' : 'Verificación incompleta'),
+          content: Text(
+            estaCompleto 
+              ? 'La verificación está completa. ¿Está seguro de que desea proceder al cierre de bultos?'
+              : 'Hay líneas que no han sido verificadas completamente. ¿Desea continuar igual con el cierre de bultos?'
           ),
           actions: [
             TextButton(
@@ -994,7 +998,7 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
           enabled: !_vistaMonitor && !_entregaFinalizada,
         ),
         onSubmitted: (value) async {
-          await procesarEscaneoUbicacion(value);
+          await procesarEscaneoUbicacion(value, false);
           _codigoController.clear();
           FocusScope.of(context).requestFocus(focoDeScanner);
         },
@@ -1088,7 +1092,6 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
                   child: _buildScannerField(),
                 ),
               ),
-            
             // Contenido principal
             SliverToBoxAdapter(
               child: Column(
@@ -1124,7 +1127,28 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
                   
                   // Selector de órdenes horizontal
                   _buildSelectorOrdenes(),
-                  
+                  SizedBox.shrink(
+                    child: VisibilityDetector(
+                      key: const Key('scanner-field-visibility'),
+                      onVisibilityChanged: (info) {
+                        if (info.visibleFraction > 0) {
+                          focoDeScanner2.requestFocus();
+                        }
+                      },
+                      child: TextFormField(
+                        focusNode: focoDeScanner2,
+                        cursorColor: Colors.transparent,
+                        decoration: const InputDecoration(
+                          border: UnderlineInputBorder(borderSide: BorderSide.none),
+                        ),
+                        style: const TextStyle(color: Colors.transparent),
+                        autofocus: true,
+                        keyboardType: TextInputType.none,
+                        controller: _codigoController2,
+                        onFieldSubmitted: (value) => procesarEscaneoUbicacion(value, true),
+                      ),
+                    )
+                  ), 
                   // Detalles de la orden seleccionada (solo para pantallas grandes)
                   if (_ordenSeleccionada != null && MediaQuery.of(context).size.width > 600)
                     Card(
@@ -1168,7 +1192,6 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
                         ),
                       ),
                     ),
-                  
                   const SizedBox(height: 10),            
                   if (_ordenSeleccionada != null) ...[
                     _buildProductosSection(),

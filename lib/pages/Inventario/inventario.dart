@@ -73,8 +73,7 @@ class _InventarioPageState extends State<InventarioPage> {
     final colors = Theme.of(context).colorScheme;
     final productProvider = context.watch<ProductProvider>();
   
-    if (productProvider.ubicacion.almacenUbicacionId != 0 && 
-        ubicacionSeleccionada.almacenId == 0) {
+    if (productProvider.ubicacion.almacenUbicacionId != 0 && ubicacionSeleccionada.almacenId == 0) {
       ubicacionSeleccionada = productProvider.ubicacion;
     }
     return SafeArea(child: scaffoldScannerSearch(context, colors));
@@ -94,10 +93,9 @@ class _InventarioPageState extends State<InventarioPage> {
             backgroundColor: WidgetStatePropertyAll(colors.primary)
           ),
           onPressed: () async {
-            if (productProvider.ubicacion.almacenUbicacionId == 0) {
+            if (productProvider.ubicacion.almacenUbicacionId == 0 || productProvider.voyDesdeMenu) {
               appRouter.pop();
             } else {
-              
               final router = GoRouter.of(context);
               router.pushReplacement('/paginaProducto');
             }

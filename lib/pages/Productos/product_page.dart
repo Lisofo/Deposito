@@ -387,7 +387,8 @@ class _ProductPageState extends State<ProductPage> {
                                       subtitle: Text('Existencia actual: ${ubicacion.existenciaActualUbi}'),
                                       trailing: TextButton(
                                         onPressed: () {
-                                          Provider.of<ProductProvider>(context, listen: false).setUbicacion(
+                                          final productProvider = Provider.of<ProductProvider>(context, listen: false);
+                                          productProvider.setUbicacion(
                                             UbicacionAlmacen(
                                               almacenId: almacenSeleccionado!.almacenId,
                                               codUbicacion: ubicacion.codUbicacion,
@@ -398,6 +399,7 @@ class _ProductPageState extends State<ProductPage> {
                                               tipoUbicacion: '',
                                             )
                                           );
+                                          productProvider.setVoyDesdeMenu(false);
                                           appRouter.push('/inventario');
                                         },
                                         child: const Text('Conteo')

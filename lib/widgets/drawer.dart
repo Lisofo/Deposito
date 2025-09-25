@@ -74,6 +74,7 @@ List<Widget> _filaBotones2(List<Opcion> opciones, BuildContext context) {
           productProvider.setTitle(opt.texto);
           if(opt.ruta == '/inventario') {
             Provider.of<ProductProvider>(context, listen: false).setUbicacion(UbicacionAlmacen.empty());
+            Provider.of<ProductProvider>(context, listen: false).setVoyDesdeMenu(true);
           }
           appRouter.push(opt.ruta);
         },

@@ -43,7 +43,7 @@ class _ListaPickingState extends State<ListaPicking> {
   DateTime? _fechaDesde;
   DateTime? _fechaHasta;
   String? _selectedPrioridad;
-  int _groupValue = 0;
+  int _groupValue = 3;
 
   String token = '';
   late String menu;

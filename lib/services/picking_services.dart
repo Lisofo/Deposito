@@ -77,8 +77,8 @@ class PickingServices {
     Map<String, dynamic> queryParams = {};
     if (tipo != null && tipo.isNotEmpty) queryParams['tipo'] = tipo;
     if (prioridad != null && prioridad.isNotEmpty) queryParams['prioridad'] = prioridad;
-    if (fechaDateDesde != null) queryParams['fechaDateDesde'] = DateFormat('yyyy-MM-dd').format(fechaDateDesde);
-    if (fechaDateHasta != null) queryParams['fechaDateHasta'] = DateFormat('yyyy-MM-dd').format(fechaDateHasta);
+    if (fechaDateDesde != null) queryParams['fechaDateDesde'] = DateFormat('yyyy-MM-dd HH:mm:ss').format(fechaDateDesde);
+    if (fechaDateHasta != null) queryParams['fechaDateHasta'] = DateFormat('yyyy-MM-dd HH:mm:ss').format(fechaDateHasta);
     if (estado != null && estado.isNotEmpty) queryParams['estado'] = estado;
     if (numeroDocumento != null && numeroDocumento.isNotEmpty) queryParams['numeroDocumento'] = numeroDocumento;
     if (nombre != null && nombre.isNotEmpty) queryParams['nombre'] = nombre;

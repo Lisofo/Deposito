@@ -12,6 +12,7 @@ import 'package:deposito/widgets/segmented_buttons.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:deposito/widgets/filtros_expedicion.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 
 class SeleccionOrdenesScreen extends StatefulWidget {
   const SeleccionOrdenesScreen({super.key});
@@ -32,13 +33,15 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
   final TextEditingController _numeroDocController = TextEditingController();
   final TextEditingController _pickIDController = TextEditingController();
   FocusNode focoDeScanner = FocusNode();
+  FocusNode focoDeScanner2 = FocusNode();
   TextEditingController textController = TextEditingController();
+  TextEditingController textController2 = TextEditingController();
   bool _isFilterExpanded = false;
 
   bool _isLoading = true;
   bool camera = false;
   String token = '';
-  int _groupValue = 1;
+  int _groupValue = 0;
 
   @override
   void initState() {
@@ -228,9 +231,31 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
                                 border: OutlineInputBorder(),
                                 suffixIcon: Icon(Icons.barcode_reader),
                               ),
-                              onFieldSubmitted: procesarEscaneoUbicacion,
+                              onFieldSubmitted: (value) => procesarEscaneoUbicacion(value, false),
                               autofocus: false,
                             ),
+                          ),
+                          SizedBox.shrink(
+                            child: VisibilityDetector(
+                              key: const Key('scanner-field-visibility'),
+                              onVisibilityChanged: (info) {
+                                if (info.visibleFraction > 0) {
+                                  focoDeScanner2.requestFocus();
+                                }
+                              },
+                              child: TextFormField(
+                                focusNode: focoDeScanner2,
+                                cursorColor: Colors.transparent,
+                                decoration: const InputDecoration(
+                                  border: UnderlineInputBorder(borderSide: BorderSide.none),
+                                ),
+                                style: const TextStyle(color: Colors.transparent),
+                                autofocus: true,
+                                keyboardType: TextInputType.none,
+                                controller: textController2,
+                                onFieldSubmitted: (value) => procesarEscaneoUbicacion(value, true),
+                              ),
+                            )
                           ),
                           Expanded(
                             child: ListView.builder(
@@ -472,7 +497,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
     }
   }
 
-  Future<void> procesarEscaneoUbicacion(String value) async {
+  Future<void> procesarEscaneoUbicacion(String value, bool invisible) async {
     if (value.isEmpty) return;
     
     try {
@@ -483,8 +508,13 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
         _ordenesSeleccionadas.add(ordenEncontrada);
       }
       
-      textController.clear();
-      focoDeScanner.requestFocus();
+      if(invisible) {
+        textController2.clear();
+        focoDeScanner2.requestFocus();
+      } else {
+        textController.clear();
+        focoDeScanner.requestFocus();
+      }
       setState(() {});
     } catch (e) {
       Carteles.showDialogs(context, 'Error al procesar el escaneo', false, false, false);
