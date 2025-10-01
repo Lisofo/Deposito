@@ -399,9 +399,7 @@ class PickingProductsState extends State<PickingProducts> {
       
       provider.setOrdenPickingInterna(updatedOrder);
 
-      final nuevaExistencia = response['ubicaciones']
-          .firstWhere((u) => u['almacenUbicacionId'] == ubicacionSeleccionada.almacenUbicacionId)
-          ['existenciaActual'];
+      final nuevaExistencia = response['ubicaciones'].firstWhere((u) => u['almacenUbicacionId'] == ubicacionSeleccionada.almacenUbicacionId)['existenciaActual'];
 
       _actualizarExistenciasEnTodasLasLineas(
         provider,

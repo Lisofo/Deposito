@@ -242,6 +242,7 @@ class PickingServices {
         "pickLineaId": pickLineaId
       };
     }
+    // print(data);
     
     try {
       var headers = {'Authorization': token};
