@@ -15,6 +15,7 @@ class Bulto {
   final String? telefono;
   final int? agenciaUFId;
   final int tipoBultoId;
+  final String tipoBulto;
   final String? comentario;
   final String icon;
   final int? retiroId;
@@ -43,6 +44,7 @@ class Bulto {
     this.telefono,
     this.agenciaUFId,
     required this.tipoBultoId,
+    required this.tipoBulto,
     required this.icon,
     this.comentario,
     this.retiroId,
@@ -81,7 +83,8 @@ class Bulto {
     despachoId: json["despachoId"] as int?,
     devolucionId: json["devolucionId"] as int?,
     incluyeFactura: json["incluyeFactura"] as bool?,
-    contenido: []
+    contenido: [], 
+    tipoBulto: json['tipoBulto'] as String? ?? '',
   );
 
   Map<String, dynamic> toJson() => {
@@ -101,6 +104,7 @@ class Bulto {
     "telefono": telefono,
     "agenciaUFId": agenciaUFId,
     "tipoBultoId": tipoBultoId,
+    "tipoBulto": tipoBulto,
     "comentario": comentario,
     "retiroId": retiroId,
     "armadoPorUsuId": armadoPorUsuId,
@@ -120,6 +124,7 @@ class Bulto {
     estado: '',
     almacenId: 0,
     tipoBultoId: 0,
+    tipoBulto: '',
     armadoPorUsuId: 0,
     contenido: [],
     icon: '',
@@ -143,6 +148,7 @@ class Bulto {
     String? telefono,
     int? agenciaUFId,
     int? tipoBultoId,
+    String? tipoBulto,
     String? comentario,
     int? retiroId,
     int? armadoPorUsuId,
@@ -170,6 +176,7 @@ class Bulto {
       telefono: telefono ?? this.telefono,
       agenciaUFId: agenciaUFId ?? this.agenciaUFId,
       tipoBultoId: tipoBultoId ?? this.tipoBultoId,
+      tipoBulto: tipoBulto ?? this.tipoBulto,
       comentario: comentario ?? this.comentario,
       retiroId: retiroId ?? this.retiroId,
       armadoPorUsuId: armadoPorUsuId ?? this.armadoPorUsuId,

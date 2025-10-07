@@ -17,7 +17,14 @@ import 'package:deposito/services/picking_services.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
 class SalidaBultosPageBasica extends StatefulWidget {
-  const SalidaBultosPageBasica({super.key});
+  final Entrega? entregaExterna;
+  final bool? esModoMonitor;
+
+  const SalidaBultosPageBasica({
+    super.key,
+    this.entregaExterna,
+    this.esModoMonitor,
+  });
 
   @override
   SalidaBultosPageBasicaState createState() => SalidaBultosPageBasicaState();
@@ -53,12 +60,20 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
   @override
   void initState() {
     super.initState();
-    _cargarDatosIniciales();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        // focoDeScanner.requestFocus();
-      }
-    });
+    
+    // Si se pasó una entrega externa y es modo monitor, configurar inmediatamente
+    if (widget.entregaExterna != null && widget.esModoMonitor == true) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          final productProvider = Provider.of<ProductProvider>(context, listen: false);
+          productProvider.setEntrega(widget.entregaExterna as Entrega);
+          productProvider.setVistaMonitor(true);
+          _cargarDatosIniciales();
+        }
+      });
+    } else {
+      _cargarDatosIniciales();
+    }
   }
 
   @override
@@ -72,8 +87,20 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
   Future<void> _cargarDatosIniciales() async {
     final productProvider = Provider.of<ProductProvider>(context, listen: false);
     token = productProvider.token;
-    entrega = productProvider.entrega;
-    _vistaMonitor = productProvider.vistaMonitor;
+    
+    // Usar la entrega externa si se proporcionó, de lo contrario usar la del provider
+    if (widget.entregaExterna != null) {
+      entrega = widget.entregaExterna!;
+    } else {
+      entrega = productProvider.entrega;
+    }
+    
+    // Configurar modo monitor según parámetro o provider
+    if (widget.esModoMonitor != null) {
+      _vistaMonitor = widget.esModoMonitor!;
+    } else {
+      _vistaMonitor = productProvider.vistaMonitor;
+    }
     
     // Verificar si la entrega ya está finalizada
     _entregaFinalizada = entrega.estado == 'finalizado';
@@ -884,7 +911,7 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
           title: Text(estaCompleto ? 'Verificación completa' : 'Verificación incompleta'),
           content: Text(
             estaCompleto 
-              ? 'La verificación está completa. ¿Está seguro de que desea proceder al cierre de bultos?'
+              ? 'La verificación está completa. ¿Está seguro de que desea proceder al cierre de bultos?' 
               : 'Hay líneas que no han sido verificadas completamente. ¿Desea continuar igual con el cierre de bultos?'
           ),
           actions: [
@@ -934,7 +961,8 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
                 
                 return ListTile(
                   leading: getIcon(tipoBulto.icon, context, Colors.grey),
-                  title: Text('Bulto ${bulto.nroBulto}/${bulto.totalBultos} - ${tipoBulto.descripcion}'),
+                  // title: Text('Bulto ${bulto.nroBulto}/${bulto.totalBultos} - ${tipoBulto.descripcion}'),
+                  title: Text('Bulto ${bulto.bultoId} - ${tipoBulto.descripcion}'),
                   subtitle: Text('Estado: ${bulto.estado}'),
                   trailing: _entregaFinalizada
                     ? IconButton(
@@ -1072,7 +1100,7 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
         appBar: AppBar(
           backgroundColor: colors.primary,
           title: Text(
-            _vistaMonitor ? 'Monitor de Verificación - Entrega: ${entrega.entregaId}' 
+            _vistaMonitor ? 'Monitor - Contenido Entrega: ${entrega.entregaId}' 
               : _entregaFinalizada ? 'Entrega Finalizada - ${entrega.entregaId}' 
               : 'Verificación de Productos - Entrega: ${entrega.entregaId}', 
             style: TextStyle(color: colors.onPrimary)

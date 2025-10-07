@@ -144,6 +144,28 @@ class EntregaServices {
     }
   }
 
+  Future<Entrega> getEntregaPorId (BuildContext context, String token, {int? entregaId}) async {
+    String link = '$apirUrl/api/v1/entrega/$entregaId';
+
+    try {
+      var headers = {'Authorization': token};
+      var resp = await _dio.request(
+        link,
+        options: Options(
+          method: 'GET',
+          headers: headers,
+        ),
+      );
+      statusCode = 1;
+      
+      return Entrega.fromJson(resp.data);
+    } catch (e) {
+      statusCode = 0;
+      errorManagment(e, context);
+      return Entrega.empty();
+    }
+  }
+
   Future<Entrega> patchEntregaEstado(BuildContext context, int entregaId, String estado, String token) async {
     String link = '$apirUrl/api/v1/entrega/$entregaId';
     var data = {

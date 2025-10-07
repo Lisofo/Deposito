@@ -54,7 +54,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
   }
 
   // Método para mantener el foco en el scanner
-  void _manteneFocoScanner() {
+  void _mantenerFocoScanner() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         // focoDeScanner.requestFocus();
@@ -73,7 +73,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
         almacen.almacenId,
         token, 
         tipo: 'V,P,TS',
-        estado: _groupValue != -1 ? ['PREPARADO, PAPEL', 'EMBALAJE, PAPEL', 'E. PARCIAL, PAPEL'][_groupValue] : null,
+        estado: _groupValue != -1 ? ['PREPARADO, PAPEL', 'EMBALAJE', 'E. PARCIAL, PAPEL'][_groupValue] : null,
         fechaDateDesde: fechaDesde,
         fechaDateHasta: fechaHasta,
         nombre: cliente,
@@ -177,7 +177,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
                         _isFilterExpanded = expanded;
                       });
                       // Mantener foco cuando se expande/colapsa el filtro
-                      _manteneFocoScanner();
+                      _mantenerFocoScanner();
                     },
                     cantidadDeOrdenes: _ordenes.length,
                   ),
@@ -323,7 +323,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
             }
           });
           // Mantener foco después de selección manual
-          _manteneFocoScanner();
+          _mantenerFocoScanner();
         },
         child: Padding(
           padding: const EdgeInsets.all(12.0),
@@ -343,7 +343,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
                         }
                       });
                       // Mantener foco después de cambio en checkbox
-                      _manteneFocoScanner();
+                      _mantenerFocoScanner();
                     },
                   ),
                   Stack(
@@ -519,7 +519,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
     } catch (e) {
       Carteles.showDialogs(context, 'Error al procesar el escaneo', false, false, false);
       // Mantener foco incluso después de un error
-      _manteneFocoScanner();
+      _mantenerFocoScanner();
     }
   }
 }

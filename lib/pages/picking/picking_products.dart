@@ -399,7 +399,22 @@ class PickingProductsState extends State<PickingProducts> {
       
       provider.setOrdenPickingInterna(updatedOrder);
 
-      final nuevaExistencia = response['ubicaciones'].firstWhere((u) => u['almacenUbicacionId'] == ubicacionSeleccionada.almacenUbicacionId)['existenciaActual'];
+      // MANEJO ACTUALIZADO DE LA NUEVA EXISTENCIA
+      int nuevaExistencia;
+      
+      // Buscar si la ubicación todavía existe en la respuesta
+      final ubicacionEnResponse = response['ubicaciones'].firstWhere(
+        (u) => u['almacenUbicacionId'] == ubicacionSeleccionada.almacenUbicacionId,
+        orElse: () => null, // Retorna null si no encuentra la ubicación
+      );
+
+      if (ubicacionEnResponse != null) {
+        // La ubicación todavía existe, tomamos su existencia actual
+        nuevaExistencia = ubicacionEnResponse['existenciaActual'];
+      } else {
+        // La ubicación ya no está en la respuesta, significa que tiene existencia 0
+        nuevaExistencia = 0;
+      }
 
       _actualizarExistenciasEnTodasLasLineas(
         provider,
@@ -611,10 +626,14 @@ class PickingProductsState extends State<PickingProducts> {
       final producto = productos.isNotEmpty ? productos[0] : Product.empty();
       bool mismoProducto = producto.raiz == currentLine.codItem;
       
-      if(provider.ubicacionSeleccionada?.existenciaActual == 0) return;
+      // VERIFICAR SI LA UBICACIÓN TIENE STOCK DESPUÉS DE ACTUALIZACIONES
+      if(provider.ubicacionSeleccionada?.existenciaActual == 0) {
+        _showSingleSnackBar('Ubicación sin stock disponible', backgroundColor: Colors.orange);
+        return;
+      }
 
       if (mismoProducto) {
-        // VERIFICAR SI YA SE ALCANZÓ EL MÁXIMO (AGREGAR ESTA VERIFICACIÓN)
+        // VERIFICAR SI YA SE ALCANZÓ EL MÁXIMO
         final currentQuantity = int.tryParse(_quantityController.text) ?? 0;
         if (currentQuantity < currentLine.cantidadPedida) {
           // Incrementamos directamente en 1 sin esperar la respuesta del patch
@@ -631,7 +650,7 @@ class PickingProductsState extends State<PickingProducts> {
                 _quantityController.text = (int.tryParse(_quantityController.text) ?? 0 - 1).toString();
               });
             } else {
-              _showSingleSnackBar('Producto registrado correctamente');
+              _showSingleSnackBar('Producto registrado correctamente');              
             }
           });
         } else {
@@ -676,10 +695,14 @@ class PickingProductsState extends State<PickingProducts> {
       final producto = productos[0];
       bool mismoProducto = producto.raiz == currentLine.codItem;
 
-      if(provider.ubicacionSeleccionada?.existenciaActual == 0) return;
+      // VERIFICAR SI LA UBICACIÓN TIENE STOCK DESPUÉS DE ACTUALIZACIONES
+      if(provider.ubicacionSeleccionada?.existenciaActual == 0) {
+        _showSingleSnackBar('Ubicación sin stock disponible', backgroundColor: Colors.orange);
+        return;
+      }
 
       if (mismoProducto) {
-        // VERIFICAR SI YA SE ALCANZÓ EL MÁXIMO (AGREGAR ESTA VERIFICACIÓN)
+        // VERIFICAR SI YA SE ALCANZÓ EL MÁXIMO
         final currentQuantity = int.tryParse(_quantityController.text) ?? 0;
         if (currentQuantity < currentLine.cantidadPedida) {
           // Incrementamos directamente en 1 sin esperar la respuesta del patch

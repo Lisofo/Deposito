@@ -1,5 +1,6 @@
 import 'package:deposito/config/router/pages.dart';
 import 'package:deposito/models/bulto.dart';
+import 'package:deposito/models/entrega.dart';
 import 'package:deposito/models/forma_envio.dart';
 import 'package:deposito/services/entrega_services.dart';
 import 'package:deposito/widgets/carteles.dart';
@@ -9,6 +10,9 @@ import 'package:deposito/widgets/segmented_buttons.dart';
 import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:deposito/pages/expedicion/salida_bultos_page_basica.dart';
+import 'package:provider/provider.dart';
+import 'package:deposito/provider/product_provider.dart';
 
 class DespachoPage extends StatefulWidget {
   const DespachoPage({super.key});
@@ -299,7 +303,10 @@ class DespachoPageState extends State<DespachoPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const SizedBox(),
+                    TextButton(
+                      onPressed: () => _verContenidoEntrega(bulto),
+                      child: const Text('Ver contenido de la entrega')
+                    ),
                     Checkbox(
                       value: isSelected,
                       onChanged: (_) => _toggleSeleccionBulto(bulto),
@@ -729,6 +736,40 @@ class DespachoPageState extends State<DespachoPage> {
           backgroundColor: Colors.red,
         ),
       );
+    }
+  }
+
+  // Nuevo método para ver el contenido de la entrega navegando a SalidaBultosPageBasica en modo monitor
+  void _verContenidoEntrega(Bulto bulto) async {
+    try {
+      // Obtener la entrega completa por ID
+      Entrega entregaCompleta = await EntregaServices().getEntregaPorId(
+        context, 
+        token, 
+        entregaId: bulto.entregaId
+      );
+      
+      if (entregaCompleta.entregaId == 0) {
+        Carteles.showDialogs(context, 'No se pudo cargar la entrega', false, false, false);
+        return;
+      }
+
+      // Navegar a SalidaBultosPageBasica en modo monitor
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => SalidaBultosPageBasica(
+            entregaExterna: entregaCompleta,
+            esModoMonitor: true,
+          ),
+        ),
+      ).then((_) {
+        // Cuando regresemos, mantener el foco en el scanner
+        _mantenerFocoScanner();
+      });
+
+    } catch (e) {
+      Carteles.showDialogs(context, 'Error al cargar el contenido de la entrega: ${e.toString()}', false, false, false);
+      _mantenerFocoScanner();
     }
   }
 }
