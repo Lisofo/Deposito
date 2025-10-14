@@ -420,10 +420,10 @@ class _PedidoInternoState extends State<PedidoInterno> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            if(order.estado == 'CERRADO') ...[
+            if(order.estado == 'PREPARADO') ...[
               ElevatedButton.icon(
                 onPressed: () async {
-                  await PickingServices().imprimirResumen(context, order, token);
+                  await PickingServices().imprimirResumen(context, order, almacen.almacenId, token);
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: colors.primary,
@@ -437,7 +437,7 @@ class _PedidoInternoState extends State<PedidoInterno> {
               ),
               ElevatedButton(
                 onPressed: () async {
-                  await PickingServices().imprimirEtiquetaDeCarga(context, order, token);
+                  await PickingServices().imprimirEtiquetaDeCarga(context, order, almacen.almacenId, token);
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: colors.primary,

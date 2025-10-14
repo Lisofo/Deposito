@@ -384,8 +384,12 @@ class PickingServices {
     }
   }
 
-  Future imprimirResumen(BuildContext context, OrdenPicking orden, String token) async {
-    String link = '${apirUrl}api/v1/ordenes/${orden.pickId}/imprimirResumen';
+  Future imprimirResumen(BuildContext context, OrdenPicking orden, int almacenId, String token) async {
+    String link = '$apirUrl/api/v1/ordenes/${orden.pickId}/imprimirResumen';
+
+    var data = {
+      "almacenId" : almacenId
+    };
 
     try {
       var headers = {'Authorization': token};
@@ -395,6 +399,7 @@ class PickingServices {
           method: 'POST',
           headers: headers,
         ),
+        data: data
       );
       statusCode = 1;
       if (resp.statusCode == 200) {
@@ -431,8 +436,12 @@ class PickingServices {
     }
   }
 
-  Future imprimirEtiquetaDeCarga(BuildContext context, OrdenPicking orden, String token) async {
-    String link = '${apirUrl}api/v1/ordenes/${orden.pickId}/imprimirEtiquetaDeCarga';
+  Future imprimirEtiquetaDeCarga(BuildContext context, OrdenPicking orden, int almacenId, String token) async {
+    String link = '$apirUrl/api/v1/ordenes/${orden.pickId}/imprimirEtiquetaDeCarga';
+
+    var data = {
+      "almacenId" : almacenId
+    };
 
     try {
       var headers = {'Authorization': token};
@@ -442,6 +451,7 @@ class PickingServices {
           method: 'POST',
           headers: headers,
         ),
+        data: data
       );
       statusCode = 1;
       if (resp.statusCode == 200) {

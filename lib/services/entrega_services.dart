@@ -604,9 +604,13 @@ class EntregaServices {
   Future<void> postImprimirRetiro(
     BuildContext context,
     int retiroId,
+    int almacenId,
     String token,
   ) async {
-    String link = '$apirUrl/api/v1/bultos/$retiroId/devolucion';
+    String link = '$apirUrl/api/v1/bultos/retiro/$retiroId/imprimirRetiro';
+    var data = {
+      "almacenId" : almacenId
+    };
 
     try {
       var headers = {'Authorization': token};
@@ -616,6 +620,7 @@ class EntregaServices {
           method: 'POST',
           headers: headers,
         ),
+        data: data
       );
       statusCode = 1;
     } catch (e) {
@@ -627,9 +632,13 @@ class EntregaServices {
   Future<void> imprimirEtiqueta(
     BuildContext context,
     int bultoId,
+    int almacenId,
     String token,
   ) async {
     String link = '$apirUrl/api/v1/bultos/$bultoId/imprimirEtiqueta';
+    var data = {
+      "almacenId" : almacenId
+    };
 
     try {
       var headers = {'Authorization': token};
@@ -639,6 +648,7 @@ class EntregaServices {
           method: 'POST',
           headers: headers,
         ),
+        data: data
       );
       statusCode = 1;
     } catch (e) {
@@ -650,9 +660,13 @@ class EntregaServices {
   Future<void> imprimirDetalle(
     BuildContext context,
     int bultoId,
+    int almacenId,
     String token,
   ) async {
     String link = '$apirUrl/api/v1/bultos/$bultoId/imprimirDetalles';
+    var data = {
+      "almacenId" : almacenId
+    };
 
     try {
       var headers = {'Authorization': token};
@@ -662,6 +676,7 @@ class EntregaServices {
           method: 'POST',
           headers: headers,
         ),
+        data: data
       );
       statusCode = 1;
     } catch (e) {

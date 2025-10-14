@@ -325,9 +325,9 @@ class SummaryScreen extends StatelessWidget {
         provider.resetCurrentLineIndex();
         
         // Forzar navegación limpia
-        Navigator.of(context).popUntil((route) => route.settings.name == context.read<ProductProvider>().menu);
+        Navigator.of(context).popUntil((route) => route.settings.name == "/pickingInterno");
         final router = GoRouter.of(context);
-        router.pushReplacement(context.read<ProductProvider>().menu);
+        router.pushReplacement("/pickingInterno");
         
       } else {
         ScaffoldMessenger.of(context).showSnackBar(

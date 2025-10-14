@@ -407,6 +407,7 @@ class DespachoPageState extends State<DespachoPage> {
       await EntregaServices().postImprimirRetiro(
         context,
         retiroId,
+        context.read<ProductProvider>().almacen.almacenId,
         token,
       );
 
@@ -611,8 +612,7 @@ class DespachoPageState extends State<DespachoPage> {
     }
 
     // Obtener el agenciaTrId del transportista seleccionado o del primer bulto
-    final int? agenciaTrId = transportistaSeleccionado?.formaEnvioId ?? 
-                            selectedBultos.first.agenciaTrId;
+    final int? agenciaTrId = transportistaSeleccionado?.formaEnvioId ?? selectedBultos.first.agenciaTrId;
 
     if (agenciaTrId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -642,7 +642,7 @@ class DespachoPageState extends State<DespachoPage> {
             duration: const Duration(seconds: 3),
           ),
         );
-
+        await EntregaServices().postImprimirRetiro(context, response.retiroId, context.read<ProductProvider>().almacen.almacenId, token);
         // Actualizar el estado de los bultos en la lista local
         setState(() {
           for (var bulto in bultos) {

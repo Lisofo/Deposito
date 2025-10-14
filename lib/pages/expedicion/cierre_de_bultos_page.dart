@@ -727,6 +727,7 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
         await EntregaServices().imprimirEtiqueta(
           context,
           bultoId,
+          context.read<ProductProvider>().almacen.almacenId,
           widget.token,
         );
         // Pequeña pausa entre impresiones
@@ -776,6 +777,7 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
       await EntregaServices().imprimirDetalle(
         context,
         widget.bultoVirtual.bultoId,
+        context.read<ProductProvider>().almacen.almacenId,
         widget.token,
       );
 

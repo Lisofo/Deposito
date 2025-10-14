@@ -1255,6 +1255,7 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
       await _entregaServices.postImprimirRetiro(
         context,
         retiroId,
+        almacen.almacenId,
         token,
       );
 
