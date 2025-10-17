@@ -40,6 +40,16 @@ class OrdenPicking {
   late List<PickingLinea>? lineas;
   late String modalidad;
   late String metodoEnvio;
+  late bool envio;
+  late int clienteIdEnvio;
+  late String nombreEnvio;
+  late String direccionEnvio;
+  late String localidadEnvio;
+  late String departamentoEnvio;
+  late String telefonoEnvio;
+  late int formaIdEnvio;
+  late String comentarioEnvio;
+  late int modoEnvioId;
 
   OrdenPicking({
     required this.pickId,
@@ -67,12 +77,22 @@ class OrdenPicking {
     required this.telefono,
     required this.localidad,
     required this.porcentajeCompletado,
-    required this.lineas,
     required this.creadoPor,
     required this.modificadoPor,
     required this.fechaModificadoPor,
+    required this.lineas,
     required this.modalidad,
-    required this.metodoEnvio
+    required this.metodoEnvio,
+    required this.envio,
+    required this.clienteIdEnvio,
+    required this.nombreEnvio,
+    required this.direccionEnvio,
+    required this.localidadEnvio,
+    required this.departamentoEnvio,
+    required this.telefonoEnvio,
+    required this.formaIdEnvio,
+    required this.comentarioEnvio,
+    required this.modoEnvioId,
   });
 
   factory OrdenPicking.fromJson(Map<String, dynamic> json) => OrdenPicking(
@@ -93,6 +113,16 @@ class OrdenPicking {
     comentario: json["comentario"] as String? ?? '',
     modalidad: json["modalidad"] as String? ?? '',
     metodoEnvio: json["metodoEnvio"] as String? ?? '',
+    envio: json["envio"] as bool? ?? false,
+    clienteIdEnvio: json["clienteIdEnvio"] as int? ?? 0,
+    nombreEnvio: json["nombreEnvio"] as String? ?? '',
+    direccionEnvio: json["direccionEnvio"] as String? ?? '',
+    localidadEnvio: json["localidadEnvio"] as String? ?? '',
+    departamentoEnvio: json["departamentoEnvio"] as String? ?? '',
+    telefonoEnvio: json["telefonoEnvio"] as String? ?? '',
+    formaIdEnvio: json["formaIdEnvio"] as int? ?? 0,
+    comentarioEnvio: json["comentarioEnvio"] as String? ?? '',
+    modoEnvioId: json["modoEnvioId"] as int? ?? 0,
     cantLineas: json["cantLineas"] as int? ?? 0,
     tInfoEmpresaWsId: json["tInfoEmpresaWSId"] as int? ?? 0,
     usuId: json["usuId"] as int? ?? 0,
@@ -129,6 +159,18 @@ class OrdenPicking {
     "almacenIdDestino": almacenIdDestino,
     "prioridad": prioridad,
     "comentario": comentario,
+    "modalidad": modalidad,
+    "metodoEnvio": metodoEnvio,
+    "envio": envio,
+    "clienteIdEnvio": clienteIdEnvio,
+    "nombreEnvio": nombreEnvio,
+    "direccionEnvio": direccionEnvio,
+    "localidadEnvio": localidadEnvio,
+    "departamentoEnvio": departamentoEnvio,
+    "telefonoEnvio": telefonoEnvio,
+    "formaIdEnvio": formaIdEnvio,
+    "comentarioEnvio": comentarioEnvio,
+    "modoEnvioId": modoEnvioId,
     "cantLineas": cantLineas,
     "tInfoEmpresaWSId": tInfoEmpresaWsId,
     "usuId": usuId,
@@ -136,12 +178,13 @@ class OrdenPicking {
     "codEntidad": codEntidad,
     "ruc": ruc,
     "nombre": nombre, 
-    "modalidad": modalidad, 
     "telefono": telefono,
-    "metodoEnvio": metodoEnvio,
     "localidad": localidad,
     "porcentajeCompletado": porcentajeCompletado,
-    "lineas": List<dynamic>.from(lineas!.map((x) => x.toJson())),
+    "creadoPor": creadoPor,
+    "modificadoPor": modificadoPor,
+    "fechaModificadoPor": fechaModificadoPor.toIso8601String(),
+    "lineas": lineas != null ? List<dynamic>.from(lineas!.map((x) => x.toJson())) : [],
   };
 
   OrdenPicking.empty() {
@@ -161,6 +204,18 @@ class OrdenPicking {
     almacenIdDestino = 0;
     prioridad = '';
     comentario = '';
+    modalidad = '';
+    metodoEnvio = '';
+    envio = false;
+    clienteIdEnvio = 0;
+    nombreEnvio = '';
+    direccionEnvio = '';
+    localidadEnvio = '';
+    departamentoEnvio = '';
+    telefonoEnvio = '';
+    formaIdEnvio = 0;
+    comentarioEnvio = '';
+    modoEnvioId = 0;
     cantLineas = 0;
     tInfoEmpresaWsId = 0;
     usuId = 0;
@@ -169,8 +224,6 @@ class OrdenPicking {
     codEntidad = '';
     ruc = '';
     nombre = '';
-    modalidad = '';
-    metodoEnvio = '';
     telefono = '';
     localidad = '';
     creadoPor = '';
@@ -184,7 +237,6 @@ class OrdenPicking {
     String? serie,
     int? transaccionId,
     String? transaccion,
-    String? modalidad,
     String? tipo,
     String? descTipo,
     int? movimientoId,
@@ -195,6 +247,18 @@ class OrdenPicking {
     int? almacenIdDestino,
     String? prioridad,
     String? comentario,
+    String? modalidad,
+    String? metodoEnvio,
+    bool? envio,
+    int? clienteIdEnvio,
+    String? nombreEnvio,
+    String? direccionEnvio,
+    String? localidadEnvio,
+    String? departamentoEnvio,
+    String? telefonoEnvio,
+    int? formaIdEnvio,
+    String? comentarioEnvio,
+    int? modoEnvioId,
     int? cantLineas,
     int? tInfoEmpresaWsId,
     int? usuId,
@@ -209,7 +273,6 @@ class OrdenPicking {
     String? modificadoPor,
     DateTime? fechaModificadoPor,
     List<PickingLinea>? lineas,
-    String? metodoEnvio,
   }) {
     return OrdenPicking(
       pickId: pickId ?? this.pickId,
@@ -220,7 +283,6 @@ class OrdenPicking {
       tipo: tipo ?? this.tipo,
       descTipo: descTipo ?? this.descTipo,
       movimientoId: movimientoId ?? this.movimientoId,
-      metodoEnvio: metodoEnvio ?? this.metodoEnvio,
       fechaDate: fechaDate ?? this.fechaDate,
       fechaDocumento: fechaDocumento ?? this.fechaDocumento,
       estado: estado ?? this.estado,
@@ -228,6 +290,18 @@ class OrdenPicking {
       almacenIdDestino: almacenIdDestino ?? this.almacenIdDestino,
       prioridad: prioridad ?? this.prioridad,
       comentario: comentario ?? this.comentario,
+      modalidad: modalidad ?? this.modalidad,
+      metodoEnvio: metodoEnvio ?? this.metodoEnvio,
+      envio: envio ?? this.envio,
+      clienteIdEnvio: clienteIdEnvio ?? this.clienteIdEnvio,
+      nombreEnvio: nombreEnvio ?? this.nombreEnvio,
+      direccionEnvio: direccionEnvio ?? this.direccionEnvio,
+      localidadEnvio: localidadEnvio ?? this.localidadEnvio,
+      departamentoEnvio: departamentoEnvio ?? this.departamentoEnvio,
+      telefonoEnvio: telefonoEnvio ?? this.telefonoEnvio,
+      formaIdEnvio: formaIdEnvio ?? this.formaIdEnvio,
+      comentarioEnvio: comentarioEnvio ?? this.comentarioEnvio,
+      modoEnvioId: modoEnvioId ?? this.modoEnvioId,
       cantLineas: cantLineas ?? this.cantLineas,
       tInfoEmpresaWsId: tInfoEmpresaWsId ?? this.tInfoEmpresaWsId,
       usuId: usuId ?? this.usuId,
@@ -240,7 +314,6 @@ class OrdenPicking {
       porcentajeCompletado: porcentajeCompletado ?? this.porcentajeCompletado,
       creadoPor: creadoPor ?? this.creadoPor,
       modificadoPor: modificadoPor ?? this.modificadoPor,
-      modalidad: modalidad ?? this.modalidad,
       fechaModificadoPor: fechaModificadoPor ?? this.fechaModificadoPor,
       lineas: lineas ?? (this.lineas != null ? List.from(this.lineas!) : null),
     );

@@ -12,6 +12,7 @@ class Bulto {
   final String? comentarioEnvio;
   final String? direccion;
   final String? localidad;
+  final String? departamento;
   final String? telefono;
   final int? agenciaUFId;
   final int tipoBultoId;
@@ -41,6 +42,7 @@ class Bulto {
     this.comentarioEnvio,
     this.direccion,
     this.localidad,
+    this.departamento,
     this.telefono,
     this.agenciaUFId,
     required this.tipoBultoId,
@@ -72,6 +74,7 @@ class Bulto {
     icon: json["icon"] as String? ?? '',
     direccion: json["direccion"] as String?,
     localidad: json["localidad"] as String?,
+    departamento: json["departamento"] as String?,
     telefono: json["telefono"] as String?,
     agenciaUFId: json["agenciaUFId"] as int?,
     tipoBultoId: json["tipoBultoId"] as int? ?? 0,
@@ -101,6 +104,7 @@ class Bulto {
     "comentarioEnvio": comentarioEnvio,
     "direccion": direccion,
     "localidad": localidad,
+    "departamento": departamento,
     "telefono": telefono,
     "agenciaUFId": agenciaUFId,
     "tipoBultoId": tipoBultoId,
@@ -146,6 +150,7 @@ class Bulto {
     String? icon,
     String? localidad,
     String? telefono,
+    String? departamento,
     int? agenciaUFId,
     int? tipoBultoId,
     String? tipoBulto,
@@ -175,6 +180,7 @@ class Bulto {
       localidad: localidad ?? this.localidad,
       telefono: telefono ?? this.telefono,
       agenciaUFId: agenciaUFId ?? this.agenciaUFId,
+      departamento: departamento ?? this.departamento,
       tipoBultoId: tipoBultoId ?? this.tipoBultoId,
       tipoBulto: tipoBulto ?? this.tipoBulto,
       comentario: comentario ?? this.comentario,

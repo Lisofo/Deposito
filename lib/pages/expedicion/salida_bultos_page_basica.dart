@@ -54,7 +54,7 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
   late List<OrdenPicking> _ordenes = [];
   final List<Bulto> _bultosCerrados = [];
   List<PickingLinea> _lineasOrdenSeleccionada = [];
-  final bool _procesandoCierre = false;
+  bool _procesandoCierre = false;
   final ScrollController _scrollController = ScrollController();
 
   @override
@@ -846,6 +846,7 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
   }
 
   // Método modificado: Ahora incluye verificación de completitud y manejo de errores
+  // Método modificado para manejar órdenes sin envío
   void _mostrarDialogoCierreBultos() async {
     if (_vistaMonitor || _entregaFinalizada) return;
     
@@ -858,6 +859,12 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
     
     if (!continuar) {
       return; // El usuario canceló
+    }
+
+    // Si la orden NO es de envío, cerrar directamente sin navegar
+    if (_ordenSeleccionada?.envio == false || _ordenSeleccionada?.envio == null) {
+      await _cerrarEntregaDirectamente();
+      return;
     }
     
     try {
@@ -876,7 +883,7 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
         return;
       }
       
-      // Navegar a la pantalla de cierre solo si la verificación fue exitosa
+      // Navegar a la pantalla de cierre solo si la verificación fue exitosa Y es envío
       Navigator.of(context).push(
         MaterialPageRoute(
           builder: (context) => SalidaCierreBultosPage(
@@ -898,6 +905,79 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
     } catch (e) {
       // Manejar errores del servicio
       Carteles.showDialogs(context, 'Error al verificar la entrega: ${e.toString()}', false, false, false);
+    }
+  }
+
+  // Nuevo método para cerrar la entrega directamente (para órdenes sin envío)
+  // Método modificado para cerrar la entrega directamente y quedar en vista readonly
+  Future<void> _cerrarEntregaDirectamente() async {
+    setState(() {
+      _procesandoCierre = true;
+    });
+
+    try {
+      // 1. Cerrar el bulto virtual
+      await EntregaServices().putBultoEntrega(
+        context,
+        entrega.entregaId,
+        _bultoVirtual!.bultoId,
+        _ordenSeleccionada!.entidadId,
+        _ordenSeleccionada!.nombre,
+        0, // modoEnvioId: 0 para mostrador
+        0, // transportistaId: 0
+        0, // empresaEnvioId: 0
+        '', // dirección (no aplica)
+        _ordenSeleccionada!.localidad,
+        _ordenSeleccionada!.departamentoEnvio,
+        _ordenSeleccionada!.telefono,
+        '', // comentarioEnvio
+        '', // comentario
+        _bultoVirtual!.tipoBultoId,
+        false, // incluyeFactura
+        _bultoVirtual!.nroBulto,
+        _bultoVirtual!.totalBultos,
+        token,
+      );
+
+      // 2. Cerrar el bulto virtual
+      await EntregaServices().patchBultoEstado(
+        context,
+        entrega.entregaId,
+        _bultoVirtual!.bultoId,
+        'CERRADO',
+        token,
+      );
+
+      // 3. Cerrar la entrega
+      await EntregaServices().cerrarEntrega(
+        context,
+        entrega.entregaId,
+        token,
+      );
+
+      // 4. Mostrar mensaje de éxito
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Entrega finalizada exitosamente')),
+      );
+
+      // 5. Recargar datos para reflejar el cambio de estado y activar vista readonly
+      await _cargarDatosIniciales();
+
+      // 6. Asegurarse de que la interfaz se actualice en modo readonly
+      if (mounted) {
+        setState(() {
+          _entregaFinalizada = true;
+          _procesandoCierre = false;
+        });
+      }
+
+    } catch (e) {
+      Carteles.showDialogs(context, 'Error al finalizar la entrega: ${e.toString()}', false, false, false);
+      if (mounted) {
+        setState(() {
+          _procesandoCierre = false;
+        });
+      }
     }
   }
 
@@ -1207,7 +1287,7 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text('Documento: ${_ordenSeleccionada!.serie}-${_ordenSeleccionada!.numeroDocumento}'),
-                                    if (_ordenSeleccionada!.metodoEnvio == 'MOSTRADOR')
+                                    if (_ordenSeleccionada!.envio == false)
                                       Text('Tipo de entrega: MOSTRADOR', style: TextStyle(
                                         fontWeight: FontWeight.bold,
                                         color: Colors.orange.shade700
@@ -1296,9 +1376,9 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
                                       : Colors.grey,
                                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                                 ),
-                                onPressed: _mostrarDialogoCierreBultos,
+                                onPressed: _procesandoCierre ? null : _mostrarDialogoCierreBultos,
                                 child: Text(
-                                  _ordenSeleccionada?.metodoEnvio == 'MOSTRADOR' 
+                                  (_ordenSeleccionada?.envio == false || _ordenSeleccionada?.envio == null) 
                                     ? 'Finalizar Entrega' 
                                     : 'Siguiente',
                                   style: TextStyle(

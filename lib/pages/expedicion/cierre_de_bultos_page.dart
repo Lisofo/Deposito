@@ -115,6 +115,7 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
         0,
         '',
         widget.ordenSeleccionada.localidad,
+        widget.ordenSeleccionada.departamentoEnvio,
         widget.ordenSeleccionada.telefono,
         comentario,
         comentario,
@@ -197,14 +198,15 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
           widget.entrega.entregaId,
           bulto.bultoId,
           widget.ordenSeleccionada.entidadId,
-          widget.ordenSeleccionada.nombre,
+          widget.ordenSeleccionada.nombreEnvio,
           _metodoEnvio!.modoEnvioId,
           _transportistaSeleccionado?.formaEnvioId ?? 0,
           _empresaEnvioSeleccionada?.formaEnvioId ?? 0,
-          '',
-          widget.ordenSeleccionada.localidad,
-          widget.ordenSeleccionada.telefono,
-          _comentarioController.text,
+          widget.ordenSeleccionada.direccionEnvio,
+          widget.ordenSeleccionada.localidadEnvio,
+          widget.ordenSeleccionada.departamentoEnvio,
+          widget.ordenSeleccionada.telefonoEnvio,
+          widget.ordenSeleccionada.comentarioEnvio,
           _comentarioController.text,
           bulto.tipoBultoId,
           _incluyeFactura,
@@ -259,6 +261,10 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
         .where((tipo) => tipo.codTipoBulto != "VIRTUAL")
         .toList();
 
+    _metodoEnvio = widget.ordenSeleccionada.envio ? widget.modoEnvios.firstWhere((m) => m.modoEnvioId == widget.ordenSeleccionada.modoEnvioId) : null;
+    _empresaEnvioSeleccionada = widget.ordenSeleccionada.envio && widget.ordenSeleccionada.formaIdEnvio != 0
+        ? widget.empresasEnvio.firstWhere((e) => e.formaEnvioId == widget.ordenSeleccionada.formaIdEnvio)
+        : null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [

@@ -11,8 +11,6 @@ import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:deposito/pages/expedicion/salida_bultos_page_basica.dart';
-import 'package:provider/provider.dart';
-import 'package:deposito/provider/product_provider.dart';
 
 class DespachoPage extends StatefulWidget {
   const DespachoPage({super.key});
@@ -25,6 +23,7 @@ class DespachoPageState extends State<DespachoPage> {
   List<Bulto> selectedBultos = [];
   List<Bulto> bultos = [];
   List<FormaEnvio> transportistas = [];
+  List<FormaEnvio> agencias = [];
   FormaEnvio? transportistaSeleccionado;
   final TextEditingController _retiraController = TextEditingController();
   final TextEditingController _comentarioController = TextEditingController();
@@ -61,8 +60,17 @@ class DespachoPageState extends State<DespachoPage> {
     try {
       // Cargar transportistas (FormaEnvio con tr=true)
       final formasEnvio = await EntregaServices().formaEnvio(context, token);
-      transportistas = formasEnvio.where((f) => f.tr == true).toList();
+
+      for (var forma in formasEnvio) {
+        if (forma.tr == true) {
+          transportistas.add(forma);
+        }
+        if (forma.envio == true) {
+          agencias.add(forma);
+        }
+      }
       transportistas.sort((a, b) => a.descripcion!.compareTo(b.descripcion.toString()));
+      agencias.sort((a, b) => a.descripcion!.compareTo(b.descripcion.toString()));
 
       // Cargar bultos cerrados
       await _cargarBultos();
@@ -280,25 +288,34 @@ class DespachoPageState extends State<DespachoPage> {
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                   const Expanded(child: SizedBox()),
-                  Text(
-                    bulto.estado,
-                    style: TextStyle(
-                      color: _getEstadoColor(bulto.estado),
-                      fontWeight: FontWeight.bold,
-                    ),
+                  Column(
+                    children: [
+                      Text(
+                        bulto.estado,
+                        style: TextStyle(
+                          color: _getEstadoColor(bulto.estado),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(bulto.modoEnvioId == 1 ? 'Retira' : 'Envío', style: const TextStyle(fontWeight: FontWeight.bold),),
+                    ],
                   ),
                 ],
               ),
               const SizedBox(height: 8),
-              Text('Cliente: ${bulto.nombreCliente}'),
+              Text('Cliente: ${bulto.nombreCliente} - tel: ${bulto.telefono}'),
               Text('Dirección: ${bulto.direccion}'),
-              Text('Localidad: ${bulto.localidad}'),
+              Text('Localidad: ${bulto.localidad} \nDepartamento: ${bulto.departamento}'),
               if (bulto.agenciaTrId != null)
                 Text('Transportista: ${_getNombreTransportista(bulto.agenciaTrId)}'),
+              if (bulto.agenciaUFId != null)
+                Text('Agencia: ${_getNombreAgencia(bulto.agenciaUFId)}'),
               if (bulto.retiroId != null)
                 Text('Retiro ID: ${bulto.retiroId}'),
               const SizedBox(height: 8),
               Text('Fecha: $fechaDate'),
+              if (bulto.comentarioEnvio != '')
+                Text(bulto.comentarioEnvio.toString()),
               if (_groupValueBultos != 0 && _groupValueBultos != 1)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -434,6 +451,15 @@ class DespachoPageState extends State<DespachoPage> {
       orElse: () => FormaEnvio.empty(),
     );
     return transportista.descripcion ?? 'Transportista desconocido';
+  }
+
+  String _getNombreAgencia(int? agenciaUFId) {
+    if (agenciaUFId == null) return 'No asignado';
+    final agencia = agencias.firstWhere(
+      (a) => a.formaEnvioId == agenciaUFId,
+      orElse: () => FormaEnvio.empty(),
+    );
+    return agencia.descripcion ?? 'Agencia desconocida';
   }
 
   Color _getEstadoColor(String estado) {
