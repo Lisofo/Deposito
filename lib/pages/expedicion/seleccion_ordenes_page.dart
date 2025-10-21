@@ -274,18 +274,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
                     child: ElevatedButton(
                       onPressed: _ordenesSeleccionadas.isNotEmpty
                         ? () async {
-                            Entrega entrega = Entrega.empty();
-                            int? statusCode;
-                            List<int> pickIds = _ordenesSeleccionadas.map((orden) => orden.pickId).toList();
-                            entrega = await entregaServices.postEntrega(context, pickIds, almacen.almacenId, token);
-                            statusCode = await entregaServices.getStatusCode();
-                            await entregaServices.resetStatusCode();
-                            if(statusCode == 1) {
-                              Provider.of<ProductProvider>(context, listen: false).setVistaMonitor(false);
-                              productProvider.setOrdenesExpedicion(_ordenesSeleccionadas);
-                              productProvider.setEntrega(entrega);
-                              appRouter.push('/salidaBultos');
-                            }
+                            await siguiente(context, productProvider);
                           }
                         : null,
                       style: ElevatedButton.styleFrom(
@@ -303,6 +292,21 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
           )
       ),
     );
+  }
+
+  Future<void> siguiente(BuildContext context, ProductProvider productProvider) async {
+    Entrega entrega = Entrega.empty();
+    int? statusCode;
+    List<int> pickIds = _ordenesSeleccionadas.map((orden) => orden.pickId).toList();
+    entrega = await entregaServices.postEntrega(context, pickIds, almacen.almacenId, token);
+    statusCode = await entregaServices.getStatusCode();
+    await entregaServices.resetStatusCode();
+    if(statusCode == 1) {
+      Provider.of<ProductProvider>(context, listen: false).setVistaMonitor(false);
+      productProvider.setOrdenesExpedicion(_ordenesSeleccionadas);
+      productProvider.setEntrega(entrega);
+      appRouter.push('/salidaBultos');
+    }
   }
 
   Widget _buildOrdenItem(OrdenPicking orden) {
@@ -498,6 +502,11 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
   }
 
   Future<void> procesarEscaneoUbicacion(String value, bool invisible) async {
+    final productProvider = Provider.of<ProductProvider>(context, listen: false);
+
+    if (value.isEmpty && _ordenesSeleccionadas.isNotEmpty) {
+      await siguiente(context, productProvider);
+    }
     if (value.isEmpty) return;
     
     try {

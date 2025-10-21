@@ -46,8 +46,42 @@ class LoginServices {
     }
   }
 
+  Future<String> pin2(String password, BuildContext context) async {
+    var headers = {'Content-Type': 'application/json'};
+    var data = json.encode({"pin2": password});
+    String link = '$apiUrl/api/auth/pin';
+    try {
+      var resp = await dio.request(
+        link,
+        options:  Options(
+          method: 'POST',
+          headers: headers,
+        ),
+        data: data,
+      );
+
+      statusCode = 1;
+
+      if (statusCode == 1) {
+        print(resp.data['token']);
+        print(resp.data['nombre']);
+      } else { 
+        print(resp.statusMessage);
+      }
+      return resp.data['token'];
+    } catch (e) {
+      statusCode = 0;
+      print('Error: $e');
+      return '';
+    }
+  }
+
   Future<int?> getStatusCode() async {
     return statusCode;
+  }
+
+  Future<void> resetStatusCode () async {
+    statusCode = null;
   }
 
   Future<List<String>> getPermisos(BuildContext context, String token) async {
