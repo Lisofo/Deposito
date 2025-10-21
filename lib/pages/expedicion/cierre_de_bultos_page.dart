@@ -51,11 +51,23 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
   bool _procesandoCierre = false;
   bool _entregaFinalizada = false;
   List<Bulto> _bultosCerrados = [];
+  final TextEditingController _nombreEnvioController = TextEditingController();
+  final TextEditingController _direccionController = TextEditingController();
+  final TextEditingController _localidadController = TextEditingController();
+  final TextEditingController _departamentoController = TextEditingController();
+  final TextEditingController _telefonoController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _cargarBultosCerrados();
+    
+    // Inicializar los controladores con los datos de la orden
+    _nombreEnvioController.text = widget.ordenSeleccionada.nombreEnvio;
+    _direccionController.text = widget.ordenSeleccionada.direccionEnvio;
+    _localidadController.text = widget.ordenSeleccionada.localidadEnvio;
+    _departamentoController.text = widget.ordenSeleccionada.departamentoEnvio;
+    _telefonoController.text = widget.ordenSeleccionada.telefonoEnvio;
     
     if (!widget.modoReadOnly) {
       // Solo inicializar controles si no es modo readonly
@@ -68,6 +80,22 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
         _controllers[tipo.tipoBultoId] = TextEditingController(text: '0');
       }
     }
+  }
+
+  @override
+  void dispose() {
+    // Dispose de los nuevos controladores
+    _nombreEnvioController.dispose();
+    _direccionController.dispose();
+    _localidadController.dispose();
+    _departamentoController.dispose();
+    _telefonoController.dispose();
+    
+    for (var controller in _controllers.values) {
+      controller.dispose();
+    }
+    _comentarioController.dispose();
+    super.dispose();
   }
 
   Future<void> _cargarBultosCerrados() async {
@@ -93,15 +121,6 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
     }
   }
 
-  @override
-  void dispose() {
-    for (var controller in _controllers.values) {
-      controller.dispose();
-    }
-    _comentarioController.dispose();
-    super.dispose();
-  }
-
   Future<void> _cerrarBultoVirtual(String comentario, bool incluyeFactura) async {
     try {
       await EntregaServices().putBultoEntrega(
@@ -109,15 +128,15 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
         widget.entrega.entregaId,
         widget.bultoVirtual.bultoId,
         widget.ordenSeleccionada.entidadId,
-        widget.ordenSeleccionada.nombre,
+        _nombreEnvioController.text, // Usar el controlador
         0,
         0,
         0,
-        '',
-        widget.ordenSeleccionada.localidad,
-        widget.ordenSeleccionada.departamentoEnvio,
-        widget.ordenSeleccionada.telefono,
-        comentario,
+        _direccionController.text, // Usar el controlador
+        _localidadController.text, // Usar el controlador
+        _departamentoController.text, // Usar el controlador
+        _telefonoController.text, // Usar el controlador
+        widget.ordenSeleccionada.comentarioEnvio,
         comentario,
         widget.bultoVirtual.tipoBultoId,
         incluyeFactura,
@@ -139,8 +158,7 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
   }
 
   Future<void> _procesarCierre() async {
-    final totalBultos = _cantidadesPorTipo.values
-        .fold(0, (sum, cantidad) => sum + cantidad);
+    final totalBultos = _cantidadesPorTipo.values.fold(0, (sum, cantidad) => sum + cantidad);
     
     if (totalBultos == 0) {
       Carteles.showDialogs(context, 'Debe crear al menos un bulto', false, false, false);
@@ -198,14 +216,14 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
           widget.entrega.entregaId,
           bulto.bultoId,
           widget.ordenSeleccionada.entidadId,
-          widget.ordenSeleccionada.nombreEnvio,
+          _nombreEnvioController.text,
           _metodoEnvio!.modoEnvioId,
           _transportistaSeleccionado?.formaEnvioId ?? 0,
           _empresaEnvioSeleccionada?.formaEnvioId ?? 0,
-          widget.ordenSeleccionada.direccionEnvio,
-          widget.ordenSeleccionada.localidadEnvio,
-          widget.ordenSeleccionada.departamentoEnvio,
-          widget.ordenSeleccionada.telefonoEnvio,
+          _direccionController.text, // Usar el controlador
+          _localidadController.text, // Usar el controlador
+          _departamentoController.text, // Usar el controlador
+          _telefonoController.text, // Usar el controlador
           widget.ordenSeleccionada.comentarioEnvio,
           _comentarioController.text,
           bulto.tipoBultoId,
@@ -268,6 +286,7 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        _buildDatosEnvio(),
         const Text(
           'Tipos y cantidades de bultos:',
           style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
@@ -795,6 +814,91 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
         SnackBar(content: Text('Error al imprimir detalle: ${e.toString()}')),
       );
     }
+  }
+
+  // Agregar este método para construir la sección de datos de envío
+  Widget _buildDatosEnvio() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text(
+          'Datos de envío:',
+          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+        ),
+        const SizedBox(height: 12),
+        
+        // Nombre de envío
+        const Text('Nombre:', style: TextStyle(fontWeight: FontWeight.w500)),
+        const SizedBox(height: 4),
+        TextField(
+          controller: _nombreEnvioController,
+          enabled: !_procesandoCierre && !widget.modoReadOnly,
+          decoration: InputDecoration(
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            hintText: 'Nombre',
+          ),
+        ),
+        const SizedBox(height: 12),
+        
+        // Dirección
+        const Text('Dirección:', style: TextStyle(fontWeight: FontWeight.w500)),
+        const SizedBox(height: 4),
+        TextField(
+          controller: _direccionController,
+          enabled: !_procesandoCierre && !widget.modoReadOnly,
+          decoration: InputDecoration(
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            hintText: 'Dirección',
+          ),
+        ),
+        const SizedBox(height: 12),
+        
+        // Localidad
+        const Text('Localidad:', style: TextStyle(fontWeight: FontWeight.w500)),
+        const SizedBox(height: 4),
+        TextField(
+          controller: _localidadController,
+          enabled: !_procesandoCierre && !widget.modoReadOnly,
+          decoration: InputDecoration(
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            hintText: 'Localidad',
+          ),
+        ),
+        const SizedBox(height: 12),
+        
+        // Departamento
+        const Text('Departamento:', style: TextStyle(fontWeight: FontWeight.w500)),
+        const SizedBox(height: 4),
+        TextField(
+          controller: _departamentoController,
+          enabled: !_procesandoCierre && !widget.modoReadOnly,
+          decoration: InputDecoration(
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            hintText: 'Departamento',
+          ),
+        ),
+        const SizedBox(height: 12),
+        
+        // Teléfono
+        const Text('Teléfono:', style: TextStyle(fontWeight: FontWeight.w500)),
+        const SizedBox(height: 4),
+        TextField(
+          controller: _telefonoController,
+          enabled: !_procesandoCierre && !widget.modoReadOnly,
+          keyboardType: TextInputType.phone,
+          decoration: InputDecoration(
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            hintText: 'Teléfono',
+          ),
+        ),
+        const SizedBox(height: 20),
+      ],
+    );
   }
 
   @override
