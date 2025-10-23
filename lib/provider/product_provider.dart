@@ -131,6 +131,14 @@ class ProductProvider with ChangeNotifier {
   bool _voyDesdeMenu = false;
   bool get voyDesdeMenu => _voyDesdeMenu;
 
+  bool _filtroMostrador = false;
+  bool get filtroMostrador => _filtroMostrador;
+
+  void setFiltroMostrador(bool value) {
+    _filtroMostrador = value;
+    notifyListeners();
+  }
+
   void setVoyDesdeMenu(bool desdeMenu) {
     _voyDesdeMenu = desdeMenu;
     notifyListeners();

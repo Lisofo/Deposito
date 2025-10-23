@@ -37,6 +37,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
   TextEditingController textController = TextEditingController();
   TextEditingController textController2 = TextEditingController();
   bool _isFilterExpanded = false;
+  bool _filtroMostrador = false;
 
   bool _isLoading = true;
   bool camera = false;
@@ -49,6 +50,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
     token = context.read<ProductProvider>().token;
     camera = context.read<ProductProvider>().camera;
     almacen = context.read<ProductProvider>().almacen;
+    _filtroMostrador = context.read<ProductProvider>().filtroMostrador;
     
     _loadData();
   }
@@ -78,14 +80,15 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
         fechaDateHasta: fechaHasta,
         nombre: cliente,
         numeroDocumento: numeroDocumento,
-        pickId: int.tryParse(pickId.toString())
+        pickId: int.tryParse(pickId.toString()),
+        envio: _filtroMostrador,
       );
 
       // 2. Obtener entregas en proceso para el usuario actual
       var entregas = await EntregaServices().getEntregas(
         context, 
         token, 
-        estado: 'EN PROCESO', 
+        estado: 'EN PROCESO',
         usuId: context.read<ProductProvider>().uId
       );
 
@@ -130,6 +133,18 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
     _loadData();
   }
 
+  void _onFiltroMostradorChanged(bool value) {
+    setState(() {
+      _filtroMostrador = value;
+    });
+    
+    // Guardar el estado en el provider para persistencia
+    context.read<ProductProvider>().setFiltroMostrador(value);
+    
+    // Recargar datos con el nuevo filtro
+    _loadData();
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
@@ -157,30 +172,73 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
               onRefresh: _refreshData,
               child: Column(
                 children: [
-                  FiltrosExpedicion(
-                    onSearch: (fechaDesde, fechaHasta, cliente, numeroDocumento, pickId) {
-                      _loadData(
-                        fechaDesde: fechaDesde,
-                        fechaHasta: fechaHasta,
-                        cliente: cliente,
-                        numeroDocumento: numeroDocumento,
-                        pickId: pickId
-                      );
-                    },
-                    onReset: _limpiarFiltros,
-                    clienteController: _clienteController,
-                    numeroDocController: _numeroDocController,
-                    pickIDController: _pickIDController,
-                    isFilterExpanded: _isFilterExpanded,
-                    onToggleFilter: (expanded) {
-                      setState(() {
-                        _isFilterExpanded = expanded;
-                      });
-                      // Mantener foco cuando se expande/colapsa el filtro
-                      _mantenerFocoScanner();
-                    },
-                    cantidadDeOrdenes: _ordenes.length,
+                  // Fila que contiene FiltrosExpedicion + Mostrador/Switch
+                  Card(
+                    margin: const EdgeInsets.all(10),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Row(
+                        children: [
+                          // FiltrosExpedicion expandido
+                          Expanded(
+                            child: FiltrosExpedicion(
+                              onSearch: (fechaDesde, fechaHasta, cliente, numeroDocumento, pickId) {
+                                _loadData(
+                                  fechaDesde: fechaDesde,
+                                  fechaHasta: fechaHasta,
+                                  cliente: cliente,
+                                  numeroDocumento: numeroDocumento,
+                                  pickId: pickId
+                                );
+                              },
+                              onReset: _limpiarFiltros,
+                              clienteController: _clienteController,
+                              numeroDocController: _numeroDocController,
+                              pickIDController: _pickIDController,
+                              isFilterExpanded: _isFilterExpanded,
+                              onToggleFilter: (expanded) {
+                                setState(() {
+                                  _isFilterExpanded = expanded;
+                                });
+                                _mantenerFocoScanner();
+                              },
+                              cantidadDeOrdenes: _ordenes.length,
+                            ),
+                          ),
+                          
+                          // Separador visual
+                          Container(
+                            width: 1,
+                            height: 30,
+                            margin: const EdgeInsets.symmetric(horizontal: 16),
+                            color: Colors.grey[300],
+                          ),
+                          
+                          // Switch de Mostrador
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'Mostrador',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.grey[700],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Switch(
+                                value: _filtroMostrador,
+                                onChanged: _onFiltroMostradorChanged,
+                                activeColor: colors.primary,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
+                  
                   CustomSegmentedControl(
                     groupValue: _groupValue,
                     onValueChanged: (newValue) {
@@ -192,6 +250,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
                     options: SegmentedOptions.expedicionStates,
                     usePickingStyle: true,
                   ),
+                  
                   Expanded(
                     child: _ordenes.isEmpty
                       ? ListView(
@@ -269,6 +328,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
                         ],
                       ),
                   ),
+                  
                   Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: ElevatedButton(
