@@ -84,7 +84,13 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
         envio: _filtroMostrador,
       );
 
-      // 2. Obtener entregas en proceso para el usuario actual
+      // 2. Aplicar filtro de mostrador si está activo
+      List<OrdenPicking> ordenesFiltradas = result ?? [];
+      if (_filtroMostrador) {
+        ordenesFiltradas = ordenesFiltradas.where((orden) => orden.envio == false).toList();
+      }
+
+      // 3. Obtener entregas en proceso para el usuario actual
       var entregas = await EntregaServices().getEntregas(
         context, 
         token, 
@@ -94,10 +100,10 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
 
       if (result != null && _pickingServices.statusCode == 1) {
         setState(() {
-          _ordenes = result;
+          _ordenes = ordenesFiltradas; // Usar las órdenes filtradas
           _ordenesSeleccionadas.clear(); // Limpiar selecciones anteriores
           
-          // 3. Verificar si hay entregas y tomar la primera (posición 0)
+          // 4. Verificar si hay entregas y tomar la primera (posición 0)
           if (entregas.isNotEmpty) {
             final entrega = entregas[0]; // Tomamos la primera entrega
             
@@ -117,6 +123,18 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
       setState(() => _isLoading = false);
       // _manteneFocoScanner();
     }
+  }
+
+  void _onFiltroMostradorChanged(bool value) {
+    setState(() {
+      _filtroMostrador = value;
+    });
+    
+    // Guardar el estado en el provider para persistencia
+    context.read<ProductProvider>().setFiltroMostrador(value);
+    
+    // Recargar datos con el nuevo filtro
+    _loadData();
   }
 
   Future<void> _refreshData() async {
