@@ -1,3 +1,4 @@
+import 'package:deposito/config/router/pages.dart';
 import 'package:deposito/config/router/router.dart';
 import 'package:deposito/models/bulto.dart';
 import 'package:deposito/models/entrega.dart';
@@ -5,13 +6,11 @@ import 'package:deposito/models/forma_envio.dart';
 import 'package:deposito/models/modo_envio.dart';
 import 'package:deposito/models/tipo_bulto.dart';
 import 'package:deposito/pages/expedicion/cierre_de_bultos_page.dart';
-import 'package:deposito/provider/product_provider.dart';
 import 'package:deposito/services/entrega_services.dart';
 import 'package:deposito/services/product_services.dart';
 import 'package:deposito/widgets/carteles.dart';
 import 'package:deposito/widgets/icon_string.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:deposito/models/orden_picking.dart';
 import 'package:deposito/services/picking_services.dart';
 import 'package:visibility_detector/visibility_detector.dart';
@@ -43,7 +42,7 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
   FocusNode focoDeScanner2 = FocusNode();
   Entrega entrega = Entrega.empty();
   bool _vistaMonitor = false;
-  bool _entregaFinalizada = false; // Nuevo estado para controlar si la entrega está finalizada
+  bool _entregaFinalizada = false;
 
   // Datos para envíos
   late List<FormaEnvio> empresasEnvio = [];
@@ -57,11 +56,13 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
   bool _procesandoCierre = false;
   final ScrollController _scrollController = ScrollController();
 
+  // Mapa para guardar la relación entre pickLineaId y el índice en la lista
+  final Map<int, int> _lineaIndexMap = {};
+
   @override
   void initState() {
     super.initState();
     
-    // Si se pasó una entrega externa y es modo monitor, configurar inmediatamente
     if (widget.entregaExterna != null && widget.esModoMonitor == true) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
@@ -88,31 +89,25 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
     final productProvider = Provider.of<ProductProvider>(context, listen: false);
     token = productProvider.token;
     
-    // Usar la entrega externa si se proporcionó, de lo contrario usar la del provider
     if (widget.entregaExterna != null) {
       entrega = widget.entregaExterna!;
     } else {
       entrega = productProvider.entrega;
     }
     
-    // Configurar modo monitor según parámetro o provider
     if (widget.esModoMonitor != null) {
       _vistaMonitor = widget.esModoMonitor!;
     } else {
       _vistaMonitor = productProvider.vistaMonitor;
     }
     
-    // Verificar si la entrega ya está finalizada
     _entregaFinalizada = entrega.estado == 'finalizado';
     
-    // Load initial data
     formasEnvio = await EntregaServices().formaEnvio(context, token);
     tipoBultos = await EntregaServices().tipoBulto(context, token);
     modoEnvios = await EntregaServices().modoEnvio(context, token);
     
-    // Primero cargar órdenes y líneas
     if (_vistaMonitor) {
-      // Cargar órdenes desde los pickIds de la entrega
       final List<OrdenPicking> ordenesMonitor = [];
       for (var pickId in entrega.pickIds) {
         final orden = await _pickingServices.getLineasOrder(
@@ -140,12 +135,10 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
       });
     }
 
-    // Si no hay líneas cargadas, cargarlas explícitamente
     if (_ordenSeleccionada != null && _lineasOrdenSeleccionada.isEmpty) {
       await _cargarLineasOrden(_ordenSeleccionada!);
     }
 
-    // Ahora cargar los bultos (después de tener las líneas)
     if (entrega.entregaId != 0) {
       final bultosExistentes = await EntregaServices().getBultosEntrega(
         context, 
@@ -153,7 +146,6 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
         token
       );
       
-      // Buscar bulto virtual existente
       for (var bulto in bultosExistentes) {
         final tipoBulto = tipoBultos.firstWhere(
           (t) => t.tipoBultoId == bulto.tipoBultoId,
@@ -171,7 +163,6 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
         }
       }
 
-      // Si no existe bulto virtual, crear uno nuevo (solo si no está finalizada)
       if (_bultoVirtual == null && !_vistaMonitor && !_entregaFinalizada) {
         await _crearBultoVirtual();
       }
@@ -255,26 +246,20 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
       }
     } finally {
       setState(() => _isLoadingLineas = false);
-      if (mounted) {
-        // focoDeScanner.requestFocus();
-      }
     }
   }
 
   (int verificada, int maxima) _getCantidadVerificadaYMaxima(String codigoRaiz, int pickLineaId) {
     try {
-      // Buscar la línea correctamente
       final linea = _lineasOrdenSeleccionada.firstWhere(
         (linea) => linea.pickLineaId == pickLineaId,
         orElse: () => PickingLinea.empty(),
       );
       
-      // Si no se encuentra la línea, retornar (0, 0)
       if (linea.pickLineaId == 0) {
         return (0, 0);
       }
       
-      // Calcular cantidad verificada
       int verificada = 0;
       if (_bultoVirtual != null) {
         verificada = _bultoVirtual!.contenido
@@ -282,7 +267,6 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
           .fold(0, (sum, item) => sum + item.cantidad);
       }
       
-      // Determinar la cantidad máxima según modalidad
       int maxima;
       if (_ordenSeleccionada?.modalidad == 'PAPEL') {
         maxima = linea.cantidadPedida;
@@ -292,15 +276,12 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
       
       return (verificada, maxima);
     } catch (e) {
-      // En caso de error, retornar valores por defecto
       return (0, 0);
     }
   }
 
   bool _validarCompletitudProductos() {
     for (final linea in _lineasOrdenSeleccionada) {
-      // Para PAPEL, verificar todas las líneas basado en cantidadPedida
-      // Para WMS, solo verificar líneas con cantidadPickeada > 0
       if (_ordenSeleccionada?.modalidad == 'WMS' && linea.cantidadPickeada == 0) continue;
       
       final (cantidadVerificada, maxima) = _getCantidadVerificadaYMaxima(linea.codItem, linea.pickLineaId);
@@ -316,23 +297,20 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
       final lineasOrden = orden.lineas ?? [];
       
       for (var linea in lineasOrden) {
-        // Para WMS, solo verificar líneas con cantidadPickeada > 0
         if (orden.modalidad == 'WMS' && linea.cantidadPickeada == 0) {
           continue;
         }
         
-        // Para PAPEL, verificar todas las líneas
         final (cantidadVerificada, maxima) = _getCantidadVerificadaYMaxima(linea.codItem, linea.pickLineaId);
         
-        // Debug: Mostrar valores para diagnóstico
         debugPrint('Línea ${linea.pickLineaId}: Verificada=$cantidadVerificada, Máxima=$maxima');
         
         if (cantidadVerificada < maxima) {
-          return false; // Encontré una línea incompleta
+          return false;
         }
       }
     }
-    return true; // Todas las líneas están completas
+    return true;
   }
 
   Future<void> procesarEscaneoUbicacion(String value, bool invisible) async {
@@ -366,14 +344,12 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
         return;
       }
       
-      // Obtener la cantidad máxima según la modalidad
       final maxima = _ordenSeleccionada?.modalidad == 'PAPEL' 
           ? linea.cantidadPedida 
           : linea.cantidadPickeada;
       
       final (cantidadVerificadaTotal, _) = _getCantidadVerificadaYMaxima(linea.codItem, linea.pickLineaId);
       
-      // Siempre validar que no se supere la cantidad máxima
       if (cantidadVerificadaTotal >= maxima) {
         Carteles.showDialogs(
           context, 
@@ -390,7 +366,6 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
       );
       
       if (index != -1) {
-        // Validar que no se supere la cantidad máxima al agregar
         final nuevaCantidadTotal = cantidadVerificadaTotal + 1;
         if (nuevaCantidadTotal > maxima) {
           Carteles.showDialogs(
@@ -418,7 +393,6 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
           _bultoVirtual!.contenido[index].cantidad += 1;
         });
       } else {
-        // Validar que not se supere la cantidad máxima al agregar
         final nuevaCantidadTotal = cantidadVerificadaTotal + 1;
         if (nuevaCantidadTotal > maxima) {
           Carteles.showDialogs(
@@ -459,6 +433,12 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
           _bultoVirtual!.contenido.add(nuevoItem);
         });
       }
+
+      // Después de procesar el escaneo, hacer scroll hacia la línea
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollHaciaLineaPorId(linea.pickLineaId);
+      });
+
       if (invisible) {
         _codigoController2.clear();
         FocusScope.of(context).requestFocus(focoDeScanner2);
@@ -477,12 +457,26 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
     }
   }
 
+  // Nuevo método para hacer scroll hacia una línea específica
+  void _scrollHaciaLineaPorId(int pickLineaId) {
+    if (_lineaIndexMap.containsKey(pickLineaId)) {
+      final index = _lineaIndexMap[pickLineaId]!;
+      const double itemHeight = 100.0;
+      final double targetPosition = index * itemHeight;
+
+      _scrollController.animateTo(
+        targetPosition,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
   void _eliminarItem(BultoItem item) async {
     if (_vistaMonitor || _entregaFinalizada) return;
     
     final pickLineaId = item.pickLineaId;
     
-    // Primero intentamos actualizar el servidor con conteo = 0
     if (_bultoVirtual?.bultoId != null && _bultoVirtual!.bultoId != 0) {
       try {
         await EntregaServices().patchItemBulto(
@@ -490,26 +484,21 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
           entrega.entregaId,
           _bultoVirtual!.bultoId,
           pickLineaId,
-          0, // Enviamos conteo = 0 para eliminar el item
+          0,
           token,
         );
         
-        // Si el servidor responde OK, eliminamos el item localmente
         setState(() {
           _bultoVirtual?.contenido.remove(item);
         });
         
       } catch (e) {
-        // Si hay error, mostramos mensaje y mantenemos el item
         Carteles.showDialogs(context, 'Error al eliminar item', false, false, false);
         if (mounted) {
-          setState(() {
-            // No hacemos nada para mantener el item
-          });
+          setState(() {});
         }
       }
     } else {
-      // Si es un bulto nuevo (sin ID), simplemente lo eliminamos localmente
       setState(() {
         _bultoVirtual?.contenido.remove(item);
       });
@@ -523,7 +512,6 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
     final (cantidadEnOtrosBultos, _) = _getCantidadVerificadaYMaxima(item.raiz, item.pickLineaId);
     final FocusNode focusNode = FocusNode();
 
-    // Obtener la cantidad máxima correcta según la modalidad
     final linea = _lineasOrdenSeleccionada.firstWhere(
       (l) => l.pickLineaId == item.pickLineaId,
       orElse: () => PickingLinea.empty(),
@@ -578,7 +566,6 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
       },
     );
 
-    // Enfocar y seleccionar todo el texto al mostrar el diálogo
     focusNode.requestFocus();
     controller.selection = TextSelection(
       baseOffset: 0,
@@ -604,7 +591,6 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
     }
     
     if (nuevaCantidad == 0) {
-      // Cantidad cero = eliminar el ítem
       _eliminarItem(item);
       return;
     }
@@ -634,7 +620,6 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
         );
       } catch (e) {
         Carteles.showDialogs(context, 'Error al actualizar cantidad', false, false, false);
-        // Revertir el cambio local si falla el servidor
         if (mounted) {
           setState(() {
             item.cantidad = int.tryParse(nuevoValor) ?? item.cantidad;
@@ -656,7 +641,6 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
         token,
       );
 
-      // Usar las líneas ya cargadas para completar la información de los items
       final itemsActualizados = items.map((item) {
         final linea = _lineasOrdenSeleccionada.firstWhere(
           (l) => l.pickLineaId == item.pickLineaId,
@@ -681,18 +665,12 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
     }
   }
 
-  // Función para reimprimir etiquetas
   Future<void> _reimprimirEtiquetas() async {
     try {
-      // Aquí implementarías la lógica para reimprimir etiquetas
-      // Por ejemplo, podrías llamar a un servicio que genere las etiquetas nuevamente
-      
-      // Mostrar mensaje de éxito
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Reimprimiendo etiquetas...')),
       );
       
-      // Simular proceso de reimpresión
       await Future.delayed(const Duration(seconds: 2));
       
       ScaffoldMessenger.of(context).showSnackBar(
@@ -706,6 +684,9 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
   }
 
   Widget _buildProductosSection() {
+    // Limpiar el mapa al reconstruir la sección
+    _lineaIndexMap.clear();
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -727,12 +708,15 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         itemCount: _ordenSeleccionada!.modalidad == 'PAPEL' 
-                            ? _lineasOrdenSeleccionada.length // Mostrar todas las líneas para PAPEL
-                            : _lineasOrdenSeleccionada.where((linea) => linea.cantidadPickeada != 0).length, // Filtrar para WMS
+                            ? _lineasOrdenSeleccionada.length
+                            : _lineasOrdenSeleccionada.where((linea) => linea.cantidadPickeada != 0).length,
                         itemBuilder: (context, index) {
                           final linea = _ordenSeleccionada!.modalidad == 'PAPEL'
-                              ? _lineasOrdenSeleccionada[index] // Todas las líneas para PAPEL
-                              : _lineasOrdenSeleccionada.where((linea) => linea.cantidadPickeada != 0).toList()[index]; // Filtrar para WMS
+                              ? _lineasOrdenSeleccionada[index]
+                              : _lineasOrdenSeleccionada.where((linea) => linea.cantidadPickeada != 0).toList()[index];
+                          
+                          // Guardar el índice de esta línea en el mapa
+                          _lineaIndexMap[linea.pickLineaId] = index;
                           
                           final (verificada, maxima) = _getCantidadVerificadaYMaxima(linea.codItem, linea.pickLineaId);
                           final itemVerificado = _bultoVirtual?.contenido.firstWhere(
@@ -845,30 +829,24 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
     appRouter.push('/simpleProductPage'); 
   }
 
-  // Método modificado: Ahora incluye verificación de completitud y manejo de errores
-  // Método modificado para manejar órdenes sin envío
   void _mostrarDialogoCierreBultos() async {
     if (_vistaMonitor || _entregaFinalizada) return;
     
-    // Verificar si todas las líneas de todas las órdenes están completas
     final todasCompletas = _verificarCompletitudTodasOrdenes();
     bool verificacionParcial = !todasCompletas;
     
-    // Siempre mostrar diálogo de confirmación, incluso si está completo
     final continuar = await _mostrarDialogoConfirmacionCierre(todasCompletas);
     
     if (!continuar) {
-      return; // El usuario canceló
+      return;
     }
 
-    // Si la orden NO es de envío, cerrar directamente sin navegar
     if (_ordenSeleccionada?.envio == false || _ordenSeleccionada?.envio == null) {
       await _cerrarEntregaDirectamente();
       return;
     }
     
     try {
-      // Llamar al servicio de verificación con el parámetro correspondiente
       final resultado = await EntregaServices().verificarEntrega(
         context, 
         entrega.entregaId, 
@@ -878,12 +856,10 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
       );
       
       if (!resultado) {
-        // Si la verificación falla, mostrar error y no navegar
         Carteles.showDialogs(context, 'Error al verificar la entrega', false, false, false);
         return;
       }
       
-      // Navegar a la pantalla de cierre solo si la verificación fue exitosa Y es envío
       Navigator.of(context).push(
         MaterialPageRoute(
           builder: (context) => SalidaCierreBultosPage(
@@ -898,48 +874,42 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
           ),
         ),
       ).then((_) {
-        // Cuando regresemos de la pantalla de cierre, actualizamos el estado
-        _cargarDatosIniciales(); // Recargar datos para ver cambios
+        _cargarDatosIniciales();
       });
       
     } catch (e) {
-      // Manejar errores del servicio
       Carteles.showDialogs(context, 'Error al verificar la entrega: ${e.toString()}', false, false, false);
     }
   }
 
-  // Nuevo método para cerrar la entrega directamente (para órdenes sin envío)
-  // Método modificado para cerrar la entrega directamente y quedar en vista readonly
   Future<void> _cerrarEntregaDirectamente() async {
     setState(() {
       _procesandoCierre = true;
     });
 
     try {
-      // 1. Cerrar el bulto virtual
       await EntregaServices().putBultoEntrega(
         context,
         entrega.entregaId,
         _bultoVirtual!.bultoId,
         _ordenSeleccionada!.entidadId,
         _ordenSeleccionada!.nombre,
-        0, // modoEnvioId: 0 para mostrador
-        0, // transportistaId: 0
-        0, // empresaEnvioId: 0
-        '', // dirección (no aplica)
+        0,
+        0,
+        0,
+        '',
         _ordenSeleccionada!.localidad,
         _ordenSeleccionada!.departamentoEnvio,
         _ordenSeleccionada!.telefono,
-        '', // comentarioEnvio
-        '', // comentario
+        '',
+        '',
         _bultoVirtual!.tipoBultoId,
-        false, // incluyeFactura
+        false,
         _bultoVirtual!.nroBulto,
         _bultoVirtual!.totalBultos,
         token,
       );
 
-      // 2. Cerrar el bulto virtual
       await EntregaServices().patchBultoEstado(
         context,
         entrega.entregaId,
@@ -948,22 +918,18 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
         token,
       );
 
-      // 3. Cerrar la entrega
       await EntregaServices().cerrarEntrega(
         context,
         entrega.entregaId,
         token,
       );
 
-      // 4. Mostrar mensaje de éxito
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Entrega finalizada exitosamente')),
       );
 
-      // 5. Recargar datos para reflejar el cambio de estado y activar vista readonly
       await _cargarDatosIniciales();
 
-      // 6. Asegurarse de que la interfaz se actualice en modo readonly
       if (mounted) {
         setState(() {
           _entregaFinalizada = true;
@@ -978,10 +944,12 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
           _procesandoCierre = false;
         });
       }
+    } finally {
+      Navigator.of(context).popUntil((route) => route.settings.name == '/expedicionPaquetes');
+      GoRouter.of(context).pushReplacement('/expedicionPaquetes');
     }
   }
 
-  // Nuevo método: Mostrar diálogo de confirmación para el cierre (siempre se muestra)
   Future<bool> _mostrarDialogoConfirmacionCierre(bool estaCompleto) async {
     return await showDialog<bool>(
       context: context,
@@ -990,9 +958,9 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
         return AlertDialog(
           title: Text(estaCompleto ? 'Verificación completa' : 'Verificación incompleta'),
           content: Text(
-            estaCompleto 
-              ? 'La verificación está completa. ¿Está seguro de que desea proceder al cierre de bultos?' 
-              : 'Hay líneas que no han sido verificadas completamente. ¿Desea continuar igual con el cierre de bultos?'
+            estaCompleto && _ordenSeleccionada?.envio == false ? 'La verificación está completa.' 
+              : estaCompleto && _ordenSeleccionada?.envio == true ? "La verificación está completa. ¿Está seguro de que desea proceder al cierre de bultos?" 
+                : 'Hay líneas que no han sido verificadas completamente. ¿Desea continuar igual con el cierre de bultos?'
           ),
           actions: [
             TextButton(
@@ -1041,7 +1009,6 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
                 
                 return ListTile(
                   leading: getIcon(tipoBulto.icon, context, Colors.grey),
-                  // title: Text('Bulto ${bulto.nroBulto}/${bulto.totalBultos} - ${tipoBulto.descripcion}'),
                   title: Text('Bulto ${bulto.bultoId} - ${tipoBulto.descripcion}'),
                   subtitle: Text('Estado: ${bulto.estado}'),
                   trailing: _entregaFinalizada
@@ -1190,7 +1157,6 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
         body: CustomScrollView(
           controller: _scrollController,
           slivers: [
-            // Campo de escaneo fijo en la parte superior
             if (!_vistaMonitor && !_entregaFinalizada)
               SliverPersistentHeader(
                 pinned: true,
@@ -1200,7 +1166,6 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
                   child: _buildScannerField(),
                 ),
               ),
-            // Contenido principal
             SliverToBoxAdapter(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1233,7 +1198,6 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
                       ),
                     ),
                   
-                  // Selector de órdenes horizontal
                   _buildSelectorOrdenes(),
                   SizedBox.shrink(
                     child: VisibilityDetector(
@@ -1257,7 +1221,6 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
                       ),
                     )
                   ), 
-                  // Detalles de la orden seleccionada (solo para pantallas grandes)
                   if (_ordenSeleccionada != null && MediaQuery.of(context).size.width > 600)
                     Card(
                       child: Padding(
@@ -1344,7 +1307,7 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
                                     transportistas: transportistas,
                                     empresasEnvio: empresasEnvio,
                                     token: token,
-                                    modoReadOnly: true, // Modo readonly
+                                    modoReadOnly: true,
                                   ),
                                 ),
                               );
@@ -1397,7 +1360,6 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
   }
 }
 
-// Delegate para el header fijo del scanner
 class _ScannerHeaderDelegate extends SliverPersistentHeaderDelegate {
   final double minHeight;
   final double maxHeight;

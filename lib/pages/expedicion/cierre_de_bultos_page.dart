@@ -48,6 +48,7 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
   FormaEnvio? _empresaEnvioSeleccionada;
   FormaEnvio? _transportistaSeleccionado;
   final TextEditingController _comentarioController = TextEditingController();
+  final TextEditingController _comentarioEnvioController = TextEditingController();
   bool _incluyeFactura = false;
   bool _procesandoCierre = false;
   bool _entregaFinalizada = false;
@@ -70,6 +71,7 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
     _localidadController.text = widget.ordenSeleccionada.localidadEnvio;
     _departamentoController.text = widget.ordenSeleccionada.departamentoEnvio;
     _telefonoController.text = widget.ordenSeleccionada.telefonoEnvio;
+    _comentarioEnvioController.text = widget.ordenSeleccionada.comentarioEnvio;
     
     if (!widget.modoReadOnly) {
       // Solo inicializar controles si no es modo readonly
@@ -177,7 +179,7 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
             _transportistaSeleccionado == null)) {
       Carteles.showDialogs(
         context, 
-        'Para envío por correo debe seleccionar empresa y transportista', 
+        'Para envío debe seleccionar empresa y transportista', 
         false, 
         false, 
         false
@@ -282,9 +284,7 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
         .toList();
 
     _metodoEnvio = (widget.ordenSeleccionada.envio && _metodoEnvio == null) ? widget.modoEnvios.firstWhere((m) => m.modoEnvioId == widget.ordenSeleccionada.modoEnvioId) : _metodoEnvio;
-    _empresaEnvioSeleccionada = widget.ordenSeleccionada.envio && widget.ordenSeleccionada.formaIdEnvio != 0
-        ? widget.empresasEnvio.firstWhere((e) => e.formaEnvioId == widget.ordenSeleccionada.formaIdEnvio)
-        : null;
+    _empresaEnvioSeleccionada = widget.ordenSeleccionada.envio && widget.ordenSeleccionada.formaIdEnvio != 0 ? widget.empresasEnvio.firstWhere((e) => e.formaEnvioId == widget.ordenSeleccionada.formaIdEnvio) : _empresaEnvioSeleccionada;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -421,6 +421,19 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
                 ),
               ),
               compareFn: (item, selectedItem) => item.codFormaEnvio == selectedItem.codFormaEnvio,
+            ),
+          ),
+          const SizedBox(height: 8,),
+          const Text('Comentario Envio:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+          const SizedBox(height: 8,),
+          TextField(
+            controller: _comentarioEnvioController,
+            minLines: 2,
+            maxLines: 4,
+            enabled: !_procesandoCierre,
+            decoration: InputDecoration(
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             ),
           ),
         ],
