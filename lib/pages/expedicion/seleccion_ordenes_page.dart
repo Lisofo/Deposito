@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:deposito/widgets/filtros_expedicion.dart';
 import 'package:visibility_detector/visibility_detector.dart';
+import 'package:scroll_to_index/scroll_to_index.dart';
 
 class SeleccionOrdenesScreen extends StatefulWidget {
   const SeleccionOrdenesScreen({super.key});
@@ -38,6 +39,8 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
   TextEditingController textController2 = TextEditingController();
   bool _isFilterExpanded = false;
   bool _filtroMostrador = false;
+  final Map<int, int> _lineaIndexMap = {};
+  late AutoScrollController _scrollController; // Cambiado a AutoScrollController
 
   bool _isLoading = true;
   bool camera = false;
@@ -51,8 +54,22 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
     camera = context.read<ProductProvider>().camera;
     almacen = context.read<ProductProvider>().almacen;
     _filtroMostrador = context.read<ProductProvider>().filtroMostrador;
+    _scrollController = AutoScrollController(); // Inicializar AutoScrollController
     
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    _clienteController.dispose();
+    _numeroDocController.dispose();
+    _pickIDController.dispose();
+    focoDeScanner.dispose();
+    focoDeScanner2.dispose();
+    textController.dispose();
+    textController2.dispose();
+    _scrollController.dispose(); // Dispose del AutoScrollController
+    super.dispose();
   }
 
   // Método para mantener el foco en el scanner
@@ -81,7 +98,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
         nombre: cliente,
         numeroDocumento: numeroDocumento,
         pickId: int.tryParse(pickId.toString()),
-        envio: _filtroMostrador,
+        envio: !_filtroMostrador,
       );
 
       // 2. Aplicar filtro de mostrador si está activo
@@ -103,7 +120,13 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
           _ordenes = ordenesFiltradas; // Usar las órdenes filtradas
           _ordenesSeleccionadas.clear(); // Limpiar selecciones anteriores
           
-          // 4. Verificar si hay entregas y tomar la primera (posición 0)
+          // 4. Llenar el mapa de índices
+          _lineaIndexMap.clear();
+          for (int i = 0; i < _ordenes.length; i++) {
+            _lineaIndexMap[_ordenes[i].pickId] = i;
+          }
+          
+          // 5. Verificar si hay entregas y tomar la primera (posición 0)
           if (entregas.isNotEmpty) {
             final entrega = entregas[0]; // Tomamos la primera entrega
             
@@ -151,22 +174,10 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
     _loadData();
   }
 
-  void _onFiltroMostradorChanged(bool value) {
-    setState(() {
-      _filtroMostrador = value;
-    });
-    
-    // Guardar el estado en el provider para persistencia
-    context.read<ProductProvider>().setFiltroMostrador(value);
-    
-    // Recargar datos con el nuevo filtro
-    _loadData();
-  }
-
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final productProvider = Provider.of<ProductProvider>(context, listen: false);
+    final productProvider = Provider.of<ProductProvider>(context, listen: false); 
     return SafeArea(
       child: Scaffold(
         appBar: AppBar(
@@ -191,69 +202,66 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
               child: Column(
                 children: [
                   // Fila que contiene FiltrosExpedicion + Mostrador/Switch
-                  Card(
-                    margin: const EdgeInsets.all(10),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: Row(
-                        children: [
-                          // FiltrosExpedicion expandido
-                          Expanded(
-                            child: FiltrosExpedicion(
-                              onSearch: (fechaDesde, fechaHasta, cliente, numeroDocumento, pickId) {
-                                _loadData(
-                                  fechaDesde: fechaDesde,
-                                  fechaHasta: fechaHasta,
-                                  cliente: cliente,
-                                  numeroDocumento: numeroDocumento,
-                                  pickId: pickId
-                                );
-                              },
-                              onReset: _limpiarFiltros,
-                              clienteController: _clienteController,
-                              numeroDocController: _numeroDocController,
-                              pickIDController: _pickIDController,
-                              isFilterExpanded: _isFilterExpanded,
-                              onToggleFilter: (expanded) {
-                                setState(() {
-                                  _isFilterExpanded = expanded;
-                                });
-                                _mantenerFocoScanner();
-                              },
-                              cantidadDeOrdenes: _ordenes.length,
+                  Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Row(
+                      children: [
+                        // FiltrosExpedicion expandido
+                        Expanded(
+                          child: FiltrosExpedicion(
+                            onSearch: (fechaDesde, fechaHasta, cliente, numeroDocumento, pickId) {
+                              _loadData(
+                                fechaDesde: fechaDesde,
+                                fechaHasta: fechaHasta,
+                                cliente: cliente,
+                                numeroDocumento: numeroDocumento,
+                                pickId: pickId
+                              );
+                            },
+                            onReset: _limpiarFiltros,
+                            clienteController: _clienteController,
+                            numeroDocController: _numeroDocController,
+                            pickIDController: _pickIDController,
+                            isFilterExpanded: _isFilterExpanded,
+                            onToggleFilter: (expanded) {
+                              setState(() {
+                                _isFilterExpanded = expanded;
+                              });
+                              _mantenerFocoScanner();
+                            },
+                            cantidadDeOrdenes: _ordenes.length,
+                          ),
+                        ),
+                        
+                        // Separador visual
+                        Container(
+                          width: 1,
+                          height: 30,
+                          margin: const EdgeInsets.symmetric(horizontal: 16),
+                          color: Colors.grey[300],
+                        ),
+                        
+                        // Switch de Mostrador
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              _filtroMostrador ? 'Mostrador' : 'Envío',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.grey[700],
+                              ),
                             ),
-                          ),
-                          
-                          // Separador visual
-                          Container(
-                            width: 1,
-                            height: 30,
-                            margin: const EdgeInsets.symmetric(horizontal: 16),
-                            color: Colors.grey[300],
-                          ),
-                          
-                          // Switch de Mostrador
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'Mostrador',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.grey[700],
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Switch(
-                                value: _filtroMostrador,
-                                onChanged: _onFiltroMostradorChanged,
-                                activeColor: colors.primary,
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
+                            const SizedBox(width: 8),
+                            Switch(
+                              value: _filtroMostrador,
+                              onChanged: _onFiltroMostradorChanged,
+                              activeColor: colors.primary,
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                   
@@ -336,10 +344,11 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
                           ),
                           Expanded(
                             child: ListView.builder(
+                              controller: _scrollController,
                               itemCount: _ordenes.length,
                               itemBuilder: (context, index) {
                                 final orden = _ordenes[index];
-                                return _buildOrdenItem(orden);
+                                return _buildOrdenItem(orden, index);
                               },
                             ),
                           ),
@@ -387,110 +396,115 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
     }
   }
 
-  Widget _buildOrdenItem(OrdenPicking orden) {
+  Widget _buildOrdenItem(OrdenPicking orden, int index) {
     final isSelected = _ordenesSeleccionadas.contains(orden);
     final colors = Theme.of(context).colorScheme;
     final width = MediaQuery.of(context).size.width;
     final isMobile = width < 800;
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-      child: InkWell(
-        onTap: () {
-          setState(() {
-            if (isSelected) {
-              _ordenesSeleccionadas.remove(orden);
-            } else {
-              _ordenesSeleccionadas.add(orden);
-            }
-          });
-          // Mantener foco después de selección manual
-          _mantenerFocoScanner();
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Checkbox(
-                    value: isSelected,
-                    onChanged: (value) {
-                      setState(() {
-                        if (value == true) {
-                          _ordenesSeleccionadas.add(orden);
-                        } else {
-                          _ordenesSeleccionadas.remove(orden);
-                        }
-                      });
-                      // Mantener foco después de cambio en checkbox
-                      _mantenerFocoScanner();
-                    },
-                  ),
-                  Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      SizedBox(
-                        width: 48,
-                        height: 48,
-                        child: CircularProgressIndicator(
-                          value: orden.porcentajeCompletado / 100,
-                          strokeWidth: 5,
-                          backgroundColor: Colors.grey[400],
-                          color: orden.porcentajeCompletado == 100.0 ? Colors.green : colors.secondary,
-                        ),
-                      ),
-                      Text(
-                        '${orden.porcentajeCompletado.toStringAsFixed(orden.porcentajeCompletado % 1 == 0 ? 0 : 0)}%',
-                        style: const TextStyle(
-                          fontSize: 12, 
-                          fontWeight: FontWeight.bold
-                        ),
-                      )
-                    ],
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    'Doc: ${orden.numeroDocumento} ${orden.serie ?? ''}',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
+    return AutoScrollTag(
+      key: ValueKey(orden.pickId),
+      controller: _scrollController,
+      index: index,
+      child: Card(
+        margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+        child: InkWell(
+          onTap: () {
+            setState(() {
+              if (isSelected) {
+                _ordenesSeleccionadas.remove(orden);
+              } else {
+                _ordenesSeleccionadas.add(orden);
+              }
+            });
+            // Mantener foco después de selección manual
+            _mantenerFocoScanner();
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Checkbox(
+                      value: isSelected,
+                      onChanged: (value) {
+                        setState(() {
+                          if (value == true) {
+                            _ordenesSeleccionadas.add(orden);
+                          } else {
+                            _ordenesSeleccionadas.remove(orden);
+                          }
+                        });
+                        // Mantener foco después de cambio en checkbox
+                        _mantenerFocoScanner();
+                      },
                     ),
-                  ),
-                  const Spacer(),
-                  if(!isMobile)
-                    Expanded(
-                      flex: 10,
-                      child: SizedBox(
-                        width: MediaQuery.of(context).size.width * 0.8,
-                        child: Wrap(
-                          spacing: 16,
-                          runSpacing: 8,
-                          alignment: WrapAlignment.center,
-                          children: [
-                            _infoBox('Tipo:', orden.descTipo),
-                            _infoBox('Fecha:', DateFormat('dd/MM/yyyy').format(orden.fechaDate)),
-                            _infoBox('Cliente:', '${orden.codEntidad} - ${orden.nombre}'),
-                            _infoBox('Creado por:', orden.creadoPor),
-                            _infoBox('RUC:', orden.ruc),
-                            _infoBox(
-                              'Última modificación por:',
-                              orden.modificadoPor,
-                            ),
-                            _infoBox("Fecha última modificación:", DateFormat('dd/MM/yyyy HH:mm').format(orden.fechaDate))
-                          ],
+                    Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        SizedBox(
+                          width: 48,
+                          height: 48,
+                          child: CircularProgressIndicator(
+                            value: orden.porcentajeCompletado / 100,
+                            strokeWidth: 5,
+                            backgroundColor: Colors.grey[400],
+                            color: orden.porcentajeCompletado == 100.0 ? Colors.green : colors.secondary,
+                          ),
                         ),
+                        Text(
+                          '${orden.porcentajeCompletado.toStringAsFixed(orden.porcentajeCompletado % 1 == 0 ? 0 : 0)}%',
+                          style: const TextStyle(
+                            fontSize: 12, 
+                            fontWeight: FontWeight.bold
+                          ),
+                        )
+                      ],
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Doc: ${orden.numeroDocumento} ${orden.serie ?? ''}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
                       ),
                     ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: _getStatusColor(orden.estado),
-                          borderRadius: BorderRadius.circular(12),
+                    const Spacer(),
+                    if(!isMobile)
+                      Expanded(
+                        flex: 10,
+                        child: SizedBox(
+                          width: MediaQuery.of(context).size.width * 0.8,
+                          child: Wrap(
+                            spacing: 16,
+                            runSpacing: 8,
+                            alignment: WrapAlignment.center,
+                            children: [
+                              _infoBox('Tipo:', orden.descTipo),
+                              _infoBox('Fecha:', DateFormat('dd/MM/yyyy').format(orden.fechaDate)),
+                              _infoBox('Cliente:', '${orden.codEntidad} - ${orden.nombre}'),
+                              _infoBox('Creado por:', orden.creadoPor),
+                              if (orden.formaIdEnvio != 0)
+                                _infoBox('Agencia:', orden.ruc),
+                              _infoBox(
+                                'Última modificación por:',
+                                orden.modificadoPor,
+                              ),
+                              _infoBox("Fecha última modificación:", DateFormat('dd/MM/yyyy HH:mm').format(orden.fechaDate))
+                            ],
+                          ),
+                        ),
+                      ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: _getStatusColor(orden.estado),
+                            borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
                           orden.estado,
@@ -507,25 +521,25 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
                     ],
                   ),
                 ],
-              ),
-              if(isMobile)
-              Wrap(
-                spacing: 16,
-                runSpacing: 8,
-                children: [
-                  _infoBox('Tipo:', (orden.descTipo)),
-                  _infoBox('Fecha:', DateFormat('dd/MM/yyyy').format(orden.fechaDate)),
-                  _infoBox('Cliente:', '${orden.codEntidad} - ${orden.nombre}'),
-                  _infoBox('Creado por:', orden.creadoPor),
-                  _infoBox('RUC:', orden.ruc),
-                  _infoBox(
-                    'Última modificación por:',
-                    orden.modificadoPor,
+                ),
+                if(isMobile)
+                  Wrap(
+                    spacing: 16,
+                    runSpacing: 8,
+                    children: [
+                      _infoBox('Tipo:', (orden.descTipo)),
+                      _infoBox('Fecha:', DateFormat('dd/MM/yyyy').format(orden.fechaDate)),
+                      _infoBox('Cliente:', '${orden.codEntidad} - ${orden.nombre}'),
+                      _infoBox('Creado por:', orden.creadoPor),
+                      _infoBox('RUC:', orden.ruc),
+                      _infoBox(                      'Última modificación por:',
+                        orden.modificadoPor,
+                      ),
+                      _infoBox("Fecha última modificación:", DateFormat('dd/MM/yyyy HH:mm').format(orden.fechaDate))
+                    ],
                   ),
-                  _infoBox("Fecha última modificación:", DateFormat('dd/MM/yyyy HH:mm').format(orden.fechaDate))
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -594,6 +608,10 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
       if (!_ordenesSeleccionadas.contains(ordenEncontrada)) {
         _ordenesSeleccionadas.add(ordenEncontrada);
       }
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollHaciaOrdenPorId(ordenEncontrada.pickId);
+      });
       
       if(invisible) {
         textController2.clear();
@@ -607,6 +625,17 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
       Carteles.showDialogs(context, 'Error al procesar el escaneo', false, false, false);
       // Mantener foco incluso después de un error
       _mantenerFocoScanner();
+    }
+  }
+
+  void _scrollHaciaOrdenPorId(int pickId) {
+    if (_lineaIndexMap.containsKey(pickId)) {
+      final index = _lineaIndexMap[pickId]!;
+      _scrollController.scrollToIndex(
+        index,
+        duration: const Duration(milliseconds: 700),
+        preferPosition: AutoScrollPosition.begin,
+      );
     }
   }
 }

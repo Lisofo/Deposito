@@ -50,6 +50,7 @@ class OrdenPicking {
   late int formaIdEnvio;
   late String comentarioEnvio;
   late int modoEnvioId;
+  late String agencia;
 
   OrdenPicking({
     required this.pickId,
@@ -93,6 +94,7 @@ class OrdenPicking {
     required this.formaIdEnvio,
     required this.comentarioEnvio,
     required this.modoEnvioId,
+    required this.agencia,
   });
 
   factory OrdenPicking.fromJson(Map<String, dynamic> json) => OrdenPicking(
@@ -129,6 +131,7 @@ class OrdenPicking {
     entidadId: json["entidadId"] as int? ?? 0,
     codEntidad: json["codEntidad"] as String? ?? '',
     ruc: json["ruc"] as String? ?? '',
+    agencia: json["agencia"] as String? ?? '',
     nombre: json["nombre"] as String? ?? '',
     telefono: json["telefono"] as String? ?? '',
     localidad: json["localidad"] as String? ?? '',
@@ -180,6 +183,7 @@ class OrdenPicking {
     "nombre": nombre, 
     "telefono": telefono,
     "localidad": localidad,
+    "agencia": agencia,
     "porcentajeCompletado": porcentajeCompletado,
     "creadoPor": creadoPor,
     "modificadoPor": modificadoPor,
@@ -217,6 +221,7 @@ class OrdenPicking {
     comentarioEnvio = '';
     modoEnvioId = 0;
     cantLineas = 0;
+    agencia = '';
     tInfoEmpresaWsId = 0;
     usuId = 0;
     entidadId = 0;
@@ -273,6 +278,7 @@ class OrdenPicking {
     String? modificadoPor,
     DateTime? fechaModificadoPor,
     List<PickingLinea>? lineas,
+    String? agencia,
   }) {
     return OrdenPicking(
       pickId: pickId ?? this.pickId,
@@ -316,6 +322,7 @@ class OrdenPicking {
       modificadoPor: modificadoPor ?? this.modificadoPor,
       fechaModificadoPor: fechaModificadoPor ?? this.fechaModificadoPor,
       lineas: lineas ?? (this.lineas != null ? List.from(this.lineas!) : null),
+      agencia: agencia ?? this.agencia,
     );
   }
 
