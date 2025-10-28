@@ -487,11 +487,13 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
                               _infoBox('Cliente:', '${orden.codEntidad} - ${orden.nombre}'),
                               _infoBox('Creado por:', orden.creadoPor),
                               if (orden.formaIdEnvio != 0)
-                                _infoBox('Agencia:', orden.ruc),
+                                _infoBox('Agencia:', orden.agencia),
                               _infoBox(
                                 'Última modificación por:',
                                 orden.modificadoPor,
                               ),
+                              if (orden.comentarioEnvio != '')
+                                _infoBox('Comentario:', orden.comentarioEnvio),
                               _infoBox("Fecha última modificación:", DateFormat('dd/MM/yyyy HH:mm').format(orden.fechaDate))
                             ],
                           ),
