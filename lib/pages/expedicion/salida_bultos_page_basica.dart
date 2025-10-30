@@ -879,6 +879,26 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
   void _mostrarDialogoCierreBultos() async {
     if (_vistaMonitor || _entregaFinalizada) return;
     
+    if (entrega.estado == 'VERIFICADO') {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => SalidaCierreBultosPage(
+            entrega: entrega,
+            ordenSeleccionada: _ordenSeleccionada!,
+            bultoVirtual: _bultoVirtual!,
+            tipoBultos: tipoBultos,
+            modoEnvios: modoEnvios,
+            transportistas: transportistas,
+            empresasEnvio: empresasEnvio,
+            token: token,
+          ),
+        ),
+      ).then((_) {
+        _cargarDatosIniciales();
+      });
+      return;
+    }
+
     final todasCompletas = _verificarCompletitudTodasOrdenes();
     bool verificacionParcial = !todasCompletas;
     

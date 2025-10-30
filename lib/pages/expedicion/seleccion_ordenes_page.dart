@@ -14,6 +14,7 @@ import 'package:intl/intl.dart';
 import 'package:deposito/widgets/filtros_expedicion.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 import 'package:scroll_to_index/scroll_to_index.dart';
+import 'dart:async';
 
 class SeleccionOrdenesScreen extends StatefulWidget {
   const SeleccionOrdenesScreen({super.key});
@@ -40,7 +41,8 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
   bool _isFilterExpanded = false;
   bool _filtroMostrador = false;
   final Map<int, int> _lineaIndexMap = {};
-  late AutoScrollController _scrollController; // Cambiado a AutoScrollController
+  late AutoScrollController _scrollController;
+  Timer? _refreshTimer; // Timer para refresco automático
 
   bool _isLoading = true;
   bool camera = false;
@@ -54,13 +56,15 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
     camera = context.read<ProductProvider>().camera;
     almacen = context.read<ProductProvider>().almacen;
     _filtroMostrador = context.read<ProductProvider>().filtroMostrador;
-    _scrollController = AutoScrollController(); // Inicializar AutoScrollController
+    _scrollController = AutoScrollController();
     
     _loadData();
+    _iniciarTimerRefresh(); // Iniciar el timer al cargar la página
   }
 
   @override
   void dispose() {
+    _cancelarTimerRefresh(); // Cancelar el timer al destruir la página
     _clienteController.dispose();
     _numeroDocController.dispose();
     _pickIDController.dispose();
@@ -68,8 +72,30 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
     focoDeScanner2.dispose();
     textController.dispose();
     textController2.dispose();
-    _scrollController.dispose(); // Dispose del AutoScrollController
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  // Método para iniciar el timer de refresco
+  void _iniciarTimerRefresh() {
+    _refreshTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
+      if (mounted) {
+        _refreshData();
+      }
+    });
+  }
+
+  // Método para cancelar el timer
+  void _cancelarTimerRefresh() {
+    _refreshTimer?.cancel();
+    _refreshTimer = null;
+  }
+
+  // Método para refrescar los datos
+  Future<void> _refreshData() async {
+    if (mounted && !_isLoading) {
+      await _loadData();
+    }
   }
 
   // Método para mantener el foco en el scanner
@@ -111,7 +137,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
       var entregas = await EntregaServices().getEntregas(
         context, 
         token, 
-        estado: 'EN PROCESO',
+        estado: 'EN PROCESO, VERIFICADO',
         usuId: context.read<ProductProvider>().uId
       );
 
@@ -158,10 +184,6 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
     
     // Recargar datos con el nuevo filtro
     _loadData();
-  }
-
-  Future<void> _refreshData() async {
-    await _loadData();
   }
 
   void _limpiarFiltros() {
@@ -382,18 +404,25 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
   }
 
   Future<void> siguiente(BuildContext context, ProductProvider productProvider) async {
-    Entrega entrega = Entrega.empty();
     int? statusCode;
     List<int> pickIds = _ordenesSeleccionadas.map((orden) => orden.pickId).toList();
-    entrega = await entregaServices.postEntrega(context, pickIds, almacen.almacenId, token);
-    statusCode = await entregaServices.getStatusCode();
-    await entregaServices.resetStatusCode();
-    if(statusCode == 1) {
+    if (entrega.estado == 'VERIFICADO') {
       Provider.of<ProductProvider>(context, listen: false).setVistaMonitor(false);
       productProvider.setOrdenesExpedicion(_ordenesSeleccionadas);
       productProvider.setEntrega(entrega);
       appRouter.push('/salidaBultos');
+    } else {
+      entrega = await entregaServices.postEntrega(context, pickIds, almacen.almacenId, token);
+      statusCode = await entregaServices.getStatusCode();
+      await entregaServices.resetStatusCode();
+      if(statusCode == 1) {
+        Provider.of<ProductProvider>(context, listen: false).setVistaMonitor(false);
+        productProvider.setOrdenesExpedicion(_ordenesSeleccionadas);
+        productProvider.setEntrega(entrega);
+        appRouter.push('/salidaBultos');
+      }
     }
+    
   }
 
   Widget _buildOrdenItem(OrdenPicking orden, int index) {

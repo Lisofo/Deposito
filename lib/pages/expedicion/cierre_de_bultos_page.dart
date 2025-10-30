@@ -424,18 +424,6 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
             ),
           ),
           const SizedBox(height: 8,),
-          const Text('Comentario Envio:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
-          const SizedBox(height: 8,),
-          TextField(
-            controller: _comentarioEnvioController,
-            minLines: 2,
-            maxLines: 4,
-            enabled: !_procesandoCierre,
-            decoration: InputDecoration(
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            ),
-          ),
         ],
         const SizedBox(height: 16),
         Container(
@@ -458,10 +446,10 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
           ),
         ),
         const SizedBox(height: 16),
-        const Text('Comentario:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
-        const SizedBox(height: 8),
+        const Text('Comentario Envio:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+        const SizedBox(height: 8,),
         TextField(
-          controller: _comentarioController,
+          controller: _comentarioEnvioController,
           minLines: 2,
           maxLines: 4,
           enabled: !_procesandoCierre,
@@ -470,6 +458,18 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           ),
         ),
+        // const Text('Comentario:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+        // const SizedBox(height: 8),
+        // TextField(
+        //   controller: _comentarioController,
+        //   minLines: 2,
+        //   maxLines: 4,
+        //   enabled: !_procesandoCierre,
+        //   decoration: InputDecoration(
+        //     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        //     contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        //   ),
+        // ),
         const SizedBox(height: 20),
         Row(
           mainAxisAlignment: MainAxisAlignment.end,
