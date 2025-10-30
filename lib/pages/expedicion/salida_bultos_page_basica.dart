@@ -683,6 +683,53 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
     }
   }
 
+  Future<void> _mostrarPopupImprimirDetalle() async {
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Imprimir Detalle'),
+        content: const Text('¿Desea imprimir el detalle de la entrega?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              await _imprimirDetalleEntrega();
+            },
+            child: const Text('Imprimir'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _imprimirDetalleEntrega() async {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Imprimiendo detalle de entrega...')),
+      );
+
+      // Imprimir detalle del bulto virtual (que representa la entrega completa)
+      await EntregaServices().imprimirDetalle(
+        context,
+        _bultoVirtual!.bultoId,
+        Provider.of<ProductProvider>(context, listen: false).almacen.almacenId,
+        token,
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Detalle de entrega impreso correctamente')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al imprimir detalle: ${e.toString()}')),
+      );
+    }
+  }
+
   Widget _buildProductosSection() {
     // Limpiar el mapa al reconstruir la sección
     _lineaIndexMap.clear();
@@ -1275,7 +1322,25 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
           ],
         ),
         bottomNavigationBar: _vistaMonitor 
-            ? null 
+            ? BottomAppBar(
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      ElevatedButton.icon(
+                        icon: Icon(Icons.description, color: colors.onPrimary,),
+                        label: const Text('Reimprimir Detalle'),
+                        onPressed: _mostrarPopupImprimirDetalle,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: colors.primary,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
             : _entregaFinalizada
                 ? BottomAppBar(
                     child: Padding(
@@ -1283,15 +1348,15 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          ElevatedButton.icon(
-                            icon: const Icon(Icons.print),
-                            label: const Text('Reimprimir Etiquetas'),
-                            onPressed: _reimprimirEtiquetas,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: colors.primary,
-                              foregroundColor: colors.onPrimary,
-                            ),
-                          ),
+                          // ElevatedButton.icon(
+                          //   icon: const Icon(Icons.print),
+                          //   label: const Text('Reimprimir Etiquetas'),
+                          //   onPressed: _reimprimirEtiquetas,
+                          //   style: ElevatedButton.styleFrom(
+                          //     backgroundColor: colors.primary,
+                          //     foregroundColor: colors.onPrimary,
+                          //   ),
+                          // ),
                           ElevatedButton.icon(
                             icon: const Icon(Icons.inventory_2),
                             label: const Text('Ver Bultos'),
