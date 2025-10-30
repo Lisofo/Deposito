@@ -11,6 +11,7 @@ import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:deposito/pages/expedicion/salida_bultos_page_basica.dart';
+import 'dart:async';
 
 class DespachoPage extends StatefulWidget {
   const DespachoPage({super.key});
@@ -32,11 +33,13 @@ class DespachoPageState extends State<DespachoPage> {
   String token = '';
   bool isLoading = true;
   int _groupValueBultos = 2; // Default to "Cerrado"
+  Timer? _refreshTimer; // Timer para refresco automático
 
   @override
   void initState() {
     super.initState();
     loadData();
+    _iniciarTimerRefresh(); // Iniciar el timer al cargar la página
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         focoDeScanner.requestFocus();
@@ -46,11 +49,34 @@ class DespachoPageState extends State<DespachoPage> {
 
   @override
   void dispose() {
+    _cancelarTimerRefresh(); // Cancelar el timer al destruir la página
     _retiraController.dispose();
     _comentarioController.dispose();
     focoDeScanner.dispose();
     textController.dispose();
     super.dispose();
+  }
+
+  // Método para iniciar el timer de refresco
+  void _iniciarTimerRefresh() {
+    _refreshTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
+      if (mounted) {
+        _refreshData();
+      }
+    });
+  }
+
+  // Método para cancelar el timer
+  void _cancelarTimerRefresh() {
+    _refreshTimer?.cancel();
+    _refreshTimer = null;
+  }
+
+  // Método para refrescar los datos
+  Future<void> _refreshData() async {
+    if (mounted && !isLoading) {
+      await loadData();
+    }
   }
 
   loadData() async {
@@ -61,6 +87,9 @@ class DespachoPageState extends State<DespachoPage> {
       // Cargar transportistas (FormaEnvio con tr=true)
       final formasEnvio = await EntregaServices().formaEnvio(context, token);
 
+      transportistas.clear();
+      agencias.clear();
+      
       for (var forma in formasEnvio) {
         if (forma.tr == true) {
           transportistas.add(forma);
@@ -138,7 +167,7 @@ class DespachoPageState extends State<DespachoPage> {
   Future<void> procesarEscaneoBulto(String value) async {
     if (value.isEmpty) return;
     
-    if (_groupValueBultos != 0 && _groupValueBultos != 1) return;
+    if (_groupValueBultos != 2 && _groupValueBultos != 3) return;
 
     try {
       var bultoEncontrado = bultos.firstWhere((bulto) => bulto.bultoId == int.parse(value));
