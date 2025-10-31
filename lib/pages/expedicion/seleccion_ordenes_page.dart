@@ -59,7 +59,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
     _scrollController = AutoScrollController();
     
     _loadData();
-    _iniciarTimerRefresh(); // Iniciar el timer al cargar la página
+    // _iniciarTimerRefresh(); // Iniciar el timer al cargar la página
   }
 
   @override

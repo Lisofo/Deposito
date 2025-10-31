@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:deposito/models/orden_picking.dart';
 import 'package:deposito/models/bulto.dart';
 import 'package:deposito/provider/product_provider.dart';
@@ -22,6 +23,9 @@ class _DashboardPageState extends State<DashboardPage> {
   List<Bulto> _bultos = [];
   bool _isLoading = true;
 
+  // Timer para recarga automática
+  Timer? _autoRefreshTimer;
+
   // Estadísticas
   int _totalOrders = 0;
   int _releasedForPick = 0;
@@ -41,6 +45,29 @@ class _DashboardPageState extends State<DashboardPage> {
   void initState() {
     super.initState();
     _loadData();
+    _startAutoRefreshTimer();
+  }
+
+  @override
+  void dispose() {
+    // Cancelar el timer cuando el widget se destruya
+    _autoRefreshTimer?.cancel();
+    super.dispose();
+  }
+
+  // Método para iniciar el timer de recarga automática
+  void _startAutoRefreshTimer() {
+    _autoRefreshTimer = Timer.periodic(const Duration(minutes: 2), (timer) {
+      if (mounted) {
+        _loadData();
+      }
+    });
+  }
+
+  // Método para reiniciar el timer (opcional)
+  void _restartAutoRefreshTimer() {
+    _autoRefreshTimer?.cancel();
+    _startAutoRefreshTimer();
   }
 
   Future<void> _loadData() async {
@@ -316,18 +343,32 @@ class _DashboardPageState extends State<DashboardPage> {
       backgroundColor: Colors.grey[200],
       appBar: AppBar(
         iconTheme: IconThemeData(color: colors.onPrimary),
-        title: Text(
-          context.read<ProductProvider>().menuTitle,
-          style: TextStyle(
-            fontSize: isSmallScreen ? 18 : 20,
-            fontWeight: FontWeight.w600,
-            color: colors.onPrimary,
-          ),
+        title: Row(
+          children: [
+            Text(
+              context.read<ProductProvider>().menuTitle,
+              style: TextStyle(
+                fontSize: isSmallScreen ? 18 : 20,
+                fontWeight: FontWeight.w600,
+                color: colors.onPrimary,
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Indicador visual del auto-refresh (opcional)
+            Icon(
+              Icons.autorenew,
+              size: 16,
+              color: colors.onPrimary.withValues(alpha: 0.7),
+            ),
+          ],
         ),
         backgroundColor: colors.primary,
         actions: [
           IconButton(
-            onPressed: () => _loadData(),
+            onPressed: () {
+              _loadData();
+              _restartAutoRefreshTimer(); // Reiniciar el timer al refrescar manualmente
+            },
             icon: const Icon(Icons.refresh),
           ),
         ],
