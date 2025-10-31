@@ -297,6 +297,7 @@ class DespachoPageState extends State<DespachoPage> {
     final colors = Theme.of(context).colorScheme;
     final isSelected = selectedBultos.contains(bulto);
     late String fechaDate = DateFormat('dd/MM/yyyy HH:mm', 'es').format(bulto.fechaDate);
+    
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       elevation: 2,
@@ -308,16 +309,18 @@ class DespachoPageState extends State<DespachoPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Primera fila con información básica
               Row(
                 children: [
                   getIcon(bulto.icon, context, colors.primary),
-                  const SizedBox(width: 10,),
+                  const SizedBox(width: 10),
                   Text(
                     'Bulto #${bulto.bultoId}',
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                   const Expanded(child: SizedBox()),
                   Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
                         bulto.estado,
@@ -326,25 +329,41 @@ class DespachoPageState extends State<DespachoPage> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      Text(bulto.modoEnvioId == 1 ? 'Retira' : 'Envío', style: const TextStyle(fontWeight: FontWeight.bold),),
+                      Text(
+                        bulto.modoEnvioId == 1 ? 'Retira' : 'Envío', 
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ],
                   ),
                 ],
               ),
+              
               const SizedBox(height: 8),
-              Text('Cliente: ${bulto.nombreCliente} - tel: ${bulto.telefono}'),
-              Text('Dirección: ${bulto.direccion}'),
-              Text('Localidad: ${bulto.localidad} \nDepartamento: ${bulto.departamento}'),
-              if (bulto.agenciaTrId != null)
-                Text('Transportista: ${_getNombreTransportista(bulto.agenciaTrId)}'),
-              if (bulto.agenciaUFId != null)
-                Text('Agencia: ${_getNombreAgencia(bulto.agenciaUFId)}'),
-              if (bulto.retiroId != null)
-                Text('Retiro ID: ${bulto.retiroId}'),
+              
+              // Información del bulto en Wrap responsive
+              Wrap(
+                spacing: 16, // Espacio horizontal entre elementos
+                runSpacing: 8, // Espacio vertical entre líneas
+                children: [
+                  _infoBoxBulto('Cliente:', '${bulto.nombreCliente} - tel: ${bulto.telefono}'),
+                  _infoBoxBulto('Dirección:', bulto.direccion.toString()),
+                  _infoBoxBulto('Localidad:', '${bulto.localidad}'),
+                  _infoBoxBulto('Departamento:', bulto.departamento.toString()),
+                  if (bulto.agenciaTrId != null)
+                    _infoBoxBulto('Transportista:', _getNombreTransportista(bulto.agenciaTrId)),
+                  if (bulto.agenciaUFId != null)
+                    _infoBoxBulto('Agencia:', _getNombreAgencia(bulto.agenciaUFId)),
+                  if (bulto.retiroId != null)
+                    _infoBoxBulto('Retiro ID:', bulto.retiroId.toString()),
+                  _infoBoxBulto('Fecha:', fechaDate),
+                  if (bulto.comentarioEnvio != null && bulto.comentarioEnvio!.isNotEmpty)
+                    _infoBoxBulto('Comentario:', bulto.comentarioEnvio.toString()),
+                ],
+              ),
+              
               const SizedBox(height: 8),
-              Text('Fecha: $fechaDate'),
-              if (bulto.comentarioEnvio != '')
-                Text(bulto.comentarioEnvio.toString()),
+              
+              // Acciones (botones y checkbox)
               if (_groupValueBultos != 0 && _groupValueBultos != 1)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -361,6 +380,25 @@ class DespachoPageState extends State<DespachoPage> {
                 ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  // Método auxiliar para crear cajas de información estilizadas
+  Widget _infoBoxBulto(String label, String value) {
+    return SizedBox(
+      width: 360, // Ancho fijo para alineación consistente
+      child: RichText(
+        text: TextSpan(
+          style: const TextStyle(color: Colors.black, fontSize: 14),
+          children: [
+            TextSpan(
+              text: '$label ',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            TextSpan(text: value),
+          ],
         ),
       ),
     );
@@ -709,7 +747,6 @@ class DespachoPageState extends State<DespachoPage> {
           _retiraController.clear();
           _comentarioController.clear();
         });
-
         // Recargar los datos desde el servidor
         await _cargarBultos(agenciaTrId: transportistaSeleccionado?.formaEnvioId);
       } else {

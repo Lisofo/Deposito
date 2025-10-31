@@ -28,7 +28,9 @@ class _DashboardPageState extends State<DashboardPage> {
   int _inPick = 0;
   int _packed = 0;
   int _inPack = 0;
+  // ignore: prefer_final_fields
   int _incompleto = 0;
+  int _embalaje = 0;
 
   // Estadísticas bultos
   int _totalBultos = 0;
@@ -73,7 +75,7 @@ class _DashboardPageState extends State<DashboardPage> {
     if ((result != null && _pickingServices.statusCode == 1)) {
       setState(() {
         _ordenes = result ?? [];
-        _bultos = bultosResult;
+        _bultos = bultosResult.where((bulto) => bulto.tipoBultoId != 4).toList();
         _calculateStats();
         _calculateBultosStats();
         _isLoading = false;
@@ -89,9 +91,10 @@ class _DashboardPageState extends State<DashboardPage> {
     _totalOrders = _ordenes.length;
     _releasedForPick = _ordenes.where((orden) => orden.estado == 'PENDIENTE').length;
     _inPick = _ordenes.where((orden) => orden.estado == 'EN PROCESO').length;
-    _packed = _ordenes.where((orden) => orden.estado == 'PREPARADO').length;
-    _incompleto = _ordenes.where((orden) => orden.porcentajeCompletado < 100 && orden.estado != 'PREPARADO').length;
-    _inPack = _ordenes.where((orden) => orden.estado == 'EMPAQUETADO' && orden.porcentajeCompletado >= 0).length;
+    _packed = _ordenes.where((orden) => (orden.estado == 'PREPARADO' || orden.estado == 'PAPEL')).length;
+    _inPack = _ordenes.where((orden) => orden.estado == 'ENTREGADO').length;
+    _embalaje = _ordenes.where((orden) => orden.estado == 'EMBALAJE').length;
+    // _incompleto = _ordenes.where((orden) => orden.porcentajeCompletado < 100 && orden.estado != 'PREPARADO').length;
   }
 
   void _calculateBultosStats() {
@@ -443,8 +446,9 @@ class _DashboardPageState extends State<DashboardPage> {
                         _buildStatCard('Pendientes', _releasedForPick, Colors.orange, Icons.schedule, context),
                         _buildStatCard('En Proceso', _inPick, Colors.blue, Icons.play_arrow, context),
                         _buildStatCard('Preparados', _packed, Colors.green, Icons.check_circle, context),
-                        _buildStatCard('Empaquetados', _inPack, Colors.purple, Icons.inventory_2, context),
-                        _buildStatCard('Incompletos', _incompleto, Colors.red, Icons.error, context),
+                        _buildStatCard('Embalaje', _embalaje, Colors.yellow, Icons.inventory_2, context),
+                        _buildStatCard('Empaquetados', _inPack, Colors.purple, Icons.inventory_outlined, context),
+                        // _buildStatCard('Incompletos', _incompleto, Colors.red, Icons.error, context),
                       ],
                     ),
                   ),
@@ -541,7 +545,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                       ),
                                       const SizedBox(height: 8),
                                       Text(
-                                        'Completados',
+                                        'Preparados',
                                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                           fontSize: isSmallScreen ? 10 : 12,
                                         ),
@@ -606,8 +610,9 @@ class _DashboardPageState extends State<DashboardPage> {
                       _buildStatusRow('Pendientes', _releasedForPick, Colors.orange, context),
                       _buildStatusRow('En Proceso', _inPick, Colors.blue, context),
                       _buildStatusRow('Preparados', _packed, Colors.green, context),
+                      _buildStatusRow('Embalaje', _embalaje, Colors.yellow, context),
                       _buildStatusRow('Empaquetados', _inPack, Colors.purple, context),
-                      _buildStatusRow('Incompletos', _incompleto, Colors.red, context),
+                      // _buildStatusRow('Incompletos', _incompleto, Colors.red, context),
                     ],
                   ),
                 ],
@@ -695,8 +700,9 @@ class _DashboardPageState extends State<DashboardPage> {
                     _buildStatusRow('Pendientes', _releasedForPick, Colors.orange, context),
                     _buildStatusRow('En Proceso', _inPick, Colors.blue, context),
                     _buildStatusRow('Preparados', _packed, Colors.green, context),
+                    _buildStatusRow('Embalaje', _embalaje, Colors.yellow, context),
                     _buildStatusRow('Empaquetados', _inPack, Colors.purple, context),
-                    _buildStatusRow('Incompletos', _incompleto, Colors.red, context),
+                    // _buildStatusRow('Incompletos', _incompleto, Colors.red, context),
                   ],
                 ),
               ],
@@ -781,8 +787,9 @@ class _DashboardPageState extends State<DashboardPage> {
                     _buildStatusRow('Pendientes', _releasedForPick, Colors.orange, context),
                     _buildStatusRow('En Proceso', _inPick, Colors.blue, context),
                     _buildStatusRow('Preparados', _packed, Colors.green, context),
+                    _buildStatusRow('Embalaje', _embalaje, Colors.yellow, context),
                     _buildStatusRow('Empaquetados', _inPack, Colors.purple, context),
-                    _buildStatusRow('Incompletos', _incompleto, Colors.red, context),
+                    // _buildStatusRow('Incompletos', _incompleto, Colors.red, context),
                   ],
                 ),
               ],
