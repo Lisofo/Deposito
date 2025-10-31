@@ -558,14 +558,18 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
                     spacing: 16,
                     runSpacing: 8,
                     children: [
-                      _infoBox('Tipo:', (orden.descTipo)),
+                      _infoBox('Tipo:', orden.descTipo),
                       _infoBox('Fecha:', DateFormat('dd/MM/yyyy').format(orden.fechaDate)),
                       _infoBox('Cliente:', '${orden.codEntidad} - ${orden.nombre}'),
                       _infoBox('Creado por:', orden.creadoPor),
-                      _infoBox('RUC:', orden.ruc),
-                      _infoBox(                      'Última modificación por:',
+                      if (orden.formaIdEnvio != 0)
+                        _infoBox('Agencia:', orden.agencia),
+                      _infoBox(
+                        'Última modificación por:',
                         orden.modificadoPor,
                       ),
+                      if (orden.comentarioEnvio != '')
+                        _infoBox('Comentario:', orden.comentarioEnvio),
                       _infoBox("Fecha última modificación:", DateFormat('dd/MM/yyyy HH:mm').format(orden.fechaDate))
                     ],
                   ),
