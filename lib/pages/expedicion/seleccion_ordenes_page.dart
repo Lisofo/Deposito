@@ -7,6 +7,7 @@ import 'package:deposito/models/entrega.dart';
 import 'package:deposito/models/orden_picking.dart';
 import 'package:deposito/services/entrega_services.dart';
 import 'package:deposito/services/picking_services.dart';
+import 'package:deposito/services/login_services.dart';
 import 'package:deposito/widgets/carteles.dart';
 import 'package:deposito/widgets/segmented_buttons.dart';
 import 'package:flutter/material.dart';
@@ -49,6 +50,9 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
   bool camera = false;
   String token = '';
   int _groupValue = 0;
+  bool _pinValidado = false;
+  String _tokenPin = '';
+  int _userIdPin = 0;
 
   @override
   void initState() {
@@ -59,7 +63,8 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
     _filtroMostrador = context.read<ProductProvider>().filtroMostrador;
     _scrollController = AutoScrollController();
     
-    _loadData();
+    // No cargar datos automáticamente, esperar a que se ingrese el PIN
+    _isLoading = false;
     // _iniciarTimerRefresh(); // Iniciar el timer al cargar la página
   }
 
@@ -94,7 +99,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
 
   // Método para refrescar los datos
   Future<void> _refreshData() async {
-    if (mounted && !_isLoading) {
+    if (mounted && !_isLoading && _pinValidado) {
       await _loadData();
     }
   }
@@ -109,6 +114,8 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
   }
 
   Future<void> _loadData({DateTime? fechaDesde, DateTime? fechaHasta, String? cliente, String? numeroDocumento, String? pickId}) async {
+    if (!_pinValidado) return;
+    
     setState(() => _isLoading = true);
     try {
       await _pickingServices.resetStatusCode();
@@ -117,7 +124,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
       final result = await _pickingServices.getOrdenesPicking(
         context, 
         almacen.almacenId,
-        token, 
+        _tokenPin.isNotEmpty ? _tokenPin : token, 
         tipo: 'V,P,TS',
         // estado: _groupValue != -1 ? ['PREPARADO, PAPEL', 'EMBALAJE', 'E. PARCIAL, PAPEL'][_groupValue] : null,
         estado: 'PREPARADO, PAPEL, EMBALAJE',
@@ -135,12 +142,12 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
         ordenesFiltradas = ordenesFiltradas.where((orden) => orden.envio == false).toList();
       }
 
-      // 3. Obtener entregas en proceso para el usuario actual
+      // 3. Obtener entregas en proceso para el usuario del PIN
       var entregas = await EntregaServices().getEntregas(
         context, 
-        token, 
+        _tokenPin.isNotEmpty ? _tokenPin : token, 
         estado: 'EN PROCESO, VERIFICADO',
-        usuId: context.read<ProductProvider>().uId
+        usuId: _userIdPin // Usar el userId del PIN
       );
 
       if (result != null && _pickingServices.statusCode == 1) {
@@ -200,10 +207,183 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
     _loadData();
   }
 
+  Future<void> _solicitarPin() async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        String pin = '';
+        return AlertDialog(
+          title: const Text('Validación de PIN'),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
+                const Text('Por favor, ingrese su PIN para comenzar la entrega.'),
+                const SizedBox(height: 16),
+                TextFormField(
+                  obscureText: true,
+                  onChanged: (value) {
+                    pin = value;
+                  },
+                  decoration: const InputDecoration(
+                    labelText: 'PIN',
+                    border: OutlineInputBorder(),
+                  ),
+                  onFieldSubmitted: (value) async {
+                    pin = value;
+                    final loginServices = LoginServices();
+                    int? statusCode;
+                    if (pin.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Por favor ingrese el PIN')),
+                      );
+                      return;
+                    }
+
+                    try {
+                      final response = await loginServices.pin2(pin, context);
+                      statusCode = await loginServices.getStatusCode();
+                      await loginServices.resetStatusCode();
+                      if (statusCode == 1) {
+                        // Guardar el token y userId del PIN
+                        _tokenPin = response['token'] ?? '';
+                        _userIdPin = response['uid'] ?? 0;
+                        
+                        setState(() {
+                          _pinValidado = true;
+                        });
+                        
+                        Navigator.of(context).pop(); // Cerrar el diálogo
+                        await _loadData(); // Cargar datos con el nuevo token
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('PIN incorrecto. Intente nuevamente.')),
+                        );
+                      }
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error: $e')),
+                      );
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancelar'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            ElevatedButton(
+              child: const Text('Validar'),
+              onPressed: () async {
+                final loginServices = LoginServices();
+                int? statusCode;
+                if (pin.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Por favor ingrese el PIN')),
+                  );
+                  return;
+                }
+
+                try {
+                  final response = await loginServices.pin2(pin, context);
+                  statusCode = await loginServices.getStatusCode();
+                  await loginServices.resetStatusCode();
+                  if (statusCode == 1) {
+                    // Guardar el token y userId del PIN
+                    _tokenPin = response['token'] ?? '';
+                    _userIdPin = response['uid'] ?? 0;
+                    
+                    setState(() {
+                      _pinValidado = true;
+                    });
+                    
+                    Navigator.of(context).pop(); // Cerrar el diálogo
+                    await _loadData(); // Cargar datos con el nuevo token
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('PIN incorrecto. Intente nuevamente.')),
+                    );
+                  }
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: $e')),
+                  );
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final productProvider = Provider.of<ProductProvider>(context, listen: false); 
+    
+    // Si no se ha validado el PIN, mostrar pantalla de inicio
+    if (!_pinValidado) {
+      return SafeArea(
+        child: Scaffold(
+          appBar: AppBar(
+            backgroundColor: colors.primary,
+            title: Text(
+              context.read<ProductProvider>().menuTitle,
+              style: const TextStyle(color: Colors.white),
+            ),
+            iconTheme: IconThemeData(color: colors.onPrimary),
+          ),
+          body: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.qr_code_scanner,
+                  size: 80,
+                  color: Colors.grey,
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Comenzar Entrega',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'Ingrese su PIN para comenzar el proceso de entrega',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey,
+                  ),
+                ),
+                const SizedBox(height: 30),
+                ElevatedButton(
+                  onPressed: _solicitarPin,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: colors.primary,
+                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  ),
+                  child: const Text(
+                    'Comenzar Entrega',
+                    style: TextStyle(color: Colors.white, fontSize: 18),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+    
     return SafeArea(
       child: Scaffold(
         appBar: AppBar(
@@ -436,15 +616,22 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
       Provider.of<ProductProvider>(context, listen: false).setVistaMonitor(false);
       productProvider.setOrdenesExpedicion(_ordenesSeleccionadas);
       productProvider.setEntrega(entrega);
+      // Pasar el token del PIN a la siguiente pantalla
+      productProvider.setTokenPin(_tokenPin);
+      productProvider.setUserIdPin(_userIdPin);
       appRouter.push('/salidaBultos');
     } else {
-      entrega = await entregaServices.postEntrega(context, pickIds, almacen.almacenId, token);
+      // Usar el token del PIN para crear la entrega
+      entrega = await entregaServices.postEntrega(context, pickIds, almacen.almacenId, _tokenPin);
       statusCode = await entregaServices.getStatusCode();
       await entregaServices.resetStatusCode();
       if(statusCode == 1) {
         Provider.of<ProductProvider>(context, listen: false).setVistaMonitor(false);
         productProvider.setOrdenesExpedicion(_ordenesSeleccionadas);
         productProvider.setEntrega(entrega);
+        // Pasar el token del PIN a la siguiente pantalla
+        productProvider.setTokenPin(_tokenPin);
+        productProvider.setUserIdPin(_userIdPin);
         appRouter.push('/salidaBultos');
       }
     }

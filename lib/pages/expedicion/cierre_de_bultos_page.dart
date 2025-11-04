@@ -6,7 +6,6 @@ import 'package:deposito/models/forma_envio.dart';
 import 'package:deposito/models/modo_envio.dart';
 import 'package:deposito/models/tipo_bulto.dart';
 import 'package:deposito/services/entrega_services.dart';
-import 'package:deposito/services/login_services.dart';
 import 'package:deposito/widgets/carteles.dart';
 import 'package:deposito/widgets/icon_string.dart';
 import 'package:dropdown_search/dropdown_search.dart';
@@ -104,10 +103,15 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
 
   Future<void> _cargarBultosCerrados() async {
     try {
+      // USAR TOKEN DEL PIN SI ESTÁ DISPONIBLE
+      final productProvider = Provider.of<ProductProvider>(context, listen: false);
+      final tokenPin = productProvider.tokenPin;
+      final tokenFinal = tokenPin.isNotEmpty ? tokenPin : widget.token;
+      
       final bultosExistentes = await EntregaServices().getBultosEntrega(
         context, 
         widget.entrega.entregaId, 
-        widget.token
+        tokenFinal // USAR TOKEN FINAL
       );
       
       // Filtrar bultos cerrados excluyendo los VIRTUAL
@@ -127,6 +131,11 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
 
   Future<void> _cerrarBultoVirtual(String comentario, bool incluyeFactura) async {
     try {
+      // USAR TOKEN DEL PIN SI ESTÁ DISPONIBLE
+      final productProvider = Provider.of<ProductProvider>(context, listen: false);
+      final tokenPin = productProvider.tokenPin;
+      final tokenFinal = tokenPin.isNotEmpty ? tokenPin : widget.token;
+      
       await EntregaServices().putBultoEntrega(
         context,
         widget.entrega.entregaId,
@@ -146,7 +155,7 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
         incluyeFactura,
         widget.bultoVirtual.nroBulto,
         widget.bultoVirtual.totalBultos,
-        token2,
+        tokenFinal, // USAR TOKEN FINAL
       );
 
       // await EntregaServices().patchBultoEstado(
@@ -192,6 +201,11 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
     });
     
     try {
+      // USAR TOKEN DEL PIN SI ESTÁ DISPONIBLE
+      final productProvider = Provider.of<ProductProvider>(context, listen: false);
+      final tokenPin = productProvider.tokenPin;
+      final tokenFinal = tokenPin.isNotEmpty ? tokenPin : widget.token;
+      
       final List<Bulto> bultosCreados = [];
       final tiposDisponibles = widget.tipoBultos
           .where((tipo) => tipo.codTipoBulto != "VIRTUAL")
@@ -205,7 +219,7 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
             context,
             widget.entrega.entregaId,
             tipo.tipoBultoId,
-            token2,
+            tokenFinal, // USAR TOKEN FINAL
           );
           
           if (nuevoBulto.bultoId != 0) {
@@ -234,7 +248,7 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
           _incluyeFactura,
           bulto.nroBulto,
           bulto.totalBultos,
-          token2,
+          tokenFinal, // USAR TOKEN FINAL
         );
         
         await EntregaServices().patchBultoEstado(
@@ -242,7 +256,7 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
           widget.entrega.entregaId,
           bulto.bultoId,
           'CERRADO',
-          token2,
+          tokenFinal, // USAR TOKEN FINAL
         );
       }
       
@@ -251,7 +265,7 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
       await EntregaServices().cerrarEntrega(
         context,
         widget.entrega.entregaId,
-        token2,
+        tokenFinal, // USAR TOKEN FINAL
       );
       
       // En lugar de navegar de regreso, actualizamos el estado a readonly
@@ -485,7 +499,7 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
                 backgroundColor: Theme.of(context).primaryColor,
                 foregroundColor: Colors.white,
               ),
-              onPressed: _procesandoCierre ? null : _solicitarPin2,
+              onPressed: _procesandoCierre ? null : _procesarCierre, // CAMBIO: Quitar _solicitarPin2 y usar _procesarCierre directamente
               child: const Text('Confirmar'),
             ),
           ],
@@ -561,6 +575,10 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
         ElevatedButton(
           onPressed: () {
             // Navegar hacia atrás hasta encontrar la pantalla SeleccionOrdenesScreen
+            // Y RESETEAR EL TOKEN DEL PIN
+            final productProvider = Provider.of<ProductProvider>(context, listen: false);
+            productProvider.setTokenPin('');
+            productProvider.setUserIdPin(0);
             Navigator.of(context).popUntil((route) => route.settings.name == '/expedicionPaquetes');
             GoRouter.of(context).pushReplacement('/expedicionPaquetes');
           },
@@ -763,13 +781,18 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
         const SnackBar(content: Text('Imprimiendo etiquetas...')),
       );
 
+      // USAR TOKEN DEL PIN SI ESTÁ DISPONIBLE
+      final productProvider = Provider.of<ProductProvider>(context, listen: false);
+      final tokenPin = productProvider.tokenPin;
+      final tokenFinal = tokenPin.isNotEmpty ? tokenPin : widget.token;
+
       // Imprimir cada bulto seleccionado
       for (int bultoId in bultosIds) {
         await EntregaServices().imprimirEtiqueta(
           context,
           bultoId,
           context.read<ProductProvider>().almacen.almacenId,
-          widget.token,
+          tokenFinal, // USAR TOKEN FINAL
         );
         // Pequeña pausa entre impresiones
         await Future.delayed(const Duration(milliseconds: 500));
@@ -814,12 +837,17 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
         const SnackBar(content: Text('Imprimiendo detalle de entrega...')),
       );
 
+      // USAR TOKEN DEL PIN SI ESTÁ DISPONIBLE
+      final productProvider = Provider.of<ProductProvider>(context, listen: false);
+      final tokenPin = productProvider.tokenPin;
+      final tokenFinal = tokenPin.isNotEmpty ? tokenPin : widget.token;
+
       // Imprimir detalle del bulto virtual (que representa la entrega completa)
       await EntregaServices().imprimirDetalle(
         context,
         widget.bultoVirtual.bultoId,
         context.read<ProductProvider>().almacen.almacenId,
-        widget.token,
+        tokenFinal, // USAR TOKEN FINAL
       );
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -917,104 +945,7 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
     );
   }
 
-  Future<void> _solicitarPin2() async {
-    return showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        String pin = '';
-        return AlertDialog(
-          title: const Text('Validación de PIN'),
-          content: SingleChildScrollView(
-            child: ListBody(
-              children: <Widget>[
-                const Text('Por favor, ingrese su PIN para proceder con el cierre.'),
-                const SizedBox(height: 16),
-                TextFormField(
-                  obscureText: true,
-                  onChanged: (value) {
-                    pin = value;
-                  },
-                  decoration: const InputDecoration(
-                    labelText: 'PIN',
-                    border: OutlineInputBorder(),
-                  ),
-                  onFieldSubmitted: (value) async {
-                    pin = value;
-                    final loginServices = LoginServices();
-                    int? statusCode;
-                    if (pin.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Por favor ingrese el PIN')),
-                      );
-                      return;
-                    }
-
-                    try {
-                      token2 = await loginServices.pin2(pin, context);
-                      statusCode = await loginServices.getStatusCode();
-                      await loginServices.resetStatusCode();
-                      if (statusCode == 1) {
-                        Navigator.of(context).pop(); // Cerrar el diálogo
-                        await _procesarCierre(); // Proceder con el cierre
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('PIN incorrecto. Intente nuevamente.')),
-                        );
-                      }
-                    } catch (e) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Error: $e')),
-                      );
-                    }
-                  },
-                ),
-              ],
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('Cancelar'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-            ElevatedButton(
-              child: const Text('Validar'),
-              onPressed: () async {
-                final loginServices = LoginServices();
-                int? statusCode;
-                if (pin.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Por favor ingrese el PIN')),
-                  );
-                  return;
-                }
-
-                try {
-                  token2 = await loginServices.pin2(pin, context);
-                  statusCode = await loginServices.getStatusCode();
-                  await loginServices.resetStatusCode();
-                  if (statusCode == 1) {
-                    Navigator.of(context).pop(); // Cerrar el diálogo
-                    _procesarCierre(); // Proceder con el cierre
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('PIN incorrecto. Intente nuevamente.')),
-                    );
-                  }
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error: $e')),
-                  );
-                }
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
+  // MÉTODO _solicitarPin2 ELIMINADO - Ya no se solicita PIN aquí
 
   @override
   Widget build(BuildContext context) {

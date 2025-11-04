@@ -46,7 +46,7 @@ class LoginServices {
     }
   }
 
-  Future<String> pin2(String password, BuildContext context) async {
+  Future pin2(String password, BuildContext context) async {
     var headers = {'Content-Type': 'application/json'};
     var data = json.encode({"pin2": password});
     String link = '$apiUrl/api/auth/pin';
@@ -68,7 +68,7 @@ class LoginServices {
       } else { 
         print(resp.statusMessage);
       }
-      return resp.data['token'];
+      return resp.data;
     } catch (e) {
       statusCode = 0;
       print('Error: $e');

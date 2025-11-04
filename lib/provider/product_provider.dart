@@ -133,6 +133,23 @@ class ProductProvider with ChangeNotifier {
 
   bool _filtroMostrador = false;
   bool get filtroMostrador => _filtroMostrador;
+  
+  String _tokenPin = '';
+  String get tokenPin => _tokenPin;
+
+  int _userIdPin = 0;
+  int get userIdPin => _userIdPin;
+
+  // Setters
+  void setTokenPin(String token) {
+    _tokenPin = token;
+    notifyListeners();
+  }
+
+  void setUserIdPin(int userId) {
+    _userIdPin = userId;
+    notifyListeners();
+  }
 
   void setFiltroMostrador(bool value) {
     _filtroMostrador = value;

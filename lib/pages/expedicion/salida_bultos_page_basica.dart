@@ -89,6 +89,10 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
     final productProvider = Provider.of<ProductProvider>(context, listen: false);
     token = productProvider.token;
     
+    // USAR TOKEN DEL PIN SI ESTÁ DISPONIBLE
+    final tokenPin = productProvider.tokenPin;
+    final tokenFinal = tokenPin.isNotEmpty ? tokenPin : token;
+    
     if (widget.entregaExterna != null) {
       entrega = widget.entregaExterna!;
     } else {
@@ -103,9 +107,9 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
     
     _entregaFinalizada = entrega.estado == 'finalizado';
     
-    formasEnvio = await EntregaServices().formaEnvio(context, token);
-    tipoBultos = await EntregaServices().tipoBulto(context, token);
-    modoEnvios = await EntregaServices().modoEnvio(context, token);
+    formasEnvio = await EntregaServices().formaEnvio(context, tokenFinal);
+    tipoBultos = await EntregaServices().tipoBulto(context, tokenFinal);
+    modoEnvios = await EntregaServices().modoEnvio(context, tokenFinal);
     
     if (_vistaMonitor) {
       final List<OrdenPicking> ordenesMonitor = [];
@@ -114,7 +118,7 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
           context,
           pickId,
           productProvider.almacen.almacenId,
-          token,
+          tokenFinal, // USAR TOKEN FINAL
         ) as OrdenPicking?;
         if (orden != null) {
           ordenesMonitor.add(orden);
@@ -143,7 +147,7 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
       final bultosExistentes = await EntregaServices().getBultosEntrega(
         context, 
         entrega.entregaId, 
-        token
+        tokenFinal // USAR TOKEN FINAL
       );
       
       for (var bulto in bultosExistentes) {
@@ -198,11 +202,15 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
         return;
       }
 
+      // USAR TOKEN DEL PIN SI ESTÁ DISPONIBLE
+      final tokenPin = Provider.of<ProductProvider>(context, listen: false).tokenPin;
+      final tokenFinal = tokenPin.isNotEmpty ? tokenPin : token;
+
       final nuevoBulto = await EntregaServices().postBultoEntrega(
         context,
         entrega.entregaId,
         tipoVirtual.tipoBultoId,
-        token,
+        tokenFinal, // USAR TOKEN FINAL
       );
 
       if (nuevoBulto.bultoId != 0) {
@@ -225,14 +233,18 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
 
     setState(() => _isLoadingLineas = true);
     try {
-      final token = Provider.of<ProductProvider>(context, listen: false).token;
-      final almacenId = Provider.of<ProductProvider>(context, listen: false).almacen.almacenId;
+      final productProvider = Provider.of<ProductProvider>(context, listen: false);
+      // USAR TOKEN DEL PIN SI ESTÁ DISPONIBLE
+      final tokenPin = productProvider.tokenPin;
+      final tokenFinal = tokenPin.isNotEmpty ? tokenPin : token;
+      
+      final almacenId = productProvider.almacen.almacenId;
       
       final ordenCompleta = await _pickingServices.getLineasOrder(
         context, 
         orden.pickId, 
         almacenId, 
-        token
+        tokenFinal // USAR TOKEN FINAL
       ) as OrdenPicking?;
 
       if (ordenCompleta != null) {
@@ -318,6 +330,10 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
     
     try {
       final provider = Provider.of<ProductProvider>(context, listen: false);  
+      // USAR TOKEN DEL PIN SI ESTÁ DISPONIBLE
+      final tokenPin = provider.tokenPin;
+      final tokenFinal = tokenPin.isNotEmpty ? tokenPin : token;
+      
       final productos = await ProductServices().getProductByName(
         context, 
         '', 
@@ -325,7 +341,7 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
         provider.almacen.almacenId.toString(), 
         value, 
         '0', 
-        provider.token
+        tokenFinal // USAR TOKEN FINAL
       );
       
       if (productos.isEmpty) {
@@ -385,7 +401,7 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
             _bultoVirtual!.bultoId,
             _bultoVirtual!.contenido[index].pickLineaId,
             _bultoVirtual!.contenido[index].cantidad + 1,
-            token,
+            tokenFinal, // USAR TOKEN FINAL
           );
         }
         
@@ -412,7 +428,7 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
             _bultoVirtual!.bultoId,
             linea.pickLineaId,
             1,
-            token,
+            tokenFinal, // USAR TOKEN FINAL
           );
         }
         
@@ -479,13 +495,17 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
     
     if (_bultoVirtual?.bultoId != null && _bultoVirtual!.bultoId != 0) {
       try {
+        // USAR TOKEN DEL PIN SI ESTÁ DISPONIBLE
+        final tokenPin = Provider.of<ProductProvider>(context, listen: false).tokenPin;
+        final tokenFinal = tokenPin.isNotEmpty ? tokenPin : token;
+        
         await EntregaServices().patchItemBulto(
           context,
           entrega.entregaId,
           _bultoVirtual!.bultoId,
           pickLineaId,
           0,
-          token,
+          tokenFinal, // USAR TOKEN FINAL
         );
         
         setState(() {
@@ -610,13 +630,17 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
 
     if (_bultoVirtual?.bultoId != null && _bultoVirtual!.bultoId != 0) {
       try {
+        // USAR TOKEN DEL PIN SI ESTÁ DISPONIBLE
+        final tokenPin = Provider.of<ProductProvider>(context, listen: false).tokenPin;
+        final tokenFinal = tokenPin.isNotEmpty ? tokenPin : token;
+        
         await EntregaServices().patchItemBulto(
           context,
           entrega.entregaId,
           _bultoVirtual!.bultoId,
           item.pickLineaId,
           item.cantidad,
-          token,
+          tokenFinal, // USAR TOKEN FINAL
         );
       } catch (e) {
         Carteles.showDialogs(context, 'Error al actualizar cantidad', false, false, false);
@@ -634,11 +658,15 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
 
     setState(() => _isLoadingLineas = true);
     try {
+      // USAR TOKEN DEL PIN SI ESTÁ DISPONIBLE
+      final tokenPin = Provider.of<ProductProvider>(context, listen: false).tokenPin;
+      final tokenFinal = tokenPin.isNotEmpty ? tokenPin : token;
+      
       final items = await EntregaServices().getItemsBulto(
         context,
         entrega.entregaId,
         bulto.bultoId,
-        token,
+        tokenFinal, // USAR TOKEN FINAL
       );
 
       final itemsActualizados = items.map((item) {
@@ -712,12 +740,16 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
         const SnackBar(content: Text('Imprimiendo detalle de entrega...')),
       );
 
+      // USAR TOKEN DEL PIN SI ESTÁ DISPONIBLE
+      final tokenPin = Provider.of<ProductProvider>(context, listen: false).tokenPin;
+      final tokenFinal = tokenPin.isNotEmpty ? tokenPin : token;
+
       // Imprimir detalle del bulto virtual (que representa la entrega completa)
       await EntregaServices().imprimirDetalle(
         context,
         _bultoVirtual!.bultoId,
         Provider.of<ProductProvider>(context, listen: false).almacen.almacenId,
-        token,
+        tokenFinal, // USAR TOKEN FINAL
       );
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -914,12 +946,16 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
     }
     
     try {
+      // USAR TOKEN DEL PIN SI ESTÁ DISPONIBLE
+      final tokenPin = Provider.of<ProductProvider>(context, listen: false).tokenPin;
+      final tokenFinal = tokenPin.isNotEmpty ? tokenPin : token;
+      
       final resultado = await EntregaServices().verificarEntrega(
         context, 
         entrega.entregaId, 
         _bultoVirtual!.bultoId, 
         verificacionParcial, 
-        token
+        tokenFinal // USAR TOKEN FINAL
       );
       
       if (!resultado) {
@@ -937,7 +973,7 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
             modoEnvios: modoEnvios,
             transportistas: transportistas,
             empresasEnvio: empresasEnvio,
-            token: token,
+            token: tokenFinal, // USAR TOKEN FINAL
           ),
         ),
       ).then((_) {
@@ -955,6 +991,10 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
     });
 
     try {
+      // USAR TOKEN DEL PIN SI ESTÁ DISPONIBLE
+      final tokenPin = Provider.of<ProductProvider>(context, listen: false).tokenPin;
+      final tokenFinal = tokenPin.isNotEmpty ? tokenPin : token;
+      
       await EntregaServices().putBultoEntrega(
         context,
         entrega.entregaId,
@@ -974,7 +1014,7 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
         false,
         _bultoVirtual!.nroBulto,
         _bultoVirtual!.totalBultos,
-        token,
+        tokenFinal, // USAR TOKEN FINAL
       );
 
       await EntregaServices().patchBultoEstado(
@@ -982,13 +1022,13 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
         entrega.entregaId,
         _bultoVirtual!.bultoId,
         'CERRADO',
-        token,
+        tokenFinal, // USAR TOKEN FINAL
       );
 
       await EntregaServices().cerrarEntrega(
         context,
         entrega.entregaId,
-        token,
+        tokenFinal, // USAR TOKEN FINAL
       );
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1004,6 +1044,22 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
         });
       }
 
+      // VERIFICAR SI ES MOSTRADOR PARA DETERMINAR EL FLUJO
+      final esMostrador = _ordenes.any((orden) => orden.envio == false);
+      
+      if (esMostrador) {
+        // SI ES MOSTRADOR, VOLVER A SELECCION_ORDENES_PAGE Y RESETEAR EL PIN
+        final productProvider = Provider.of<ProductProvider>(context, listen: false);
+        productProvider.setTokenPin('');
+        productProvider.setUserIdPin(0);
+        Navigator.of(context).popUntil((route) => route.settings.name == '/expedicionPaquetes');
+        GoRouter.of(context).pushReplacement('/expedicionPaquetes');
+      } else {
+        // SI NO ES MOSTRADOR, CONTINUAR FLUJO NORMAL
+        Navigator.of(context).popUntil((route) => route.settings.name == '/expedicionPaquetes');
+        GoRouter.of(context).pushReplacement('/expedicionPaquetes');
+      }
+
     } catch (e) {
       Carteles.showDialogs(context, 'Error al finalizar la entrega: ${e.toString()}', false, false, false);
       if (mounted) {
@@ -1011,9 +1067,6 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
           _procesandoCierre = false;
         });
       }
-    } finally {
-      Navigator.of(context).popUntil((route) => route.settings.name == '/expedicionPaquetes');
-      GoRouter.of(context).pushReplacement('/expedicionPaquetes');
     }
   }
 
