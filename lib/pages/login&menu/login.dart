@@ -262,7 +262,7 @@ class _LoginState extends State<Login> {
                                             style: const TextStyle(color: Colors.black),
                                           ),
                                           const Text(
-                                            '2025.10.31+2',
+                                            '2025.10.31+3',
                                             style: TextStyle(color: Colors.black),
                                           ),
                                         ],
@@ -469,7 +469,7 @@ class _LoginState extends State<Login> {
                                                 style: const TextStyle(color: Colors.black),
                                               ),
                                               const Text(
-                                                '2025.10.31+2',
+                                                '2025.10.31+3',
                                                 style: TextStyle(color: Colors.black),
                                               ),
                                             ],

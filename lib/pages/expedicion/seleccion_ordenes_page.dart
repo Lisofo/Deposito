@@ -26,6 +26,7 @@ class SeleccionOrdenesScreen extends StatefulWidget {
 class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
   final List<OrdenPicking> _ordenesSeleccionadas = [];
   late List<OrdenPicking> _ordenes = [];
+  late List<OrdenPicking> _ordenesVisibles = []; // Nueva lista para órdenes visibles
   late Entrega entrega = Entrega.empty();
   final PickingServices _pickingServices = PickingServices();
   late Almacen almacen = Almacen.empty();
@@ -64,7 +65,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
 
   @override
   void dispose() {
-    _cancelarTimerRefresh(); // Cancelar el timer al destruir la página
+    // _cancelarTimerRefresh(); // Cancelar el timer al destruir la página
     _clienteController.dispose();
     _numeroDocController.dispose();
     _pickIDController.dispose();
@@ -118,13 +119,14 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
         almacen.almacenId,
         token, 
         tipo: 'V,P,TS',
-        estado: _groupValue != -1 ? ['PREPARADO, PAPEL', 'EMBALAJE', 'E. PARCIAL, PAPEL'][_groupValue] : null,
+        // estado: _groupValue != -1 ? ['PREPARADO, PAPEL', 'EMBALAJE', 'E. PARCIAL, PAPEL'][_groupValue] : null,
+        estado: 'PREPARADO, PAPEL, EMBALAJE',
         fechaDateDesde: fechaDesde,
         fechaDateHasta: fechaHasta,
         nombre: cliente,
         numeroDocumento: numeroDocumento,
         pickId: int.tryParse(pickId.toString()),
-        envio: !_filtroMostrador,
+        // envio: !_filtroMostrador,
       );
 
       // 2. Aplicar filtro de mostrador si está activo
@@ -145,6 +147,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
         setState(() {
           _ordenes = ordenesFiltradas; // Usar las órdenes filtradas
           _ordenesSeleccionadas.clear(); // Limpiar selecciones anteriores
+          _ordenesVisibles.clear(); // Limpiar órdenes visibles
           
           // 4. Llenar el mapa de índices
           _lineaIndexMap.clear();
@@ -160,6 +163,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
             for (var orden in _ordenes) {
               if (entrega.pickIds.contains(orden.pickId)) {
                 _ordenesSeleccionadas.add(orden);
+                _ordenesVisibles.add(orden); // Agregar a órdenes visibles
               }
             }
             
@@ -209,12 +213,12 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
             style: const TextStyle(color: Colors.white),
           ),
           iconTheme: IconThemeData(color: colors.onPrimary),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.filter_alt_off),
-              tooltip: 'Limpiar filtros',
-              onPressed: _limpiarFiltros,
-            ),
+          actions: const [
+            // IconButton(
+            //   icon: const Icon(Icons.filter_alt_off),
+            //   tooltip: 'Limpiar filtros',
+            //   onPressed: _limpiarFiltros,
+            // ),
           ],
         ),
         body: _isLoading ? const Center(child: CircularProgressIndicator())
@@ -224,80 +228,80 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
               child: Column(
                 children: [
                   // Fila que contiene FiltrosExpedicion + Mostrador/Switch
-                  Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: Row(
-                      children: [
-                        // FiltrosExpedicion expandido
-                        Expanded(
-                          child: FiltrosExpedicion(
-                            onSearch: (fechaDesde, fechaHasta, cliente, numeroDocumento, pickId) {
-                              _loadData(
-                                fechaDesde: fechaDesde,
-                                fechaHasta: fechaHasta,
-                                cliente: cliente,
-                                numeroDocumento: numeroDocumento,
-                                pickId: pickId
-                              );
-                            },
-                            onReset: _limpiarFiltros,
-                            clienteController: _clienteController,
-                            numeroDocController: _numeroDocController,
-                            pickIDController: _pickIDController,
-                            isFilterExpanded: _isFilterExpanded,
-                            onToggleFilter: (expanded) {
-                              setState(() {
-                                _isFilterExpanded = expanded;
-                              });
-                              _mantenerFocoScanner();
-                            },
-                            cantidadDeOrdenes: _ordenes.length,
-                          ),
-                        ),
+                  // Padding(
+                  //   padding: const EdgeInsets.all(12.0),
+                  //   child: Row(
+                  //     children: [
+                  //       // FiltrosExpedicion expandido
+                  //       Expanded(
+                  //         child: FiltrosExpedicion(
+                  //           onSearch: (fechaDesde, fechaHasta, cliente, numeroDocumento, pickId) {
+                  //             _loadData(
+                  //               fechaDesde: fechaDesde,
+                  //               fechaHasta: fechaHasta,
+                  //               cliente: cliente,
+                  //               numeroDocumento: numeroDocumento,
+                  //               pickId: pickId
+                  //             );
+                  //           },
+                  //           onReset: _limpiarFiltros,
+                  //           clienteController: _clienteController,
+                  //           numeroDocController: _numeroDocController,
+                  //           pickIDController: _pickIDController,
+                  //           isFilterExpanded: _isFilterExpanded,
+                  //           onToggleFilter: (expanded) {
+                  //             setState(() {
+                  //               _isFilterExpanded = expanded;
+                  //             });
+                  //             _mantenerFocoScanner();
+                  //           },
+                  //           cantidadDeOrdenes: _ordenes.length,
+                  //         ),
+                  //       ),
                         
-                        // Separador visual
-                        Container(
-                          width: 1,
-                          height: 30,
-                          margin: const EdgeInsets.symmetric(horizontal: 16),
-                          color: Colors.grey[300],
-                        ),
+                  //       // Separador visual
+                  //       Container(
+                  //         width: 1,
+                  //         height: 30,
+                  //         margin: const EdgeInsets.symmetric(horizontal: 16),
+                  //         color: Colors.grey[300],
+                  //       ),
                         
-                        // Switch de Mostrador
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              _filtroMostrador ? 'Mostrador' : 'Envío',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.grey[700],
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Switch(
-                              value: _filtroMostrador,
-                              onChanged: _onFiltroMostradorChanged,
-                              activeColor: colors.primary,
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
+                  //       // Switch de Mostrador
+                  //       Row(
+                  //         mainAxisSize: MainAxisSize.min,
+                  //         children: [
+                  //           Text(
+                  //             _filtroMostrador ? 'Mostrador' : 'Envío',
+                  //             style: TextStyle(
+                  //               fontSize: 14,
+                  //               fontWeight: FontWeight.w500,
+                  //               color: Colors.grey[700],
+                  //             ),
+                  //           ),
+                  //           const SizedBox(width: 8),
+                  //           Switch(
+                  //             value: _filtroMostrador,
+                  //             onChanged: _onFiltroMostradorChanged,
+                  //             activeColor: colors.primary,
+                  //           ),
+                  //         ],
+                  //       ),
+                  //     ],
+                  //   ),
+                  // ),
                   
-                  CustomSegmentedControl(
-                    groupValue: _groupValue,
-                    onValueChanged: (newValue) {
-                      setState(() {
-                        _groupValue = newValue;
-                        _loadData();
-                      });
-                    },
-                    options: SegmentedOptions.expedicionStates,
-                    usePickingStyle: true,
-                  ),
+                  // CustomSegmentedControl(
+                  //   groupValue: _groupValue,
+                  //   onValueChanged: (newValue) {
+                  //     setState(() {
+                  //       _groupValue = newValue;
+                  //       _loadData();
+                  //     });
+                  //   },
+                  //   options: SegmentedOptions.expedicionStates,
+                  //   usePickingStyle: true,
+                  // ),
                   
                   Expanded(
                     child: _ordenes.isEmpty
@@ -365,14 +369,36 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
                             )
                           ),
                           Expanded(
-                            child: ListView.builder(
-                              controller: _scrollController,
-                              itemCount: _ordenes.length,
-                              itemBuilder: (context, index) {
-                                final orden = _ordenes[index];
-                                return _buildOrdenItem(orden, index);
-                              },
-                            ),
+                            child: _ordenesVisibles.isEmpty
+                              ? const Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.visibility_off,
+                                        size: 64,
+                                        color: Colors.grey,
+                                      ),
+                                      SizedBox(height: 16),
+                                      Text(
+                                        'Escanea órdenes para agregarlas a la entrega',
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : ListView.builder(
+                                  controller: _scrollController,
+                                  itemCount: _ordenesVisibles.length,
+                                  itemBuilder: (context, index) {
+                                    final orden = _ordenesVisibles[index];
+                                    return _buildOrdenItem(orden, index);
+                                  },
+                                ),
                           ),
                         ],
                       ),
@@ -442,6 +468,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
             setState(() {
               if (isSelected) {
                 _ordenesSeleccionadas.remove(orden);
+                _ordenesVisibles.remove(orden); // Remover de órdenes visibles al hacer tap
               } else {
                 _ordenesSeleccionadas.add(orden);
               }
@@ -464,6 +491,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
                             _ordenesSeleccionadas.add(orden);
                           } else {
                             _ordenesSeleccionadas.remove(orden);
+                            _ordenesVisibles.remove(orden); // Remover de órdenes visibles al deseleccionar
                           }
                         });
                         // Mantener foco después de cambio en checkbox
@@ -642,6 +670,11 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
       // Verificar si la orden ya está seleccionada para evitar duplicados
       if (!_ordenesSeleccionadas.contains(ordenEncontrada)) {
         _ordenesSeleccionadas.add(ordenEncontrada);
+      }
+
+      // Agregar a órdenes visibles si no está ya
+      if (!_ordenesVisibles.contains(ordenEncontrada)) {
+        _ordenesVisibles.add(ordenEncontrada);
       }
 
       WidgetsBinding.instance.addPostFrameCallback((_) {
