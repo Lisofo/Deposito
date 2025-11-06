@@ -219,6 +219,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
                 const Text('Por favor, ingrese su PIN para comenzar la entrega.'),
                 const SizedBox(height: 16),
                 TextFormField(
+                  autofocus: true,
                   obscureText: true,
                   onChanged: (value) {
                     pin = value;

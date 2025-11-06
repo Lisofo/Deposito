@@ -844,7 +844,9 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
                         itemCount: itemsParaMostrar.length,
                         itemBuilder: (context, index) {
                           final item = itemsParaMostrar[index];
-                          
+                          String foto = '';
+                          var splittedFoto = item.fotosUrl.split(';');
+                          foto = splittedFoto[0];
                           // Determinar si es línea padre, hija o normal
                           final bool esLineaPadre = item.tipoLineaAdicional == "C" && 
                               (item.lineaIdOriginal == null || item.lineaIdOriginal == 0);
@@ -901,37 +903,27 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // Imagen del producto (solo para hijas y normales)
-                                  if (esLineaHija || esLineaNormal)
-                                    GestureDetector(
-                                      onTap: _entregaFinalizada ? null : () => _navigateToSimpleProductPage(item),
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(6),
-                                        child: Container(
-                                          width: 60,
-                                          height: 60,
-                                          margin: const EdgeInsets.only(right: 12),
-                                          child: Image.network(
-                                            item.fotosUrl,
-                                            fit: BoxFit.cover,
-                                            errorBuilder: (context, error, stackTrace) {
-                                              return Container(
-                                                color: Colors.grey[200],
-                                                child: const Icon(Icons.inventory_2, color: Colors.grey),
-                                              );
-                                            },
-                                          ),
+                                  GestureDetector(
+                                    onTap: _entregaFinalizada ? null : () => _navigateToSimpleProductPage(item),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(6),
+                                      child: Container(
+                                        width: 60,
+                                        height: 60,
+                                        margin: const EdgeInsets.only(right: 12),
+                                        child: Image.network(
+                                          foto,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (context, error, stackTrace) {
+                                            return Container(
+                                              color: Colors.grey[200],
+                                              child: const Icon(Icons.inventory_2, color: Colors.grey),
+                                            );
+                                          },
                                         ),
                                       ),
-                                    )
-                                  else if (esLineaPadre)
-                                    Container(
-                                      width: 60,
-                                      height: 60,
-                                      margin: const EdgeInsets.only(right: 12),
-                                      child: const Icon(Icons.inventory, size: 40, color: Colors.black),
                                     ),
-                                  
+                                  ),
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,

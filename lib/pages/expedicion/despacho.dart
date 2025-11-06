@@ -101,8 +101,8 @@ class DespachoPageState extends State<DespachoPage> {
           agencias.add(forma);
         }
       }
-      transportistas.sort((a, b) => a.descripcion!.compareTo(b.descripcion.toString()));
-      agencias.sort((a, b) => a.descripcion!.compareTo(b.descripcion.toString()));
+      // transportistas.sort((a, b) => a.descripcion!.compareTo(b.descripcion.toString()));
+      // agencias.sort((a, b) => a.descripcion!.compareTo(b.descripcion.toString()));
 
       // Cargar bultos cerrados
       await _cargarBultos();
@@ -166,7 +166,7 @@ class DespachoPageState extends State<DespachoPage> {
   }
 
   bool _esBultoImprimible(Bulto bulto) {
-    return (bulto.estado == 'CERRADO' || bulto.estado == 'RETIRADO') && bulto.retiroId != null;
+    return bulto.estado == 'RETIRADO' && bulto.retiroId != null;
   }
 
   Future<void> _mantenerFocoScanner() async {
@@ -347,6 +347,7 @@ class DespachoPageState extends State<DespachoPage> {
                   _groupValueBultos = newValue;
                   _cargarBultos(agenciaTrId: transportistaSeleccionado?.formaEnvioId);
                 });
+                _mantenerFocoScanner();
               },
               options: SegmentedOptions.bultosStates,
               usePickingStyle: true,
@@ -453,10 +454,16 @@ class DespachoPageState extends State<DespachoPage> {
                       onPressed: () => _verContenidoEntrega(bulto),
                       child: const Text('Ver contenido de la entrega')
                     ),
-                    Checkbox(
-                      value: isSelected,
-                      onChanged: (_) => _toggleSeleccionBulto(bulto),
-                    ),
+                    if (_groupValueBultos != 4)
+                      Checkbox(
+                        value: isSelected,
+                        onChanged: (_) => _toggleSeleccionBulto(bulto),
+                      ),
+                    if (_groupValueBultos == 4) 
+                      TextButton(
+                        onPressed: () => _mostrarDialogoCambioAgencia(bulto),
+                        child: const Text('Cambiar agencia')
+                      )
                   ],
                 ),
             ],
@@ -464,6 +471,213 @@ class DespachoPageState extends State<DespachoPage> {
         ),
       ),
     );
+  }
+
+  // Método para mostrar el diálogo de cambio de agencia/transportista
+  void _mostrarDialogoCambioAgencia(Bulto bulto) {
+    FormaEnvio? transportistaSeleccionado = transportistas.firstWhere(
+      (t) => t.formaEnvioId == bulto.agenciaTrId,
+      orElse: () => FormaEnvio.empty(),
+    );
+    
+    FormaEnvio? agenciaSeleccionada = agencias.firstWhere(
+      (a) => a.formaEnvioId == bulto.agenciaUFId,
+      orElse: () => FormaEnvio.empty(),
+    );
+
+    FormaEnvio? nuevoTransportista = transportistaSeleccionado;
+    FormaEnvio? nuevaAgencia = agenciaSeleccionada;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setStateDialog) {
+          return AlertDialog(
+            title: const Text('Cambiar Agencia/Transportista'),
+            content: SingleChildScrollView(
+              child: SizedBox(
+                width: MediaQuery.of(context).size.width > 600 ? MediaQuery.of(context).size.width * 0.4 : MediaQuery.of(context).size.width * 0.8,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    DropdownSearch<FormaEnvio>(
+                      popupProps: const PopupProps.menu(
+                        showSearchBox: true,
+                        searchDelay: Duration.zero,
+                      ),
+                      items: transportistas,
+                      itemAsString: (FormaEnvio item) => item.descripcion.toString(),
+                      selectedItem: nuevoTransportista?.formaEnvioId == 0 ? null : nuevoTransportista,
+                      onChanged: (FormaEnvio? newValue) {
+                        setStateDialog(() {
+                          nuevoTransportista = newValue;
+                        });
+                      },
+                      dropdownDecoratorProps: const DropDownDecoratorProps(
+                        dropdownSearchDecoration: InputDecoration(
+                          labelText: "Transportista",
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownSearch<FormaEnvio>(
+                      popupProps: const PopupProps.menu(
+                        showSearchBox: true,
+                        searchDelay: Duration.zero,
+                      ),
+                      items: agencias,
+                      itemAsString: (FormaEnvio item) => item.descripcion.toString(),
+                      selectedItem: nuevaAgencia?.formaEnvioId == 0 ? null : nuevaAgencia,
+                      onChanged: (FormaEnvio? newValue) {
+                        setStateDialog(() {
+                          nuevaAgencia = newValue;
+                        });
+                      },
+                      dropdownDecoratorProps: const DropDownDecoratorProps(
+                        dropdownSearchDecoration: InputDecoration(
+                          labelText: "Agencia",
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('CANCELAR'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _confirmarCambioAgencia(bulto, nuevoTransportista, nuevaAgencia);
+                },
+                child: const Text('ACEPTAR'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  // Método para confirmar el cambio de agencia/transportista
+  void _confirmarCambioAgencia(Bulto bulto, FormaEnvio? nuevoTransportista, FormaEnvio? nuevaAgencia) async {
+    bool hayCambios = (nuevoTransportista?.formaEnvioId != bulto.agenciaTrId) ||
+        (nuevaAgencia?.formaEnvioId != bulto.agenciaUFId);
+
+    if (!hayCambios) {
+      Carteles.showDialogs(context, 'No se realizaron cambios', false, false, false);
+      return;
+    }
+
+    String mensajeCambios = 'Se cambiará:\n';
+    
+    if (nuevoTransportista?.formaEnvioId != bulto.agenciaTrId) {
+      String transportistaActual = _getNombreTransportista(bulto.agenciaTrId);
+      String transportistaNuevo = nuevoTransportista?.descripcion ?? 'No asignado';
+      mensajeCambios += '• Transportista: $transportistaActual → $transportistaNuevo\n';
+    }
+    
+    if (nuevaAgencia?.formaEnvioId != bulto.agenciaUFId) {
+      String agenciaActual = _getNombreAgencia(bulto.agenciaUFId);
+      String agenciaNueva = nuevaAgencia?.descripcion ?? 'No asignado';
+      mensajeCambios += '• Agencia: $agenciaActual → $agenciaNueva\n';
+    }
+    
+    mensajeCambios += '\nEl bulto será marcado como CERRADO.';
+
+    bool confirmado = await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirmar Cambio'),
+        content: Text(mensajeCambios),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('CANCELAR'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('CONFIRMAR'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmado == true) {
+      await _actualizarBultoConNuevaAgencia(bulto, nuevoTransportista, nuevaAgencia);
+    }
+  }
+
+  // Método para actualizar el bulto con los nuevos datos
+  Future<void> _actualizarBultoConNuevaAgencia(
+    Bulto bulto, 
+    FormaEnvio? nuevoTransportista, 
+    FormaEnvio? nuevaAgencia
+  ) async {
+    try {
+      // Primero cambiar el estado a CERRADO
+      final bultoEstadoActualizado = await EntregaServices().patchBultoEstado(
+        context,
+        bulto.entregaId,
+        bulto.bultoId,
+        'CERRADO',
+        token,
+      );
+
+      // Verificar si el cambio de estado fue exitoso
+      if (bultoEstadoActualizado.bultoId != 0 && bultoEstadoActualizado.estado == 'CERRADO') {
+        // Si el cambio de estado fue exitoso, proceder con la actualización de los datos
+        final updatedBulto = await EntregaServices().putBultoEntrega(
+          context,
+          bulto.entregaId,
+          bulto.bultoId,
+          bulto.clienteId ?? 0,
+          bulto.nombreCliente,
+          bulto.modoEnvioId ?? 0,
+          nuevoTransportista?.formaEnvioId ?? bulto.agenciaTrId!,
+          nuevaAgencia?.formaEnvioId ?? bulto.agenciaUFId!,
+          bulto.direccion ?? '',
+          bulto.localidad ?? '',
+          bulto.departamento ?? '',
+          bulto.telefono ?? '',
+          bulto.comentarioEnvio ?? '',
+          bulto.comentario ?? '',
+          bulto.tipoBultoId,
+          bulto.incluyeFactura ?? false,
+          bulto.nroBulto,
+          bulto.totalBultos,
+          token,
+        );
+
+        await EntregaServices().imprimirEtiqueta(
+          context,
+          updatedBulto.bultoId,
+          context.read<ProductProvider>().almacen.almacenId,
+          token
+        );
+
+        if (updatedBulto.bultoId != 0) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Bulto #${bulto.bultoId} actualizado correctamente'),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+
+          // Recargar los datos
+          await _cargarBultos(agenciaTrId: transportistaSeleccionado?.formaEnvioId);
+        } else {
+          Carteles.showDialogs(context, 'Error al actualizar los datos del bulto', false, false, false);
+        }
+      }
+    } catch (e) {
+      Carteles.showDialogs(context, 'Error al actualizar: ${e.toString()}', false, false, false);
+    }
   }
 
   // Método auxiliar para crear cajas de información estilizadas
