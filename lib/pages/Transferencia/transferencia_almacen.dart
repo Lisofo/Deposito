@@ -125,6 +125,17 @@ class _TransferenciaAlmacenPageState extends State<TransferenciaAlmacenPage> {
               // Escaneo de productos (solo si la ubicación ya fue escaneada)
               const SizedBox(height: 20),
               // Lista de productos escaneados (solo si la ubicación ya fue escaneada)
+              if (productosEscaneados.isEmpty)
+                Center(
+                  child: Text(
+                    ubicacionEscaneada
+                        ? 'No hay productos escaneados. Por favor, escanee o busque productos para transferir.'
+                        : 'Por favor, escanee o seleccione una ubicación de origen primero.',
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                ),
+              if (productosEscaneados.isNotEmpty)
+                Text('IMPORTANTE: Indique la cantidad de cada producto escaneado', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: colors.primary)),
               Expanded(
                 child: ListView.builder(
                   itemCount: productosEscaneados.length,
