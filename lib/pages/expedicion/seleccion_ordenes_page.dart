@@ -9,10 +9,8 @@ import 'package:deposito/services/entrega_services.dart';
 import 'package:deposito/services/picking_services.dart';
 import 'package:deposito/services/login_services.dart';
 import 'package:deposito/widgets/carteles.dart';
-import 'package:deposito/widgets/segmented_buttons.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:deposito/widgets/filtros_expedicion.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 import 'package:scroll_to_index/scroll_to_index.dart';
 import 'dart:async';
@@ -27,7 +25,7 @@ class SeleccionOrdenesScreen extends StatefulWidget {
 class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
   final List<OrdenPicking> _ordenesSeleccionadas = [];
   late List<OrdenPicking> _ordenes = [];
-  late List<OrdenPicking> _ordenesVisibles = []; // Nueva lista para órdenes visibles
+  late List<OrdenPicking> ordenesVisibles = []; // Nueva lista para órdenes visibles
   late Entrega entrega = Entrega.empty();
   final PickingServices _pickingServices = PickingServices();
   late Almacen almacen = Almacen.empty();
@@ -154,7 +152,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
         setState(() {
           _ordenes = ordenesFiltradas; // Usar las órdenes filtradas
           _ordenesSeleccionadas.clear(); // Limpiar selecciones anteriores
-          _ordenesVisibles.clear(); // Limpiar órdenes visibles
+          ordenesVisibles.clear(); // Limpiar órdenes visibles
           
           // 4. Llenar el mapa de índices
           _lineaIndexMap.clear();
@@ -170,7 +168,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
             for (var orden in _ordenes) {
               if (entrega.pickIds.contains(orden.pickId)) {
                 _ordenesSeleccionadas.add(orden);
-                _ordenesVisibles.add(orden); // Agregar a órdenes visibles
+                ordenesVisibles.add(orden); // Agregar a órdenes visibles
               }
             }
             
@@ -549,7 +547,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
                             )
                           ),
                           Expanded(
-                            child: _ordenesVisibles.isEmpty
+                            child: ordenesVisibles.isEmpty
                               ? const Center(
                                   child: Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
@@ -573,9 +571,9 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
                                 )
                               : ListView.builder(
                                   controller: _scrollController,
-                                  itemCount: _ordenesVisibles.length,
+                                  itemCount: ordenesVisibles.length,
                                   itemBuilder: (context, index) {
-                                    final orden = _ordenesVisibles[index];
+                                    final orden = ordenesVisibles[index];
                                     return _buildOrdenItem(orden, index);
                                   },
                                 ),
@@ -655,7 +653,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
             setState(() {
               if (isSelected) {
                 _ordenesSeleccionadas.remove(orden);
-                _ordenesVisibles.remove(orden); // Remover de órdenes visibles al hacer tap
+                ordenesVisibles.remove(orden); // Remover de órdenes visibles al hacer tap
               } else {
                 _ordenesSeleccionadas.add(orden);
               }
@@ -678,7 +676,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
                             _ordenesSeleccionadas.add(orden);
                           } else {
                             _ordenesSeleccionadas.remove(orden);
-                            _ordenesVisibles.remove(orden); // Remover de órdenes visibles al deseleccionar
+                            ordenesVisibles.remove(orden); // Remover de órdenes visibles al deseleccionar
                           }
                         });
                         // Mantener foco después de cambio en checkbox
@@ -860,8 +858,8 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
       }
 
       // Agregar a órdenes visibles si no está ya
-      if (!_ordenesVisibles.contains(ordenEncontrada)) {
-        _ordenesVisibles.add(ordenEncontrada);
+      if (!ordenesVisibles.contains(ordenEncontrada)) {
+        ordenesVisibles.add(ordenEncontrada);
       }
 
       WidgetsBinding.instance.addPostFrameCallback((_) {

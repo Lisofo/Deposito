@@ -359,6 +359,11 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
         Carteles.showDialogs(context, 'Producto no encontrado en la orden', false, false, false);
         return;
       }
+
+      if (linea.tipoLineaAdicional == "C" && (linea.lineaIdOriginal == null || linea.lineaIdOriginal == 0)) {
+        Carteles.showDialogs(context, 'Código ingresado no es verificable', false, false, false);
+        return;
+      }
       
       final maxima = _ordenSeleccionada?.modalidad == 'PAPEL' 
           ? linea.cantidadPedida 
@@ -762,9 +767,59 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
     }
   }
 
+  // Método para agrupar líneas de combo (padres e hijas)
+  Map<PickingLinea, List<PickingLinea>> _agruparCombos(List<PickingLinea> lineas) {
+    final Map<PickingLinea, List<PickingLinea>> combos = {};
+    final List<PickingLinea> lineasPadre = [];
+    
+    // Identificar líneas padre
+    for (final linea in lineas) {
+      if (linea.tipoLineaAdicional == "C" && (linea.lineaIdOriginal == null || linea.lineaIdOriginal == 0)) {
+        lineasPadre.add(linea);
+        combos[linea] = [];
+      }
+    }
+    
+    // Asignar hijas a sus padres
+    for (final linea in lineas) {
+      if (linea.tipoLineaAdicional == "C" && linea.lineaIdOriginal != null && linea.lineaIdOriginal != 0) {
+        final padre = lineasPadre.firstWhere(
+          (p) => p.pickLineaId == linea.lineaIdOriginal,
+          orElse: () => PickingLinea.empty(),
+        );
+        if (padre.pickLineaId != 0) {
+          combos[padre]!.add(linea);
+        }
+      }
+    }
+    
+    return combos;
+  }
+
+  // Método para obtener líneas normales (no combos)
+  List<PickingLinea> _obtenerLineasNormales(List<PickingLinea> lineas) {
+    return lineas.where((linea) => linea.tipoLineaAdicional != "C").toList();
+  }
+
   Widget _buildProductosSection() {
     // Limpiar el mapa al reconstruir la sección
     _lineaIndexMap.clear();
+
+    // Obtener líneas agrupadas
+    final lineasNormales = _obtenerLineasNormales(_lineasOrdenSeleccionada);
+    final combosAgrupados = _agruparCombos(_lineasOrdenSeleccionada);
+    
+    // Crear lista de todos los ítems a mostrar (normales + combos agrupados)
+    final List<dynamic> itemsParaMostrar = [];
+    
+    // Agregar líneas normales
+    itemsParaMostrar.addAll(lineasNormales);
+    
+    // Agregar combos agrupados (padre + hijas)
+    combosAgrupados.forEach((padre, hijas) {
+      itemsParaMostrar.add(padre);
+      itemsParaMostrar.addAll(hijas);
+    });
 
     return Card(
       child: Padding(
@@ -786,96 +841,157 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
                       child: ListView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        itemCount: _ordenSeleccionada!.modalidad == 'PAPEL' 
-                            ? _lineasOrdenSeleccionada.length
-                            : _lineasOrdenSeleccionada.where((linea) => linea.cantidadPickeada != 0).length,
+                        itemCount: itemsParaMostrar.length,
                         itemBuilder: (context, index) {
-                          final linea = _ordenSeleccionada!.modalidad == 'PAPEL'
-                              ? _lineasOrdenSeleccionada[index]
-                              : _lineasOrdenSeleccionada.where((linea) => linea.cantidadPickeada != 0).toList()[index];
+                          final item = itemsParaMostrar[index];
                           
-                          // Guardar el índice de esta línea en el mapa
-                          _lineaIndexMap[linea.pickLineaId] = index;
+                          // Determinar si es línea padre, hija o normal
+                          final bool esLineaPadre = item.tipoLineaAdicional == "C" && 
+                              (item.lineaIdOriginal == null || item.lineaIdOriginal == 0);
+                          final bool esLineaHija = item.tipoLineaAdicional == "C" && 
+                              item.lineaIdOriginal != null && item.lineaIdOriginal != 0;
+                          final bool esLineaNormal = !esLineaPadre && !esLineaHija;
                           
-                          final (verificada, maxima) = _getCantidadVerificadaYMaxima(linea.codItem, linea.pickLineaId);
+                          // Para líneas hijas y normales, guardar en el mapa para scroll
+                          if (esLineaHija || esLineaNormal) {
+                            _lineaIndexMap[item.pickLineaId] = index;
+                          }
+                          
+                          // Obtener cantidades verificadas
+                          final (verificada, maxima) = _getCantidadVerificadaYMaxima(item.codItem, item.pickLineaId);
                           final itemVerificado = _bultoVirtual?.contenido.firstWhere(
-                            (item) => item.pickLineaId == linea.pickLineaId,
+                            (bultoItem) => bultoItem.pickLineaId == item.pickLineaId,
                             orElse: () => BultoItem.empty()
                           );
                           
+                          // Para líneas padre, verificar si todas las hijas están completas
+                          bool todasHijasVerificadas = true;
+                          if (esLineaPadre) {
+                            final hijas = combosAgrupados[item] ?? [];
+                            for (final hija in hijas) {
+                              final (verificadaHija, maximaHija) = _getCantidadVerificadaYMaxima(hija.codItem, hija.pickLineaId);
+                              if (verificadaHija < maximaHija) {
+                                todasHijasVerificadas = false;
+                                break;
+                              }
+                            }
+                          }
+                          
+                          // Determinar color de fondo
+                          Color colorFondo = Colors.white;
+                          if (esLineaPadre) {
+                            colorFondo = todasHijasVerificadas ? Colors.green.shade500 : Colors.grey.shade300;
+                          } else if (esLineaHija || esLineaNormal) {
+                            colorFondo = verificada == maxima ? 
+                                Colors.green.shade500 : 
+                                (verificada < maxima && verificada >= 1) ? 
+                                    Colors.yellow.shade300 : 
+                                    Colors.white;
+                          }
+                          
                           return Container(
-                            color: verificada == maxima ? Colors.green.shade500 : (verificada < maxima && verificada >= 1) ? Colors.yellow.shade300 : Colors.white,
+                            color: colorFondo,
                             child: Padding(
-                              padding: const EdgeInsets.all(12),
+                              padding: EdgeInsets.only(
+                                left: esLineaHija ? 24.0 : 12.0, // Sangría para hijas
+                                top: 12,
+                                bottom: 12,
+                                right: 12,
+                              ),
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  GestureDetector(
-                                    onTap: _entregaFinalizada ? null : () => _navigateToSimpleProductPage(linea),
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(6),
-                                      child: Container(
-                                        width: 60,
-                                        height: 60,
-                                        margin: const EdgeInsets.only(right: 12),
-                                        child: Image.network(
-                                          linea.fotosUrl,
-                                          fit: BoxFit.cover,
-                                          errorBuilder: (context, error, stackTrace) {
-                                            return Container(
-                                              color: Colors.grey[200],
-                                              child: const Icon(Icons.inventory_2, color: Colors.grey),
-                                            );
-                                          },
+                                  // Imagen del producto (solo para hijas y normales)
+                                  if (esLineaHija || esLineaNormal)
+                                    GestureDetector(
+                                      onTap: _entregaFinalizada ? null : () => _navigateToSimpleProductPage(item),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(6),
+                                        child: Container(
+                                          width: 60,
+                                          height: 60,
+                                          margin: const EdgeInsets.only(right: 12),
+                                          child: Image.network(
+                                            item.fotosUrl,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (context, error, stackTrace) {
+                                              return Container(
+                                                color: Colors.grey[200],
+                                                child: const Icon(Icons.inventory_2, color: Colors.grey),
+                                              );
+                                            },
+                                          ),
                                         ),
                                       ),
+                                    )
+                                  else if (esLineaPadre)
+                                    Container(
+                                      width: 60,
+                                      height: 60,
+                                      margin: const EdgeInsets.only(right: 12),
+                                      child: const Icon(Icons.inventory, size: 40, color: Colors.black),
                                     ),
-                                  ),
+                                  
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Text(
-                                          '${linea.codItem} - ${linea.descripcion}',
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 14,
+                                        // Título con icono para padre
+                                        if (esLineaPadre)
+                                          Text(
+                                            'COMBO: ${item.descripcion}',
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                              color: Colors.black,
+                                            ),
+                                          )
+                                        else
+                                          Text(
+                                            '${item.codItem} - ${item.descripcion}',
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                            ),
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
                                           ),
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),                                        
+                                        
                                         const SizedBox(height: 6),
-                                        Wrap(
-                                          spacing: 12,
-                                          children: [
-                                            _buildInfoBadge('Pickeado', '${linea.cantidadPickeada}/${linea.cantidadPedida}'),
-                                            _buildInfoBadge('Verificado', '$verificada/$maxima'),
-                                          ],
-                                        ),
+                                        
+                                        // Información de cantidades
+                                        if (esLineaPadre)
+                                          _buildInfoBadge('Completo', todasHijasVerificadas ? 'SÍ' : 'NO')
+                                        else
+                                          Wrap(
+                                            spacing: 12,
+                                            children: [
+                                              _buildInfoBadge('Pickeado', '${item.cantidadPickeada}/${item.cantidadPedida}'),
+                                              _buildInfoBadge('Verificado', '$verificada/$maxima'),
+                                            ],
+                                          ),
                                       ],
                                     ),
                                   ),
-                                  Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      if (!_vistaMonitor && !_entregaFinalizada && itemVerificado != null) ...[
-                                        Column(
-                                          children: [
-                                            IconButton(
-                                              icon: const Icon(Icons.edit, size: 18),
-                                              onPressed: () => _editarCantidadItem(itemVerificado),
-                                              padding: EdgeInsets.zero,
-                                            ),
-                                            IconButton(
-                                              icon: const Icon(Icons.delete, size: 18, color: Colors.red),
-                                              onPressed: () => _eliminarItem(itemVerificado),
-                                              padding: EdgeInsets.zero,
-                                            ),
-                                          ],
+                                  
+                                  // Botones de edición (solo para hijas y normales, no para padre)
+                                  if (!_vistaMonitor && !_entregaFinalizada && 
+                                      itemVerificado != null && itemVerificado.pickLineaId != 0 &&
+                                      (esLineaHija || esLineaNormal))
+                                    Column(
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(Icons.edit, size: 18),
+                                          onPressed: () => _editarCantidadItem(itemVerificado),
+                                          padding: EdgeInsets.zero,
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(Icons.delete, size: 18, color: Colors.red),
+                                          onPressed: () => _eliminarItem(itemVerificado),
+                                          padding: EdgeInsets.zero,
                                         ),
                                       ],
-                                    ],
-                                  ),
+                                    ),
                                 ],
                               ),
                             ),

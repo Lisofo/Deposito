@@ -354,7 +354,7 @@ class _PedidoInternoState extends State<PedidoInterno> {
                       ),
                   ]
                 ],
-              ),            
+              ),
             ],
           ),
         ),

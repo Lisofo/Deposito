@@ -30,6 +30,8 @@ class DespachoPageState extends State<DespachoPage> {
   final TextEditingController _comentarioController = TextEditingController();
   final FocusNode focoDeScanner = FocusNode();
   final TextEditingController textController = TextEditingController();
+  // Controlador para el nuevo campo de texto numérico
+  final TextEditingController _numeroBultoController = TextEditingController();
   String token = '';
   bool isLoading = true;
   int _groupValueBultos = 2; // Default to "Cerrado"
@@ -39,7 +41,7 @@ class DespachoPageState extends State<DespachoPage> {
   void initState() {
     super.initState();
     loadData();
-    _iniciarTimerRefresh(); // Iniciar el timer al cargar la página
+    // _iniciarTimerRefresh(); // Iniciar el timer al cargar la página
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         focoDeScanner.requestFocus();
@@ -49,11 +51,12 @@ class DespachoPageState extends State<DespachoPage> {
 
   @override
   void dispose() {
-    _cancelarTimerRefresh(); // Cancelar el timer al destruir la página
+    // _cancelarTimerRefresh(); // Cancelar el timer al destruir la página
     _retiraController.dispose();
     _comentarioController.dispose();
     focoDeScanner.dispose();
     textController.dispose();
+    _numeroBultoController.dispose(); // Dispose del nuevo controller
     super.dispose();
   }
 
@@ -115,6 +118,7 @@ class DespachoPageState extends State<DespachoPage> {
   Future<void> _cargarBultos({int? agenciaTrId}) async {
     setState(() {
       isLoading = true;
+      bultos = []; // Limpiar la lista inmediatamente
     });
     
     try {
@@ -132,12 +136,21 @@ class DespachoPageState extends State<DespachoPage> {
       );
       
       // Filtrar bultos - excluir los que tienen tipoBultoId = 4
-      bultos = todosBultos.where((bulto) => bulto.tipoBultoId != 4).toList();
+      List<Bulto> bultosFiltrados = todosBultos.where((bulto) => bulto.tipoBultoId != 4).toList();
       
       if (mounted) {
         setState(() {
+          bultos = bultosFiltrados;
           selectedBultos.clear();
         });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          bultos = [];
+          selectedBultos.clear();
+        });
+        Carteles.showDialogs(context, 'Error al cargar bultos: ${e.toString()}', false, false, false);
       }
     } finally {
       if (mounted) {
@@ -156,9 +169,9 @@ class DespachoPageState extends State<DespachoPage> {
     return (bulto.estado == 'CERRADO' || bulto.estado == 'RETIRADO') && bulto.retiroId != null;
   }
 
-  void _mantenerFocoScanner() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
+  Future<void> _mantenerFocoScanner() async {
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (mounted && focoDeScanner.canRequestFocus) {
         focoDeScanner.requestFocus();
       }
     });
@@ -167,24 +180,67 @@ class DespachoPageState extends State<DespachoPage> {
   Future<void> procesarEscaneoBulto(String value) async {
     if (value.isEmpty) return;
     
-    if (_groupValueBultos != 2 && _groupValueBultos != 3) return;
+    // Solo permitir escaneo en estados CERRADO (2) y RETIRADO (3)
+    if (_groupValueBultos != 2 && _groupValueBultos != 3) {
+      Carteles.showDialogs(context, 'Escaneo solo permitido para bultos CERRADOS o RETIRADOS', false, false, false);
+      textController.clear();
+      _mantenerFocoScanner();
+      return;
+    }
 
     try {
-      var bultoEncontrado = bultos.firstWhere((bulto) => bulto.bultoId == int.parse(value));
+      // Convertir y validar el valor escaneado
+      int bultoId = int.parse(value);
       
-      // Verificar que el bulto no sea del tipo 4 antes de agregarlo
-      if (bultoEncontrado.tipoBultoId != 4 && !selectedBultos.contains(bultoEncontrado)) {
-        setState(() {
-          selectedBultos.add(bultoEncontrado);
-        });
-      } else if (bultoEncontrado.tipoBultoId == 4) {
-        Carteles.showDialogs(context, 'Este tipo de bulto no puede ser procesado', false, false, false);
+      // Buscar el bulto en la lista actual
+      var bultoEncontrado = bultos.firstWhere(
+        (bulto) => bulto.bultoId == bultoId,
+        orElse: () => Bulto.empty()
+      );
+      
+      // Si no se encontró el bulto
+      if (bultoEncontrado.bultoId == 0) {
+        Carteles.showDialogs(context, 'Bulto #$bultoId no encontrado en la lista actual', false, false, false);
+        textController.clear();
+        _mantenerFocoScanner();
+        return;
       }
+      
+      // Verificar que el bulto no sea del tipo 4
+      if (bultoEncontrado.tipoBultoId == 4) {
+        Carteles.showDialogs(context, 'Este tipo de bulto no puede ser procesado', false, false, false);
+        textController.clear();
+        _mantenerFocoScanner();
+        return;
+      }
+      
+      // Verificar que no esté ya seleccionado
+      if (selectedBultos.contains(bultoEncontrado)) {
+        Carteles.showDialogs(context, 'Bulto #$bultoId ya está seleccionado', false, false, false);
+        textController.clear();
+        _mantenerFocoScanner();
+        return;
+      }
+      
+      // Agregar a la selección
+      setState(() {
+        selectedBultos.add(bultoEncontrado);
+      });
+      
+      // Feedback visual
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Bulto #$bultoId agregado'),
+          duration: const Duration(seconds: 1),
+        ),
+      );
       
       textController.clear();
       _mantenerFocoScanner();
+      
     } catch (e) {
-      Carteles.showDialogs(context, 'Error al procesar el escaneo', false, false, false);
+      Carteles.showDialogs(context, 'Error al procesar el escaneo: ${e.toString()}', false, false, false);
+      textController.clear();
       _mantenerFocoScanner();
     }
   }
@@ -244,11 +300,16 @@ class DespachoPageState extends State<DespachoPage> {
                 onChanged: (FormaEnvio? newValue) async {
                   setState(() {
                     transportistaSeleccionado = newValue;
+                    isLoading = true; // Mostrar loading inmediatamente
+                    bultos = []; // Limpiar lista
+                    selectedBultos.clear(); // Limpiar selección
                   });
+                  
                   await _cargarBultos(
                     agenciaTrId: newValue?.formaEnvioId
                   );
-                  _mantenerFocoScanner();
+                  
+                  await _mantenerFocoScanner();
                 },
                 dropdownDecoratorProps: const DropDownDecoratorProps(
                   dropdownSearchDecoration: InputDecoration(
@@ -259,6 +320,26 @@ class DespachoPageState extends State<DespachoPage> {
                 compareFn: (item, selectedItem) => item.formaEnvioId == selectedItem.formaEnvioId,
               ),
             ),
+            // Nuevo campo de texto para ingresar número de bulto manualmente
+            // Padding(
+            //   padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+            //   child: TextField(
+            //     controller: _numeroBultoController,
+            //     keyboardType: TextInputType.number,
+            //     decoration: const InputDecoration(
+            //       labelText: 'Ingresar número de bulto',
+            //       border: OutlineInputBorder(),
+            //       prefixIcon: Icon(Icons.numbers),
+            //       hintText: 'Ingrese el ID del bulto',
+            //     ),
+            //     onSubmitted: (value) {
+            //       if (value.isNotEmpty) {
+            //         procesarEscaneoBulto(value);
+            //         _numeroBultoController.clear();
+            //       }
+            //     },
+            //   ),
+            // ),
             CustomSegmentedControl(
               groupValue: _groupValueBultos,
               onValueChanged: (newValue) {
