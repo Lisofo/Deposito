@@ -16,11 +16,13 @@ import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 class TransferenciaUbicacionDestino extends StatefulWidget {
   final UbicacionAlmacen ubicacionOrigen;
   final List<ProductoAAgregar> productosEscaneados; // Cambiado a List<ProductoAAgregar>
+  final VoidCallback? onTransferenciaCompletada;
 
   const TransferenciaUbicacionDestino({
     super.key,
     required this.ubicacionOrigen,
     required this.productosEscaneados,
+    this.onTransferenciaCompletada,
   });
 
   @override
@@ -118,27 +120,12 @@ class _TransferenciaUbicacionDestinoState extends State<TransferenciaUbicacionDe
                 ),
               ),
               // Botón de transferir
-              Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  Switch(
-                    value: enMano,
-                    onChanged: (value) {
-                      ubicacionDestino = UbicacionAlmacen.empty();
-                      setState(() {
-                        enMano = value;
-                      });
-                    }
-                  ),
-                  const Text('Llevar en mano'),
-                  Expanded(
-                    child: EscanerPDA(
-                      onScan: procesarEscaneo,
-                      focusNode: focoDeScanner,
-                      controller: textController
-                    ),
-                  ),
-                ],
+              Expanded(
+                child: EscanerPDA(
+                  onScan: procesarEscaneo,
+                  focusNode: focoDeScanner,
+                  controller: textController
+                ),
               ),  
             ],
           ),
@@ -251,6 +238,11 @@ class _TransferenciaUbicacionDestinoState extends State<TransferenciaUbicacionDe
     statusCode = await _almacenServices.getStatusCode();
     await _almacenServices.resetStatusCode();
     if(statusCode == 1) {
+      // Ejecutar callback para recargar datos en la página anterior
+      if (widget.onTransferenciaCompletada != null) {
+        widget.onTransferenciaCompletada!();
+      }
+      
       Provider.of<ProductProvider>(context, listen: false).setListaDeUbicaciones(await AlmacenServices().getUbicacionDeAlmacen(context, almacen.almacenId, token, visualizacion: 'F'));
       var push = Carteles.showDialogs(context, 'Transferencia completada', true, true, false);
       if(push){

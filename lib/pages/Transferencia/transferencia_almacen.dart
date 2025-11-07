@@ -28,15 +28,20 @@ class _TransferenciaAlmacenPageState extends State<TransferenciaAlmacenPage> {
   late UbicacionAlmacen ubicacionOrigen = UbicacionAlmacen.empty();
   TextEditingController textController = TextEditingController();
   FocusNode focoDeScanner = FocusNode();
-  List<ProductoAAgregar> productosEscaneados = []; // Lista de ProductoAAgregar
+  List<ProductoAAgregar> productosEscaneados = [];
   List<UbicacionAlmacen> listaUbicaciones = [];
-  bool ubicacionEscaneada = false; // Controla si la ubicación ya fue escaneada
+  bool ubicacionEscaneada = false;
   late String valorUbicacion = '';
   List<Product> historial = [];
   late Product selectedProduct = Product.empty();
   late bool camera = false;
   late bool enMano = false;
   late bool hayEnMano = false;
+  final _almacenServices = AlmacenServices();
+  
+  // Nuevas variables de estado
+  bool _modoSeleccionado = false;
+  bool _esModoCarrito = false;
 
   @override
   void initState() {
@@ -74,6 +79,21 @@ class _TransferenciaAlmacenPageState extends State<TransferenciaAlmacenPage> {
     }
   }
 
+  void _seleccionarModo(bool esCarrito) {
+    setState(() {
+      _modoSeleccionado = true;
+      _esModoCarrito = esCarrito;
+    });
+  }
+
+  void _volverASeleccionModo() {
+    setState(() {
+      _modoSeleccionado = false;
+      _esModoCarrito = false;
+      _resetSearch();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
@@ -89,28 +109,77 @@ class _TransferenciaAlmacenPageState extends State<TransferenciaAlmacenPage> {
               backgroundColor: WidgetStatePropertyAll(colors.primary),
             ),
             onPressed: () async {
-              appRouter.pop();
+              if (_modoSeleccionado) {
+                _volverASeleccionModo();
+              } else {
+                appRouter.pop();
+              }
             },
-            icon: const Icon(Icons.arrow_back),
+            icon: Icon(_modoSeleccionado ? Icons.arrow_back : Icons.arrow_back),
           ),
           iconTheme: const IconThemeData(color: Colors.white),
           elevation: 0,
           backgroundColor: colors.primary,
           actions: [
-            IconButton(
-              onPressed: () async {
-                await agregarDesdeDelegate(context);
-              },
-              icon: const Icon(Icons.search)
-            )
+            if (_modoSeleccionado)
+              IconButton(
+                onPressed: () async {
+                  await agregarDesdeDelegate(context);
+                },
+                icon: const Icon(Icons.search)
+              )
           ],
         ),
         body: Padding(
           padding: const EdgeInsets.all(8.0),
-          child: Column(
-            children: [
-              // Escaneo de ubicación de origen
-              UbicacionDropdown(
+          child: _modoSeleccionado ? _buildInterfazTransferencia(colors) : _buildSeleccionModo(colors),
+        ),
+        floatingActionButton: _modoSeleccionado ? _buildSpeedDial(colors) : null,
+      ),
+    );
+  }
+
+  Widget _buildSeleccionModo(ColorScheme colors) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CustomButton(
+            text: 'Transferir al contenedor',
+            onPressed: () => _seleccionarModo(true),
+          ),
+          const SizedBox(height: 20),
+          CustomButton(
+            text: 'Transferir a ubicación final',
+            onPressed: () => _seleccionarModo(false),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInterfazTransferencia(ColorScheme colors) {
+    return Column(
+      children: [
+        // Escaneo de ubicación de origen
+        Row(
+          children: [
+            if (hayEnMano && !_esModoCarrito) ...[
+              Icon(Icons.shopping_basket_outlined, color: colors.primary),
+              Checkbox(
+                value: enMano,
+                onChanged: (value) {
+                  ubicacionOrigen = listaUbicaciones.firstWhere((element) => element.codUbicacion == 'USER${context.read<ProductProvider>().uId}');
+                  setState(() {
+                    ubicacionEscaneada = value!;
+                    enMano = value;
+                  });
+                }
+              ),
+              const SizedBox(width: 10),
+            ],
+            Expanded(
+              child: UbicacionDropdown(
                 listaUbicaciones: listaUbicaciones,
                 selectedItem: ubicacionOrigen.almacenId == 0 ? null : ubicacionOrigen,
                 onChanged: (value) {
@@ -122,125 +191,135 @@ class _TransferenciaAlmacenPageState extends State<TransferenciaAlmacenPage> {
                 enabled: (productosEscaneados.isNotEmpty || enMano) ? false : true,
                 hintText: 'Seleccione ubicación de origen',
               ),
-              // Escaneo de productos (solo si la ubicación ya fue escaneada)
-              const SizedBox(height: 20),
-              // Lista de productos escaneados (solo si la ubicación ya fue escaneada)
-              if (productosEscaneados.isEmpty)
-                Center(
-                  child: Text(
-                    ubicacionEscaneada
-                        ? 'No hay productos escaneados. Por favor, escanee o busque productos para transferir.'
-                        : 'Por favor, escanee o seleccione una ubicación de origen primero.',
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                ),
-              if (productosEscaneados.isNotEmpty)
-                Text('IMPORTANTE: Indique la cantidad de cada producto escaneado', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: colors.primary)),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: productosEscaneados.length,
-                  itemBuilder: (context, index) {
-                    final productoAAgregar = productosEscaneados[index];
-                    return ListTile(
-                      title: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(productoAAgregar.productoAgregado.raiz),
-                          Text(productoAAgregar.productoAgregado.descripcion),
-                        ],
-                      ),
-                      subtitle: Text('Cantidad: ${productoAAgregar.cantidad}'),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.edit, color: Colors.blue),
-                            onPressed: () => _editarCantidad(context, productoAAgregar),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
-                            onPressed: () {
-                              setState(() {
-                                productosEscaneados.removeAt(index);
-                              });
-                            },
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ),
-              EscanerPDA(
-                onScan: procesarEscaneoProducto,
-                focusNode: focoDeScanner,
-                controller: textController
-              ),
-              // Botón para continuar a la siguiente pantalla (solo si la ubicación ya fue escaneada)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  if(hayEnMano)...[
-                    Switch(
-                      value: enMano,
-                      onChanged: (value) {
-                        ubicacionOrigen = listaUbicaciones.firstWhere((element) => element.codUbicacion == 'USER${context.read<ProductProvider>().uId}');
-                        setState(() {
-                          ubicacionEscaneada = value;
-                          enMano = value;
-                        });
-                      }
-                    ),
-                    const Text('Llevar en mano'),
-                  ],
-                ],
-              ),
-            ],
-          ),
-        ),
-        bottomNavigationBar: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (ubicacionEscaneada || enMano)
-              CustomButton(
-                text: 'Continuar',
-                onPressed: () {
-                  if (ubicacionOrigen.almacenId == 0 || productosEscaneados.isEmpty) {
-                    Carteles.showDialogs(context, 'Complete todos los campos para continuar', false, false, false);
-                    return;
-                  }
-                  // Pasar los argumentos a la siguiente pantalla
-                  appRouter.push('/transferencia-destino', extra: {
-                    'ubicacionOrigen': ubicacionOrigen,
-                    'productosEscaneados': productosEscaneados,
-                  });
-                },
-              ),
-          ],
-        ),
-        floatingActionButton: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CustomSpeedDialChild(
-              icon: Icons.restore,
-              backgroundColor: colors.primary,
-              foregroundColor: Colors.white,
-              label: 'Reiniciar',
-              onTap: _resetSearch,
             ),
-            if (camera) ...[
-              CustomSpeedDialChild(
-                icon: Icons.qr_code_scanner_outlined,
-                label: 'Escanear',
-                backgroundColor: colors.primary,
-                foregroundColor: Colors.white,
-                onTap: _scanBarcode,
-              ),
-              const SizedBox(height: 8),
-            ],
           ],
         ),
-      ),
+        
+        const SizedBox(height: 20),
+        
+        // Lista de productos escaneados
+        if (productosEscaneados.isEmpty)
+          Expanded(
+            child: Center(
+              child: Text(
+                ubicacionEscaneada || enMano
+                    ? 'No hay productos escaneados. Por favor, escanee o busque productos para transferir.'
+                    : 'Por favor, escanee o seleccione una ubicación de origen primero.',
+                style: const TextStyle(fontSize: 16),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+        
+        if (productosEscaneados.isNotEmpty) ...[
+          Text(
+            'IMPORTANTE: Indique la cantidad de cada producto escaneado', 
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: colors.primary),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 10),
+          Expanded(
+            child: ListView.builder(
+              itemCount: productosEscaneados.length,
+              itemBuilder: (context, index) {
+                final productoAAgregar = productosEscaneados[index];
+                return Card(
+                  margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                  child: ListTile(
+                    title: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          productoAAgregar.productoAgregado.raiz,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          productoAAgregar.productoAgregado.descripcion,
+                          style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                        ),
+                      ],
+                    ),
+                    subtitle: Text('Cantidad: ${productoAAgregar.cantidad}'),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit, color: Colors.blue),
+                          onPressed: () => _editarCantidad(context, productoAAgregar),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          onPressed: () {
+                            setState(() {
+                              productosEscaneados.removeAt(index);
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+        
+        const SizedBox(height: 10),
+        EscanerPDA(
+          onScan: procesarEscaneoProducto,
+          focusNode: focoDeScanner,
+          controller: textController
+        ),
+
+        // Botón de acción inferior según el modo
+        if ((ubicacionEscaneada || enMano) && productosEscaneados.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: _esModoCarrito 
+                ? CustomButton(
+                    text: 'Transferir al contenedor',
+                    onPressed: () => _transferirAlCarrito(context),
+                  )
+                : CustomButton(
+                    text: 'Continuar a destino',
+                    onPressed: () {
+                      appRouter.push('/transferencia-destino', extra: {
+                        'ubicacionOrigen': ubicacionOrigen,
+                        'productosEscaneados': productosEscaneados,
+                        'onTransferenciaCompletada': () {
+                          // Recargar datos después de la transferencia
+                          cargarDatos();
+                        },
+                      });
+                    },
+                  ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildSpeedDial(ColorScheme colors) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        CustomSpeedDialChild(
+          icon: Icons.restore,
+          backgroundColor: colors.primary,
+          foregroundColor: Colors.white,
+          label: 'Reiniciar',
+          onTap: _resetSearch,
+        ),
+        if (camera) ...[
+          CustomSpeedDialChild(
+            icon: Icons.qr_code_scanner_outlined,
+            label: 'Escanear',
+            backgroundColor: colors.primary,
+            foregroundColor: Colors.white,
+            onTap: _scanBarcode,
+          ),
+          const SizedBox(height: 8),
+        ],
+      ],
     );
   }
 
@@ -248,6 +327,7 @@ class _TransferenciaAlmacenPageState extends State<TransferenciaAlmacenPage> {
     ubicacionOrigen = UbicacionAlmacen.empty();
     productosEscaneados = [];
     ubicacionEscaneada = false;
+    enMano = false;
     focoDeScanner.requestFocus();
     setState(() {});
   }
@@ -259,17 +339,14 @@ class _TransferenciaAlmacenPageState extends State<TransferenciaAlmacenPage> {
     );
     
     if (producto != null) {
-      // Verificar si el producto ya está en la lista
       final productoExistente = productosEscaneados.firstWhere(
         (p) => p.productoAgregado.raiz == producto.raiz,
         orElse: () => ProductoAAgregar(productoAgregado: Product.empty(), cantidad: 0),
       );
   
       if (productoExistente.productoAgregado.raiz != '') {
-        // Si el producto ya está en la lista, incrementar la cantidad
         productoExistente.cantidad += 1;
       } else {
-        // Si el producto no está en la lista, agregarlo con cantidad 1
         productosEscaneados.add(ProductoAAgregar(productoAgregado: producto, cantidad: 1));
       }
   
@@ -277,7 +354,6 @@ class _TransferenciaAlmacenPageState extends State<TransferenciaAlmacenPage> {
         selectedProduct = producto;
       });
   
-      // Opcional: Limpiar el campo de texto y solicitar el foco nuevamente
       textController.clear();
       await Future.delayed(const Duration(milliseconds: 100));
       focoDeScanner.requestFocus();
@@ -290,14 +366,13 @@ class _TransferenciaAlmacenPageState extends State<TransferenciaAlmacenPage> {
 
   Future<void> procesarEscaneoProducto(String value) async {
     if (value.isNotEmpty) {
-      if (!ubicacionEscaneada) {
-        // Si la ubicación no ha sido escaneada, procesar como ubicación
+      if (!ubicacionEscaneada && !enMano) {
         try {
           final ubicacionEncontrada = listaUbicaciones.firstWhere((element) => element.codUbicacion == value);
           setState(() {
             ubicacionOrigen = ubicacionEncontrada;
             valorUbicacion = ubicacionEncontrada.codUbicacion;
-            ubicacionEscaneada = true; // Marca la ubicación como escaneada
+            ubicacionEscaneada = true;
           });
           textController.clear();
           await Future.delayed(const Duration(milliseconds: 100));
@@ -306,20 +381,16 @@ class _TransferenciaAlmacenPageState extends State<TransferenciaAlmacenPage> {
           Carteles.showDialogs(context, 'Ubicación no encontrada', false, false, false);
         }
       } else {
-        // Si la ubicación ya fue escaneada, procesar como producto
         final productos = await ProductServices().getProductByName(context, '', '2', almacen.almacenId.toString(), value, '0', token);
         if (productos.isNotEmpty) {
           final producto = productos[0];
-          // Verificar si el producto ya está en la lista
           final productoExistente = productosEscaneados.firstWhere(
             (p) => p.productoAgregado.raiz == producto.raiz,
             orElse: () => ProductoAAgregar(productoAgregado: Product.empty(), cantidad: 0),
           );
           if (productoExistente.productoAgregado.raiz != '') {
-            // Si el producto ya está en la lista, incrementar la cantidad
             productoExistente.cantidad += 1;
           } else {
-            // Si el producto no está en la lista, agregarlo con cantidad 1
             productosEscaneados.add(ProductoAAgregar(productoAgregado: producto, cantidad: 1));
           }
           setState(() {});
@@ -372,7 +443,6 @@ class _TransferenciaAlmacenPageState extends State<TransferenciaAlmacenPage> {
   }
 
   Future<void> _scanBarcode() async {
-    //Esto es para la camara del cel
     final code = await SimpleBarcodeScanner.scanBarcode(
       context,
       lineColor: '#FFFFFF',
@@ -382,14 +452,13 @@ class _TransferenciaAlmacenPageState extends State<TransferenciaAlmacenPage> {
     );
     if (code == '-1') return;
     if (code != '-1') {
-      if (!ubicacionEscaneada) {
-        // Si la ubicación no ha sido escaneada, procesar como ubicación
+      if (!ubicacionEscaneada && !enMano) {
         try {
           final ubicacionEncontrada = listaUbicaciones.firstWhere((element) => element.codUbicacion == code);
           setState(() {
             ubicacionOrigen = ubicacionEncontrada;
             valorUbicacion = ubicacionEncontrada.codUbicacion;
-            ubicacionEscaneada = true; // Marca la ubicación como escaneada
+            ubicacionEscaneada = true;
           });
           textController.clear();
           await Future.delayed(const Duration(milliseconds: 100));
@@ -398,20 +467,16 @@ class _TransferenciaAlmacenPageState extends State<TransferenciaAlmacenPage> {
           Carteles.showDialogs(context, 'Ubicación no encontrada', false, false, false);
         }
       } else {
-        // Si la ubicación ya fue escaneada, procesar como producto
         final productos = await ProductServices().getProductByName(context, '', '2', almacen.almacenId.toString(), code.toString(), '0', token);
         if (productos.isNotEmpty) {
           final producto = productos[0];
-          // Verificar si el producto ya está en la lista
           final productoExistente = productosEscaneados.firstWhere(
             (p) => p.productoAgregado.raiz == producto.raiz,
             orElse: () => ProductoAAgregar(productoAgregado: Product.empty(), cantidad: 0),
           );
           if (productoExistente.productoAgregado.raiz != '') {
-            // Si el producto ya está en la lista, incrementar la cantidad
             productoExistente.cantidad += 1;
           } else {
-            // Si el producto no está en la lista, agregarlo con cantidad 1
             productosEscaneados.add(ProductoAAgregar(productoAgregado: producto, cantidad: 1));
           }
           setState(() {});
@@ -426,6 +491,31 @@ class _TransferenciaAlmacenPageState extends State<TransferenciaAlmacenPage> {
     
     setState(() {});
   }
+
+  Future<void> _transferirAlCarrito(BuildContext context) async {
+    int? statusCode;
+    for (final productoAAgregar in productosEscaneados) {
+      await _almacenServices.postTransferencia(
+        context,
+        productoAAgregar.productoAgregado.raiz,
+        almacen.almacenId,
+        ubicacionOrigen.almacenUbicacionId,
+        0, // almacenIdDestino = 0 para el carrito
+        productoAAgregar.cantidad,
+        token,
+      );
+    }
+    statusCode = await _almacenServices.getStatusCode();
+    await _almacenServices.resetStatusCode();
+    if(statusCode == 1) {
+      // Recargar los datos de ubicaciones
+      await cargarDatos();
+      
+      // Reiniciar solo la parte de escaneo, volviendo a la selección de ubicación
+      _resetSearch();
+      Carteles.showDialogs(context, 'Transferencia al contenedor completada', false, false, false);
+    }
+  }
 }
 
 class ProductoAAgregar {
@@ -434,6 +524,6 @@ class ProductoAAgregar {
 
   ProductoAAgregar({
     required this.productoAgregado,
-    this.cantidad = 1, // Por defecto, la cantidad es 1
+    this.cantidad = 1,
   });
 }
