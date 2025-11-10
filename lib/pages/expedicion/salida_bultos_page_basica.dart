@@ -1122,7 +1122,7 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
         false,
         _bultoVirtual!.nroBulto,
         _bultoVirtual!.totalBultos,
-        tokenFinal, // USAR TOKEN FINAL
+        tokenFinal,
       );
 
       await EntregaServices().patchBultoEstado(
@@ -1130,21 +1130,28 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
         entrega.entregaId,
         _bultoVirtual!.bultoId,
         'CERRADO',
-        tokenFinal, // USAR TOKEN FINAL
+        tokenFinal,
       );
 
       await EntregaServices().cerrarEntrega(
         context,
         entrega.entregaId,
-        tokenFinal, // USAR TOKEN FINAL
+        tokenFinal,
       );
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Entrega finalizada exitosamente')),
       );
 
-      await _cargarDatosIniciales();
+      // LIMPIAR COMPLETAMENTE EL ESTADO DEL PROVIDER
+      final productProvider = Provider.of<ProductProvider>(context, listen: false);
+      productProvider.setTokenPin('');
+      productProvider.setUserIdPin(0);
+      productProvider.setEntrega(Entrega.empty());
+      productProvider.setOrdenesExpedicion([]);
+      productProvider.setVistaMonitor(false);
 
+      // ACTUALIZAR ESTADO LOCAL
       if (mounted) {
         setState(() {
           _entregaFinalizada = true;

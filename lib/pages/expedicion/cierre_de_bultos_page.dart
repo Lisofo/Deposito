@@ -268,6 +268,12 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
         tokenFinal, // USAR TOKEN FINAL
       );
       
+      // LIMPIAR COMPLETAMENTE EL ESTADO DE LA ENTREGA
+      productProvider.setTokenPin('');
+      productProvider.setUserIdPin(0);
+      productProvider.setEntrega(Entrega.empty()); // ← AÑADIR ESTO
+      productProvider.setOrdenesExpedicion([]); // ← AÑADIR ESTO
+      
       // En lugar de navegar de regreso, actualizamos el estado a readonly
       setState(() {
         _entregaFinalizada = true;

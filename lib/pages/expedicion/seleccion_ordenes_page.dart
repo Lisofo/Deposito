@@ -22,7 +22,7 @@ class SeleccionOrdenesScreen extends StatefulWidget {
   SeleccionOrdenesScreenState createState() => SeleccionOrdenesScreenState();
 }
 
-class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
+class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> with WidgetsBindingObserver {
   final List<OrdenPicking> _ordenesSeleccionadas = [];
   late List<OrdenPicking> _ordenes = [];
   late List<OrdenPicking> ordenesVisibles = []; // Nueva lista para órdenes visibles
@@ -55,6 +55,8 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    
     token = context.read<ProductProvider>().token;
     camera = context.read<ProductProvider>().camera;
     almacen = context.read<ProductProvider>().almacen;
@@ -68,6 +70,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     // _cancelarTimerRefresh(); // Cancelar el timer al destruir la página
     _clienteController.dispose();
     _numeroDocController.dispose();
@@ -78,6 +81,29 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
     textController2.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Cuando la app se reanuda, resetear el estado
+      _resetearEstado();
+    }
+  }
+
+  // Nuevo método para resetear el estado
+  void _resetearEstado() {
+    if (mounted) {
+      setState(() {
+        _pinValidado = false;
+        _tokenPin = '';
+        _userIdPin = 0;
+        _ordenesSeleccionadas.clear();
+        ordenesVisibles.clear();
+        _ordenes.clear();
+        entrega = Entrega.empty();
+      });
+    }
   }
 
   // Método para iniciar el timer de refresco
@@ -205,6 +231,46 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
     _loadData();
   }
 
+  // Extraer la lógica de validación de PIN a un método separado
+  Future<void> _validarPin(String pin) async {
+    final loginServices = LoginServices();
+    int? statusCode;
+    
+    if (pin.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Por favor ingrese el PIN')),
+      );
+      return;
+    }
+
+    try {
+      final response = await loginServices.pin2(pin, context);
+      statusCode = await loginServices.getStatusCode();
+      await loginServices.resetStatusCode();
+      
+      if (statusCode == 1) {
+        // Guardar el token y userId del PIN
+        _tokenPin = response['token'] ?? '';
+        _userIdPin = response['uid'] ?? 0;
+        
+        setState(() {
+          _pinValidado = true;
+        });
+        
+        Navigator.of(context).pop(); // Cerrar el diálogo
+        await _loadData(); // Cargar datos con el nuevo token
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('PIN incorrecto. Intente nuevamente.')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
+  }
+
   Future<void> _solicitarPin() async {
     return showDialog<void>(
       context: context,
@@ -230,40 +296,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
                   ),
                   onFieldSubmitted: (value) async {
                     pin = value;
-                    final loginServices = LoginServices();
-                    int? statusCode;
-                    if (pin.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Por favor ingrese el PIN')),
-                      );
-                      return;
-                    }
-
-                    try {
-                      final response = await loginServices.pin2(pin, context);
-                      statusCode = await loginServices.getStatusCode();
-                      await loginServices.resetStatusCode();
-                      if (statusCode == 1) {
-                        // Guardar el token y userId del PIN
-                        _tokenPin = response['token'] ?? '';
-                        _userIdPin = response['uid'] ?? 0;
-                        
-                        setState(() {
-                          _pinValidado = true;
-                        });
-                        
-                        Navigator.of(context).pop(); // Cerrar el diálogo
-                        await _loadData(); // Cargar datos con el nuevo token
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('PIN incorrecto. Intente nuevamente.')),
-                        );
-                      }
-                    } catch (e) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Error: $e')),
-                      );
-                    }
+                    await _validarPin(pin);
                   },
                 ),
               ],
@@ -273,46 +306,14 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
             TextButton(
               child: const Text('Cancelar'),
               onPressed: () {
+                _resetearEstado(); // Resetear estado al cancelar
                 Navigator.of(context).pop();
               },
             ),
             ElevatedButton(
               child: const Text('Validar'),
               onPressed: () async {
-                final loginServices = LoginServices();
-                int? statusCode;
-                if (pin.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Por favor ingrese el PIN')),
-                  );
-                  return;
-                }
-
-                try {
-                  final response = await loginServices.pin2(pin, context);
-                  statusCode = await loginServices.getStatusCode();
-                  await loginServices.resetStatusCode();
-                  if (statusCode == 1) {
-                    // Guardar el token y userId del PIN
-                    _tokenPin = response['token'] ?? '';
-                    _userIdPin = response['uid'] ?? 0;
-                    
-                    setState(() {
-                      _pinValidado = true;
-                    });
-                    
-                    Navigator.of(context).pop(); // Cerrar el diálogo
-                    await _loadData(); // Cargar datos con el nuevo token
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('PIN incorrecto. Intente nuevamente.')),
-                    );
-                  }
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error: $e')),
-                  );
-                }
+                await _validarPin(pin);
               },
             ),
           ],
