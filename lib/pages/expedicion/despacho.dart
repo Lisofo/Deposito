@@ -569,10 +569,6 @@ class DespachoPageState extends State<DespachoPage> {
     bool hayCambios = (nuevoTransportista?.formaEnvioId != bulto.agenciaTrId) ||
         (nuevaAgencia?.formaEnvioId != bulto.agenciaUFId);
 
-    if (!hayCambios) {
-      Carteles.showDialogs(context, 'No se realizaron cambios', false, false, false);
-      return;
-    }
 
     String mensajeCambios = 'Se cambiará:\n';
     
