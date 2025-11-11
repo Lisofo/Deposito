@@ -268,7 +268,7 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
         orElse: () => PickingLinea.empty(),
       );
       
-      if (linea.pickLineaId == 0) {
+      if (linea.pickLineaId == 0 || (linea.lineaIdOriginal == 0 && linea.tipoLineaAdicional == "C")) {
         return (0, 0);
       }
       
@@ -1133,15 +1133,28 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
         tokenFinal,
       );
 
-      await EntregaServices().cerrarEntrega(
-        context,
-        entrega.entregaId,
-        tokenFinal,
+      final todasCompletas = _verificarCompletitudTodasOrdenes();
+      bool verificacionParcial = !todasCompletas;
+
+      final resultado = await EntregaServices().verificarEntrega(
+        context, 
+        entrega.entregaId, 
+        _bultoVirtual!.bultoId, 
+        verificacionParcial, 
+        tokenFinal // USAR TOKEN FINAL
       );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Entrega finalizada exitosamente')),
-      );
+      if (resultado) {
+        await EntregaServices().cerrarEntrega(
+          context,
+          entrega.entregaId,
+          tokenFinal,
+        );
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Entrega finalizada exitosamente')),
+        );
+      }
 
       // LIMPIAR COMPLETAMENTE EL ESTADO DEL PROVIDER
       final productProvider = Provider.of<ProductProvider>(context, listen: false);
