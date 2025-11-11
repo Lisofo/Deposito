@@ -22,7 +22,7 @@ class SeleccionOrdenesScreen extends StatefulWidget {
   SeleccionOrdenesScreenState createState() => SeleccionOrdenesScreenState();
 }
 
-class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> with WidgetsBindingObserver {
+class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
   final List<OrdenPicking> _ordenesSeleccionadas = [];
   late List<OrdenPicking> _ordenes = [];
   late List<OrdenPicking> ordenesVisibles = []; // Nueva lista para órdenes visibles
@@ -55,8 +55,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> with Wid
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    
+    _resetearEstado(); // Resetear estado al iniciar
     token = context.read<ProductProvider>().token;
     camera = context.read<ProductProvider>().camera;
     almacen = context.read<ProductProvider>().almacen;
@@ -70,7 +69,6 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> with Wid
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     // _cancelarTimerRefresh(); // Cancelar el timer al destruir la página
     _clienteController.dispose();
     _numeroDocController.dispose();
@@ -81,14 +79,6 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> with Wid
     textController2.dispose();
     _scrollController.dispose();
     super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      // Cuando la app se reanuda, resetear el estado
-      _resetearEstado();
-    }
   }
 
   // Nuevo método para resetear el estado
@@ -187,7 +177,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> with Wid
           }
           
           // 5. Verificar si hay entregas y tomar la primera (posición 0)
-          if (entregas.isNotEmpty) {
+          if (entregas.isNotEmpty || entregas.length == 1) {
             final entrega = entregas[0]; // Tomamos la primera entrega
             
             // Buscar órdenes que coincidan con los pickIds de esta entrega
@@ -200,6 +190,10 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> with Wid
             
             // También guardamos la entrega para usarla luego si es necesario
             this.entrega = entrega;
+          } else if (entregas.length > 1) {
+            Carteles.showDialogs(context, 'Oops algo salió mal...', false, false, false);
+            entrega = Entrega.empty();
+            return;
           }
         });
       }
@@ -635,7 +629,6 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> with Wid
         appRouter.push('/salidaBultos');
       }
     }
-    
   }
 
   Widget _buildOrdenItem(OrdenPicking orden, int index) {

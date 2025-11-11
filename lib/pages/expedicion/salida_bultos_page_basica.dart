@@ -1167,10 +1167,8 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
         final productProvider = Provider.of<ProductProvider>(context, listen: false);
         productProvider.setTokenPin('');
         productProvider.setUserIdPin(0);
-        Navigator.of(context).popUntil((route) => route.settings.name == '/expedicionPaquetes');
-        GoRouter.of(context).pushReplacement('/expedicionPaquetes');
-      } else {
-        // SI NO ES MOSTRADOR, CONTINUAR FLUJO NORMAL
+        productProvider.setEntrega(Entrega.empty());
+        productProvider.setOrdenesExpedicion([]);
         Navigator.of(context).popUntil((route) => route.settings.name == '/expedicionPaquetes');
         GoRouter.of(context).pushReplacement('/expedicionPaquetes');
       }

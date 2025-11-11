@@ -1216,7 +1216,10 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
       case 'EN PROCESO':
         return Colors.blue;
       case 'PREPARADO':
+      case 'PAPEL':
         return Colors.green;
+      case 'ENTREGADO':
+        return Colors.teal;
       case 'CANCELADO':
         return Colors.red;
       default:

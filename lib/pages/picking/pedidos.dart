@@ -547,6 +547,7 @@ class _ListaPickingState extends State<ListaPicking> {
       case 'EN PROCESO':
         return Colors.blue;
       case 'PREPARADO':
+      case 'PAPEL':
         return Colors.green;
       case 'CANCELADO':
         return Colors.red;

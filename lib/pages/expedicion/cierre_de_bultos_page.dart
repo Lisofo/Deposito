@@ -585,6 +585,8 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
             final productProvider = Provider.of<ProductProvider>(context, listen: false);
             productProvider.setTokenPin('');
             productProvider.setUserIdPin(0);
+            productProvider.setEntrega(Entrega.empty());
+            productProvider.setOrdenesExpedicion([]);
             Navigator.of(context).popUntil((route) => route.settings.name == '/expedicionPaquetes');
             GoRouter.of(context).pushReplacement('/expedicionPaquetes');
           },
