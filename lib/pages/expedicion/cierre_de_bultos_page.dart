@@ -303,8 +303,18 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
         .where((tipo) => tipo.codTipoBulto != "VIRTUAL")
         .toList();
 
-    _metodoEnvio = (widget.ordenSeleccionada.envio && _metodoEnvio == null) ? widget.modoEnvios.firstWhere((m) => m.modoEnvioId == widget.ordenSeleccionada.modoEnvioId) : _metodoEnvio;
-    _empresaEnvioSeleccionada = widget.ordenSeleccionada.envio && widget.ordenSeleccionada.formaIdEnvio != 0 ? widget.empresasEnvio.firstWhere((e) => e.formaEnvioId == widget.ordenSeleccionada.formaIdEnvio) : _empresaEnvioSeleccionada;
+    _metodoEnvio = (widget.ordenSeleccionada.envio && _metodoEnvio == null) 
+      ? widget.modoEnvios.firstWhere(
+          (m) => m.modoEnvioId == widget.ordenSeleccionada.modoEnvioId,
+          orElse: () => widget.modoEnvios.isNotEmpty ? widget.modoEnvios.first : ModoEnvio.empty(),
+        ) 
+      : _metodoEnvio;
+    _empresaEnvioSeleccionada = widget.ordenSeleccionada.envio && widget.ordenSeleccionada.formaIdEnvio != 0 
+      ? widget.empresasEnvio.firstWhere(
+          (e) => e.formaEnvioId == widget.ordenSeleccionada.formaIdEnvio,
+          orElse: () => widget.empresasEnvio.isNotEmpty ? widget.empresasEnvio.first : FormaEnvio.empty(),
+        ) 
+      : _empresaEnvioSeleccionada;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
