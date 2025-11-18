@@ -518,6 +518,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
                               ),
                               onFieldSubmitted: (value) => procesarEscaneoUbicacion(value, false),
                               autofocus: false,
+                              enabled: entrega.estado != 'VERIFICADO',
                             ),
                           ),
                           SizedBox.shrink(
@@ -539,6 +540,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
                                 keyboardType: TextInputType.none,
                                 controller: textController2,
                                 onFieldSubmitted: (value) => procesarEscaneoUbicacion(value, true),
+                                enabled: entrega.estado != 'VERIFICADO',
                               ),
                             )
                           ),
@@ -614,7 +616,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
       productProvider.setTokenPin(_tokenPin);
       productProvider.setUserIdPin(_userIdPin);
       appRouter.push('/salidaBultos');
-    } else {
+    } else if (entrega.estado == 'EN PROCESO' || entrega.estado == '') {
       // Usar el token del PIN para crear la entrega
       entrega = await entregaServices.postEntrega(context, pickIds, almacen.almacenId, _tokenPin);
       statusCode = await entregaServices.getStatusCode();
@@ -838,6 +840,17 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
 
   Future<void> procesarEscaneoUbicacion(String value, bool invisible) async {
     final productProvider = Provider.of<ProductProvider>(context, listen: false);
+
+    if (entrega.estado == 'VERIFICADO') {
+      Carteles.showDialogs(
+        context, 
+        'No se pueden agregar más órdenes a una entrega verificada', 
+        false, 
+        false, 
+        false
+      );
+      return;
+    }
 
     if (value.isEmpty && _ordenesSeleccionadas.isNotEmpty) {
       await siguiente(context, productProvider);

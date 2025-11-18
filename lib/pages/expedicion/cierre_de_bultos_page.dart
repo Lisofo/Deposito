@@ -122,7 +122,7 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
       
       setState(() {
         _bultosCerrados = bultosCerradosFiltrados;
-        _entregaFinalizada = widget.entrega.estado == 'finalizado' || _bultosCerrados.isNotEmpty;
+        _entregaFinalizada = widget.entrega.estado == 'FINALIZADO' || _bultosCerrados.isNotEmpty;
       });
     } catch (e) {
       Carteles.showDialogs(context, 'Error al cargar bultos', false, false, false);
