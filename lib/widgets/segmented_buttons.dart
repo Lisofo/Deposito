@@ -129,6 +129,6 @@ class SegmentedOptions {
     0: 'Todos',
     1: 'Pendiente',
     2: 'Cerrado',
-    3: 'Despachado',
+    3: 'Retirado',
   };
 }

@@ -102,11 +102,33 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
 
   String token = '';
 
+  DateTime _getDefaultStartDate() {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day, 0, 0, 0);
+  }
+
+  DateTime _getDefaultEndDate() {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day, 23, 59, 59);
+  }
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
     _tabController.addListener(_handleTabChange);
+    
+    // Inicializar todas las fechas con los valores por defecto (hoy)
+    final defaultStart = _getDefaultStartDate();
+    final defaultEnd = _getDefaultEndDate();
+    
+    _fechaDesdeOrdenes = defaultStart;
+    _fechaHastaOrdenes = defaultEnd;
+    _fechaDesdeEntregas = defaultStart;
+    _fechaHastaEntregas = defaultEnd;
+    _fechaDesdeBultos = defaultStart;
+    _fechaHastaBultos = defaultEnd;
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       token = context.read<ProductProvider>().token;
       _loadData();
@@ -151,6 +173,10 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
       // Cargar datos comunes
       usuarios = await _pickingServices.getUsuarios(context, token);
       
+      // Asegurar que siempre tengamos fechas por defecto
+      final defaultStart = _getDefaultStartDate();
+      final defaultEnd = _getDefaultEndDate();
+      
       // Cargar datos según la pestaña activa
       switch (_tabController.index) {
         case 0:
@@ -158,17 +184,11 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
             context,
             almacen.almacenId,
             token,
-            tipo: _selectedTipos != null && _selectedTipos!.isNotEmpty 
-                ? _selectedTipos!.map((t) => t['value']!).join(',') 
-                : null,
-            prioridad: _selectedPrioridad != null && _selectedPrioridad != 'TODAS' 
-                ? _selectedPrioridad 
-                : null,
-            fechaDateDesde: _fechaDesdeOrdenes,
-            fechaDateHasta: _fechaHastaOrdenes,
-            estado: _groupValueOrdenes != 0 
-                ? ['PENDIENTE', 'EN PROCESO', 'PREPARADO'][_groupValueOrdenes - 1] 
-                : null,
+            tipo: _selectedTipos != null && _selectedTipos!.isNotEmpty ? _selectedTipos!.map((t) => t['value']!).join(',') : null,
+            prioridad: _selectedPrioridad != null && _selectedPrioridad != 'TODAS' ? _selectedPrioridad : null,
+            fechaDateDesde: _fechaDesdeOrdenes ?? defaultStart,
+            fechaDateHasta: _fechaHastaOrdenes ?? defaultEnd,
+            estado: _groupValueOrdenes != 0 ? ['PENDIENTE', 'EN PROCESO', 'PREPARADO'][_groupValueOrdenes - 1] : null,
             numeroDocumento: _searchControllerNumeroDoc.text.isNotEmpty ? _searchControllerNumeroDoc.text : null,
             nombre: _searchControllerNombre.text.isNotEmpty ? _searchControllerNombre.text : null,
             usuId: _selectedUsuarioCreado?.usuarioId,
@@ -189,11 +209,9 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
             context,
             token,
             usuId: _selectedUsuarioEntrega?.usuarioId,
-            estado: _groupValueEntregas != 0 
-                ? ['PENDIENTE', 'EN PROCESO', 'FINALIZADO'][_groupValueEntregas - 1] 
-                : null,
-            fechaDateDesde: _fechaDesdeEntregas,
-            fechaDateHasta: _fechaHastaEntregas
+            estado: _groupValueEntregas != 0 ? ['PENDIENTE', 'EN PROCESO', 'FINALIZADO'][_groupValueEntregas - 1] : null,
+            fechaDateDesde: _fechaDesdeEntregas ?? defaultStart,
+            fechaDateHasta: _fechaHastaEntregas ?? defaultEnd
           );
           
           if (resultEntregas != [] && _entregaServices.statusCode == 1) {
@@ -204,25 +222,24 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
             });
           }
           break;
-        
         case 2:
           modosEnvio = await _entregaServices.modoEnvio(context, token);
           tiposBulto = await _entregaServices.tipoBulto(context, token);
-          
-          final resultBultos = await _entregaServices.getBultos(
+          tiposBulto = tiposBulto.where((tipo) => tipo.tipoBultoId != 4).toList();
+          late List<Bulto> resultBultos = [];
+          resultBultos = await _entregaServices.getBultos(
             context,
             token,
-            estado: _groupValueBultos != 0 
-                ? ['PENDIENTE', 'CERRADO', 'DESPACHADO'][_groupValueBultos - 1] 
-                : null,
-            fechaDateDesde: _fechaDesdeBultos != null ? DateFormat('yyyy-MM-dd').format(_fechaDesdeBultos!) : null,
-            fechaDateHasta: _fechaHastaBultos != null ? DateFormat('yyyy-MM-dd').format(_fechaHastaBultos!) : null,
+            estado: _groupValueBultos != 0 ? ['PENDIENTE', 'CERRADO', 'RETIRADO'][_groupValueBultos - 1] : null,
+            fechaDateDesde: _fechaDesdeBultos != null ? DateFormat('yyyy-MM-dd HH:mm:ss').format(_fechaDesdeBultos!) : DateFormat('yyyy-MM-dd HH:mm:ss').format(defaultStart),
+            fechaDateHasta: _fechaHastaBultos != null ? DateFormat('yyyy-MM-dd HH:mm:ss').format(_fechaHastaBultos!) : DateFormat('yyyy-MM-dd HH:mm:ss').format(defaultEnd),
             nombreCliente: _searchControllerClienteBulto.text.isNotEmpty ? _searchControllerClienteBulto.text : null,
             bultoId: _searchControllerBultoId.text.isNotEmpty ? int.tryParse(_searchControllerBultoId.text) : null,
             armadoPorUsuId: _selectedUsuarioArmado?.usuarioId,
             modoEnvioId: _selectedModoEnvioId,
             tipoBultoId: _selectedTipoBultoId,
           );
+          resultBultos = resultBultos.where((bulto) => bulto.tipoBultoId != 4).toList();
           
           if (resultBultos != [] && _entregaServices.statusCode == 1) {
             setState(() {
@@ -259,10 +276,13 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
 
   void _resetFilters() {
     setState(() {
+      final defaultStart = _getDefaultStartDate();
+      final defaultEnd = _getDefaultEndDate();
+      
       switch (_tabController.index) {
         case 0:
-          _fechaDesdeOrdenes = null;
-          _fechaHastaOrdenes = null;
+          _fechaDesdeOrdenes = defaultStart;
+          _fechaHastaOrdenes = defaultEnd;
           _selectedPrioridad = null;
           _selectedTipos?.clear();
           _groupValueOrdenes = 0;
@@ -272,14 +292,14 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
           _selectedUsuarioMod = null;
           break;
         case 1:
-          _fechaDesdeEntregas = null;
-          _fechaHastaEntregas = null;
+          _fechaDesdeEntregas = defaultStart;
+          _fechaHastaEntregas = defaultEnd;
           _groupValueEntregas = 0;
           _selectedUsuarioEntrega = null;
           break;
         case 2:
-          _fechaDesdeBultos = null;
-          _fechaHastaBultos = null;
+          _fechaDesdeBultos = defaultStart;
+          _fechaHastaBultos = defaultEnd;
           _groupValueBultos = 0;
           _selectedModoEnvioId = null;
           _selectedTipoBultoId = null;
@@ -1246,7 +1266,7 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
         return Colors.orange;
       case 'CERRADO':
         return Colors.green;
-      case 'DESPACHADO':
+      case 'RETIRADO':
         return Colors.blue;
       default:
         return Colors.grey;
