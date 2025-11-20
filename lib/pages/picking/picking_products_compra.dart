@@ -293,6 +293,32 @@ class PickingProductsEntradaState extends State<PickingProductsEntrada> {
     return picked / line.cantidadPedida;
   }
 
+  // Función para determinar el color de fondo según la completitud
+  Color _getCardColor(PickingLinea line, int index) {
+    final picked = int.tryParse(_quantityControllers[index]?.text ?? '0') ?? 0;
+    
+    if (picked == line.cantidadPedida) {
+      return Colors.green.shade500; // Completo - Verde
+    } else if (picked > 0) {
+      return Colors.yellow.shade300; // Parcial - Amarillo
+    } else {
+      return Colors.white; // Sin empezar - Blanco
+    }
+  }
+
+  // Función para determinar el color del texto según la completitud
+  Color _getTextColor(PickingLinea line, int index) {
+    final picked = int.tryParse(_quantityControllers[index]?.text ?? '0') ?? 0;
+    
+    if (picked == line.cantidadPedida) {
+      return Colors.black; // Texto negro para contraste con fondo verde
+    } else if (picked > 0) {
+      return Colors.black; // Texto negro para contraste con fondo amarillo
+    } else {
+      return Colors.blue; // Texto azul para fondo blanco
+    }
+  }
+
   Future<bool> _patchSingleLine(int index, int newQuantity) async {
     if (_isPatching) return false;
 
@@ -412,6 +438,66 @@ class PickingProductsEntradaState extends State<PickingProductsEntrada> {
     }
   }
 
+  // Función para navegar a la página simpleProductPage
+  void _navigateToSimpleProductPage(PickingLinea linea) {    
+    final productProvider = Provider.of<ProductProvider>(context, listen: false);
+    
+    productProvider.setRaiz(linea.codItem);
+    appRouter.push('/simpleProductPage'); 
+  }
+
+  // Función para mostrar la imagen en un popup
+  void _showProductPhotoPopup(String imageUrl) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.8,
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),  
+          child: Column(
+            children: [
+              AppBar(
+                automaticallyImplyLeading: false,
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+              Expanded(
+                child: InteractiveViewer(
+                  panEnabled: true,
+                  minScale: 0.5,
+                  maxScale: 3.0,
+                  child: Center(
+                    child: Image.network(
+                      imageUrl,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) {
+                        return const Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.broken_image, size: 100),
+                            Text('No se pudo cargar la imagen'),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -430,6 +516,30 @@ class PickingProductsEntradaState extends State<PickingProductsEntrada> {
           ),
           backgroundColor: colors.primary,
           iconTheme: IconThemeData(color: colors.onPrimary),
+          // actions: [
+          //   Consumer<ProductProvider>(
+          //     builder: (context, provider, _) {
+          //       // Agregar botón de imagen en el AppBar si alguna línea tiene foto
+          //       final hasAnyPhoto = provider.ordenPickingInterna.lineas?.any(
+          //         (line) => line.fotosUrl.isNotEmpty
+          //       ) ?? false;
+                
+          //       return hasAnyPhoto ? IconButton(
+          //         icon: const Icon(Icons.image),
+          //         onPressed: () {
+          //           // Mostrar primera imagen disponible
+          //           final firstLineWithPhoto = provider.ordenPickingInterna.lineas?.firstWhere(
+          //             (line) => line.fotosUrl.isNotEmpty,
+          //             orElse: () => PickingLinea.empty(),
+          //           );
+          //           if (firstLineWithPhoto!.fotosUrl.isNotEmpty) {
+          //             _showProductPhotoPopup(firstLineWithPhoto.fotosUrl);
+          //           }
+          //         },
+          //       ) : const SizedBox();
+          //     },
+          //   ),
+          // ],
         ),
         body: _buildBody(),
         bottomNavigationBar: _buildBottomBar(),
@@ -488,89 +598,121 @@ class PickingProductsEntradaState extends State<PickingProductsEntrada> {
     return RefreshIndicator(
       onRefresh: _handleRefresh,
       child: ListView.builder(
-        physics: const AlwaysScrollableScrollPhysics(), // Necesario para el pull to refresh
+        physics: const AlwaysScrollableScrollPhysics(),
         itemCount: ordenPicking.lineas!.length,
         itemBuilder: (context, index) {
           final line = ordenPicking.lineas![index];
+          final picked = int.tryParse(_quantityControllers[index]?.text ?? '0') ?? 0;
+          
           return Card(
+            color: _getCardColor(line, index),
             margin: const EdgeInsets.all(8),
             child: Padding(
               padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
-                  Text(
-                    line.descripcion,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                  // Columna de información del producto
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          line.descripcion,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text('Código: ${line.codItem}'),
+                        Text('ID: ${line.itemId}'),
+                        const SizedBox(height: 8),
+                        LinearProgressIndicator(
+                          value: _calculateProgress(line, index),
+                          backgroundColor: Colors.grey[300],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '$picked / ${line.cantidadPedida}',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: _getTextColor(line, index),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            Row(
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.remove),
+                                  onPressed: _isPatching ? null : () => _decrementProductQuantity(index),
+                                ),
+                                SizedBox(
+                                  width: 60,
+                                  child: AbsorbPointer(
+                                    absorbing: _isPatching,
+                                    child: TextField(
+                                      controller: _quantityControllers[index],
+                                      keyboardType: TextInputType.number,
+                                      textAlign: TextAlign.center,
+                                      enabled: !_isPatching,
+                                      decoration: const InputDecoration(
+                                        border: OutlineInputBorder(),
+                                        contentPadding: EdgeInsets.symmetric(vertical: 8),
+                                      ),
+                                      onChanged: (value) => _updateProductQuantity(index, value),
+                                      onEditingComplete: () async {
+                                        if (_isPatching) return;
+                                        
+                                        final newQuantity = int.tryParse(_quantityControllers[index]?.text ?? '0') ?? 0;
+                                        if (newQuantity != _previousQuantities[index]) {
+                                          final success = await _patchSingleLine(index, newQuantity);
+                                          if (!success) {
+                                            setState(() {
+                                              _quantityControllers[index]?.text = _previousQuantities[index].toString();
+                                            });
+                                          }
+                                        }
+                                        FocusScope.of(context).requestFocus(focoDeScanner);
+                                      },
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.add),
+                                  onPressed: _isPatching ? null : () => _incrementProductQuantity(index),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text('Código: ${line.codItem}'),
-                  Text('ID: ${line.itemId}'),
-                  const SizedBox(height: 8),
-                  LinearProgressIndicator(
-                    value: _calculateProgress(line, index),
-                    backgroundColor: Colors.grey[300],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      Text(
-                        '${int.tryParse(_quantityControllers[index]?.text ?? '0') ?? 0} / ${line.cantidadPedida}',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: (int.tryParse(_quantityControllers[index]?.text ?? '0') ?? 0) > 0 ? 
-                            Colors.green : Colors.blue,
+                  // Imagen del producto (agregada)
+                  GestureDetector(
+                    onTap: () => _navigateToSimpleProductPage(line),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: Container(
+                        width: 120,
+                        height: 120,
+                        margin: const EdgeInsets.only(left: 12),
+                        child: Image.network(
+                          line.fotosUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: Colors.grey[200],
+                              child: const Icon(Icons.inventory_2, color: Colors.grey),
+                            );
+                          },
                         ),
                       ),
-                      Row(
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.remove),
-                            onPressed: _isPatching ? null : () => _decrementProductQuantity(index),
-                          ),
-                          SizedBox(
-                            width: 60,
-                            child: AbsorbPointer(
-                              absorbing: _isPatching,
-                              child: TextField(
-                                controller: _quantityControllers[index],
-                                keyboardType: TextInputType.number,
-                                textAlign: TextAlign.center,
-                                enabled: !_isPatching,
-                                decoration: const InputDecoration(
-                                  border: OutlineInputBorder(),
-                                  contentPadding: EdgeInsets.symmetric(vertical: 8),
-                                ),
-                                onChanged: (value) => _updateProductQuantity(index, value),
-                                onEditingComplete: () async {
-                                  if (_isPatching) return;
-                                  
-                                  final newQuantity = int.tryParse(_quantityControllers[index]?.text ?? '0') ?? 0;
-                                  if (newQuantity != _previousQuantities[index]) {
-                                    final success = await _patchSingleLine(index, newQuantity);
-                                    if (!success) {
-                                      setState(() {
-                                        _quantityControllers[index]?.text = _previousQuantities[index].toString();
-                                      });
-                                    }
-                                  }
-                                  FocusScope.of(context).requestFocus(focoDeScanner);
-                                },
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.add),
-                            onPressed: _isPatching ? null : () => _incrementProductQuantity(index),
-                          ),
-                        ],
-                      ),
-                    ],
+                    ),
                   ),
                 ],
               ),
@@ -605,7 +747,6 @@ class PickingProductsEntradaState extends State<PickingProductsEntrada> {
           if (producto.raiz == line.codItem) {
             final currentQuantity = int.tryParse(_quantityControllers[i]?.text ?? '0') ?? 0;
             
-            // VERIFICAR SI YA SE ALCANZÓ EL MÁXIMO (AGREGAR ESTA VERIFICACIÓN)
             if (currentQuantity < line.cantidadPedida) {
               final newQuantity = currentQuantity + 1;
               
@@ -688,7 +829,6 @@ class PickingProductsEntradaState extends State<PickingProductsEntrada> {
           if (producto.raiz == line.codItem) {
             final currentQuantity = int.tryParse(_quantityControllers[i]?.text ?? '0') ?? 0;
             
-            // VERIFICAR SI YA SE ALCANZÓ EL MÁXIMO (AGREGAR ESTA VERIFICACIÓN)
             if (currentQuantity < line.cantidadPedida) {
               final newQuantity = currentQuantity + 1;
               
