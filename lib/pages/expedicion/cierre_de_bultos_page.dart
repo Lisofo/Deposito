@@ -744,32 +744,34 @@ class SalidaCierreBultosPageState extends State<SalidaCierreBultosPage> {
             title: const Text('Reimprimir Etiquetas'),
             content: SizedBox(
               width: double.maxFinite,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('Seleccione los bultos a imprimir:'),
-                  const SizedBox(height: 16),
-                  ...bultosNoVirtuales.map((bulto) {
-                    final tipoBulto = widget.tipoBultos.firstWhere(
-                      (t) => t.tipoBultoId == bulto.tipoBultoId,
-                      orElse: () => TipoBulto.empty()
-                    );
-                    
-                    return CheckboxListTile(
-                      title: Text('Bulto ${bulto.bultoId} - ${tipoBulto.descripcion}'),
-                      value: bultosSeleccionados.contains(bulto.bultoId),
-                      onChanged: (bool? value) {
-                        setState(() {
-                          if (value == true) {
-                            bultosSeleccionados.add(bulto.bultoId);
-                          } else {
-                            bultosSeleccionados.remove(bulto.bultoId);
-                          }
-                        });
-                      },
-                    );
-                  }),
-                ],
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('Seleccione los bultos a imprimir:'),
+                    const SizedBox(height: 16),
+                    ...bultosNoVirtuales.map((bulto) {
+                      final tipoBulto = widget.tipoBultos.firstWhere(
+                        (t) => t.tipoBultoId == bulto.tipoBultoId,
+                        orElse: () => TipoBulto.empty()
+                      );
+                      
+                      return CheckboxListTile(
+                        title: Text('Bulto ${bulto.bultoId} - ${tipoBulto.descripcion}'),
+                        value: bultosSeleccionados.contains(bulto.bultoId),
+                        onChanged: (bool? value) {
+                          setState(() {
+                            if (value == true) {
+                              bultosSeleccionados.add(bulto.bultoId);
+                            } else {
+                              bultosSeleccionados.remove(bulto.bultoId);
+                            }
+                          });
+                        },
+                      );
+                    }),
+                  ],
+                ),
               ),
             ),
             actions: [
