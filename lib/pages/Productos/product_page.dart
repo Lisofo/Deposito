@@ -12,6 +12,7 @@ import 'package:deposito/widgets/carteles.dart';
 import 'package:deposito/widgets/custom_form_field.dart';
 import 'package:flutter/material.dart';
 import 'package:deposito/provider/product_provider.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 class ProductPage extends StatefulWidget {
@@ -45,6 +46,7 @@ class _ProductPageState extends State<ProductPage> {
   late List<String> permisos = [];
   late bool editUbi = false;
   late bool editCodBarras = false;
+  late bool imprimirEtiqueta = false;
   late Almacene almacenCargado = Almacene.empty();
   bool _verMasModelo = false;
 
@@ -89,6 +91,7 @@ class _ProductPageState extends State<ProductPage> {
     permisos = context.read<ProductProvider>().permisos;
     editCodBarras = permisos.contains('WMS_MANT_ITEM_CB');
     editUbi = permisos.contains('WMS_MANT_ITEM_UBI');
+    imprimirEtiqueta = permisos.contains('WMS_MANT_ITEM_ETIQ_IMPR');
 
     productoSeleccionado = context.read<ProductProvider>().productoDeposito;
 
@@ -272,10 +275,14 @@ class _ProductPageState extends State<ProductPage> {
                                                   ),
                                                 ),
                                                 const SizedBox(height: 8,),
-                                                TextButton(
-                                                  onPressed: () {},
-                                                  child: const Text('Imprimir etiqueta del producto')
-                                                )
+                                                if (imprimirEtiqueta)
+                                                  TextButton(
+                                                    onPressed: () async {
+                                                      final codItem = productoNuevo.variantes[0].codItem;
+                                                      await _mostrarDialogoImprimirEtiqueta(context, codItem);
+                                                    },
+                                                    child: const Text('Imprimir etiqueta del producto')
+                                                  )
                                               ],
                                             ),
                                           ),
@@ -557,5 +564,107 @@ class _ProductPageState extends State<ProductPage> {
         );
       },
     );
+  }
+
+  Future<void> _mostrarDialogoImprimirEtiqueta(BuildContext context, String codItem) async {
+    final cantidadController = TextEditingController();
+    
+    await showDialog(
+      barrierDismissible: false,
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Imprimir Etiqueta'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('Ingrese la cantidad de etiquetas a imprimir'),
+                    const SizedBox(height: 15),
+                    TextFormField(
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'[0-9]')),
+                      ],
+                      controller: cantidadController,
+                      autofocus: true,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        hintText: 'Cantidad',
+                        border: OutlineInputBorder(),
+                      ),
+                      textInputAction: TextInputAction.done,
+                      onFieldSubmitted: (value) {
+                        _procesarImpresion(context, codItem, value);
+                        Navigator.of(context).pop();
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancelar'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    _procesarImpresion(context, codItem, cantidadController.text);
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('Aceptar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    
+    cantidadController.dispose();
+  }
+
+  void _procesarImpresion(BuildContext context, String codItem, String cantidadTexto) {
+    if (cantidadTexto.isEmpty) {
+      Carteles.showErrorDialog(context, 'Por favor ingrese una cantidad');
+      return;
+    }
+    
+    final cantidad = int.tryParse(cantidadTexto);
+    if (cantidad == null || cantidad <= 0) {
+      Carteles.showErrorDialog(context, 'Ingrese una cantidad válida (número mayor a 0)');
+      return;
+    }
+    
+    // Mostrar indicador de carga
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+    
+    // Llamar al servicio de impresión
+    ProductServices().imprimirEtiquetaItem(
+      context,
+      codItem,
+      almacen.almacenId,
+      cantidad,
+      token,
+    ).then((_) {
+      // Cerrar el indicador de carga
+      Navigator.of(context).pop();
+      
+      // Mostrar mensaje de éxito
+      Carteles.showDialogs(context, "Etiqueta enviada a impresión", false, false, false);
+    }).catchError((error) {
+      // Cerrar el indicador de carga
+      Navigator.of(context).pop();
+      
+      // Mostrar error
+      Carteles.showErrorDialog(context, 'Error al imprimir etiqueta: $error');
+    });
   }
 }

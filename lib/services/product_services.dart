@@ -307,9 +307,58 @@ Future<ProductoDeposito> getProductoDeposito(BuildContext context, String raiz, 
     }
   }
 
+  Future<void> imprimirEtiquetaItem(
+    BuildContext context,
+    String codItem,
+    int almacenId,
+    int cantidad,
+    String token,
+  ) async {
+    String link = '$apirUrl/api/v1/items/$codItem/imprimirEtiquetaItem';
+    var data = {
+      "almacenId": almacenId,
+      "cantidad": cantidad
+    };
 
+    try {
+      var headers = {'Authorization': token};
+      await _dio.request(
+        link,
+        options: Options(
+          method: 'POST',
+          headers: headers,
+        ),
+        data: data
+      );
+    } catch (e) {
+      errorManagment(e, context);
+    }
+  }
 
-
+  void errorManagment(Object e, BuildContext context) {
+    if (e is DioException) {
+      if (e.response != null) {
+        final responseData = e.response!.data;
+        if (responseData != null) {
+          if (e.response!.statusCode == 403) {
+            Carteles.showErrorDialog(context, 'Error: ${e.response!.data['message']}');
+          }else if (e.response!.statusCode! >= 500) {
+            Carteles.showErrorDialog(context, 'Error: No se pudo completar la solicitud');
+          } else {
+            final errors = responseData['errors'] as List<dynamic>;
+            final errorMessages = errors.map((error) {
+              return "Error: ${error['message']}";
+            }).toList();
+            Carteles.showErrorDialog(context, errorMessages.join('\n'));
+          }
+        } else {
+          Carteles.showErrorDialog(context, 'Error: ${e.response!.data}');
+        }
+      } else {
+        Carteles.showErrorDialog(context, 'Error: No se pudo completar la solicitud');
+      }
+    }
+  }
 
 
 }
