@@ -256,18 +256,27 @@ class _ProductPageState extends State<ProductPage> {
                                         if(productoNuevo.fotosUrl.isNotEmpty)
                                           Expanded(
                                             flex: 1,
-                                            child: InkWell(
-                                              onTap: () {
-                                                final productProvider = Provider.of<ProductProvider>(context, listen: false);
-                                                productProvider.setFotos(productoNuevo.fotosUrl);
-                                                appRouter.push('/simpleProductPage');
-                                              },
-                                              child: Image.network(
-                                                productoNuevo.fotosUrl[0],
-                                                width: double.infinity,
-                                                height: 120,
-                                                fit: BoxFit.contain,
-                                              ),
+                                            child: Column(
+                                              children: [
+                                                InkWell(
+                                                  onTap: () {
+                                                    final productProvider = Provider.of<ProductProvider>(context, listen: false);
+                                                    productProvider.setFotos(productoNuevo.fotosUrl);
+                                                    appRouter.push('/simpleProductPage');
+                                                  },
+                                                  child: Image.network(
+                                                    productoNuevo.fotosUrl[0],
+                                                    width: double.infinity,
+                                                    height: 120,
+                                                    fit: BoxFit.contain,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 8,),
+                                                TextButton(
+                                                  onPressed: () {},
+                                                  child: const Text('Imprimir etiqueta del producto')
+                                                )
+                                              ],
                                             ),
                                           ),
                                       ],
