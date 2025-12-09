@@ -1,3 +1,5 @@
+// ignore_for_file: unused_element, unused_local_variable
+
 import 'package:deposito/config/router/pages.dart';
 import 'package:deposito/models/bulto.dart';
 import 'package:deposito/models/entrega.dart';

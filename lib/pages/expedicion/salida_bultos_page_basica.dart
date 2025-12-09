@@ -192,25 +192,44 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
     if (_vistaMonitor || _entregaFinalizada) return;
     
     try {
+      // Primero, verificar si ya existe un bulto virtual en el servidor
+      final tokenPin = Provider.of<ProductProvider>(context, listen: false).tokenPin;
+      final tokenFinal = tokenPin.isNotEmpty ? tokenPin : token;
+      
+      final bultosExistentes = await EntregaServices().getBultosEntrega(
+        context, 
+        entrega.entregaId, 
+        tokenFinal
+      );
+      
       final tipoVirtual = tipoBultos.firstWhere(
         (t) => t.codTipoBulto == "VIRTUAL",
         orElse: () => TipoBulto.empty()
       );
       
+      // Buscar si ya hay un bulto virtual
+      for (var bulto in bultosExistentes) {
+        if (bulto.tipoBultoId == tipoVirtual.tipoBultoId) {
+          // Ya existe un bulto virtual, asignarlo
+          await _cargarItemsBulto(bulto);
+          setState(() {
+            _bultoVirtual = bulto;
+          });
+          return;
+        }
+      }
+      
+      // Si no existe, crear uno nuevo
       if (tipoVirtual.tipoBultoId == 0) {
         Carteles.showDialogs(context, 'No se encontró el tipo de bulto VIRTUAL', false, false, false);
         return;
       }
 
-      // USAR TOKEN DEL PIN SI ESTÁ DISPONIBLE
-      final tokenPin = Provider.of<ProductProvider>(context, listen: false).tokenPin;
-      final tokenFinal = tokenPin.isNotEmpty ? tokenPin : token;
-
       final nuevoBulto = await EntregaServices().postBultoEntrega(
         context,
         entrega.entregaId,
         tipoVirtual.tipoBultoId,
-        tokenFinal, // USAR TOKEN FINAL
+        tokenFinal,
       );
 
       if (nuevoBulto.bultoId != 0) {
@@ -360,7 +379,7 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
         return;
       }
 
-      if (linea.tipoLineaAdicional == "C" && (linea.lineaIdOriginal == null || linea.lineaIdOriginal == 0)) {
+      if (linea.tipoLineaAdicional == "C" && (linea.lineaIdOriginal == 0)) {
         Carteles.showDialogs(context, 'Código ingresado no es verificable', false, false, false);
         return;
       }
@@ -698,6 +717,7 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
     }
   }
 
+  // ignore: unused_element
   Future<void> _reimprimirEtiquetas() async {
     try {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -774,7 +794,7 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
     
     // Identificar líneas padre
     for (final linea in lineas) {
-      if (linea.tipoLineaAdicional == "C" && (linea.lineaIdOriginal == null || linea.lineaIdOriginal == 0)) {
+      if (linea.tipoLineaAdicional == "C" && (linea.lineaIdOriginal == 0)) {
         lineasPadre.add(linea);
         combos[linea] = [];
       }
@@ -782,7 +802,7 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
     
     // Asignar hijas a sus padres
     for (final linea in lineas) {
-      if (linea.tipoLineaAdicional == "C" && linea.lineaIdOriginal != null && linea.lineaIdOriginal != 0) {
+      if (linea.tipoLineaAdicional == "C" && linea.lineaIdOriginal != 0) {
         final padre = lineasPadre.firstWhere(
           (p) => p.pickLineaId == linea.lineaIdOriginal,
           orElse: () => PickingLinea.empty(),

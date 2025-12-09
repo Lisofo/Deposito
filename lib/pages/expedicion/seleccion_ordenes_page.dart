@@ -1,4 +1,4 @@
-// ignore_for_file: library_private_types_in_public_api
+// ignore_for_file: library_private_types_in_public_api, unused_element, unused_field, prefer_final_fields
 
 import 'package:deposito/config/router/pages.dart';
 import 'package:deposito/config/router/router.dart';
