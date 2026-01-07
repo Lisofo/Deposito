@@ -1,4 +1,3 @@
-// salida_cierre_bultos_page.dart
 import 'package:deposito/config/router/pages.dart';
 import 'package:deposito/models/bulto.dart';
 import 'package:deposito/models/entrega.dart';

@@ -759,6 +759,7 @@ class SeleccionOrdenesScreenState extends State<SeleccionOrdenesScreen> {
                       Text(orden.prioridad),
                       Text('PickId: ${orden.pickId}'),
                       Text('Líneas: ${orden.cantLineas ?? 0}'),
+                      Text(orden.envio ? 'Envío' : 'Mostrador'),
                     ],
                   ),
                 ],

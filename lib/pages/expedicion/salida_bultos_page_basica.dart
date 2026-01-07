@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:deposito/models/orden_picking.dart';
 import 'package:deposito/services/picking_services.dart';
 import 'package:visibility_detector/visibility_detector.dart';
+import 'package:provider/provider.dart';
 
 class SalidaBultosPageBasica extends StatefulWidget {
   final Entrega? entregaExterna;
@@ -55,6 +56,7 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
   List<PickingLinea> _lineasOrdenSeleccionada = [];
   bool _procesandoCierre = false;
   final ScrollController _scrollController = ScrollController();
+  late List<String> permisos = [];
 
   // Mapa para guardar la relación entre pickLineaId y el índice en la lista
   final Map<int, int> _lineaIndexMap = {};
@@ -88,6 +90,7 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
   Future<void> _cargarDatosIniciales() async {
     final productProvider = Provider.of<ProductProvider>(context, listen: false);
     token = productProvider.token;
+    permisos = productProvider.permisos;
     
     // USAR TOKEN DEL PIN SI ESTÁ DISPONIBLE
     final tokenPin = productProvider.tokenPin;
@@ -134,8 +137,10 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
     } else {
       setState(() {
         _ordenes = productProvider.ordenesExpedicion;
-        _ordenSeleccionada = _ordenes[0];
-        _lineasOrdenSeleccionada = _ordenSeleccionada!.lineas ?? [];
+        if (_ordenes.isNotEmpty) {
+          _ordenSeleccionada = _ordenes[0];
+          _lineasOrdenSeleccionada = _ordenSeleccionada!.lineas ?? [];
+        }
       });
     }
 
@@ -162,7 +167,7 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
             _bultoVirtual = bulto;
           });
           break;
-        } else if (bulto.estado == 'CERRADO') {
+        } else if (bulto.estado == 'CERRADO' || bulto.estado == 'RETIRADO') {
           _bultosCerrados.add(bulto);
         }
       }
@@ -717,21 +722,105 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
     }
   }
 
-  // ignore: unused_element
-  Future<void> _reimprimirEtiquetas() async {
+  Future<void> _mostrarPopupReimprimirEtiquetas() async {
+    if (_bultosCerrados.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No hay bultos cerrados disponibles para imprimir')),
+      );
+      return;
+    }
+
+    final Set<int> bultosSeleccionados = {};
+
+    await showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: const Text('Reimprimir Etiquetas'),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('Seleccione los bultos a imprimir:'),
+                    const SizedBox(height: 16),
+                    ..._bultosCerrados.where((bulto) => bulto.estado == 'CERRADO').map((bulto) {
+                      final tipoBulto = tipoBultos.firstWhere(
+                        (t) => t.tipoBultoId == bulto.tipoBultoId,
+                        orElse: () => TipoBulto.empty()
+                      );
+                      
+                      return CheckboxListTile(
+                        title: Text('Bulto ${bulto.bultoId} - ${tipoBulto.descripcion} - ${bulto.estado}'),
+                        value: bultosSeleccionados.contains(bulto.bultoId),
+                        onChanged: (bool? value) {
+                          if (bulto.estado != 'CERRADO') return;
+                          setState(() {
+                            if (value == true) {
+                              bultosSeleccionados.add(bulto.bultoId);
+                            } else {
+                              bultosSeleccionados.remove(bulto.bultoId);
+                            }
+                          });
+                        },
+                      );
+                    }),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton(
+                onPressed: bultosSeleccionados.isEmpty
+                    ? null
+                    : () async {
+                        Navigator.of(context).pop();
+                        await _reimprimirEtiquetasSeleccionadas(bultosSeleccionados.toList());
+                      },
+                child: const Text('Imprimir'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _reimprimirEtiquetasSeleccionadas(List<int> bultosIds) async {
     try {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Reimprimiendo etiquetas...')),
+        const SnackBar(content: Text('Imprimiendo etiquetas...')),
       );
-      
-      await Future.delayed(const Duration(seconds: 2));
-      
+
+      // USAR TOKEN DEL PIN SI ESTÁ DISPONIBLE
+      final productProvider = Provider.of<ProductProvider>(context, listen: false);
+      final tokenPin = productProvider.tokenPin;
+      final tokenFinal = tokenPin.isNotEmpty ? tokenPin : token;
+
+      // Imprimir cada bulto seleccionado
+      for (int bultoId in bultosIds) {
+        await EntregaServices().imprimirEtiqueta(
+          context,
+          bultoId,
+          context.read<ProductProvider>().almacen.almacenId,
+          tokenFinal, // USAR TOKEN FINAL
+        );
+        // Pequeña pausa entre impresiones
+        await Future.delayed(const Duration(milliseconds: 500));
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Etiquetas reimpresas correctamente')),
+        SnackBar(content: Text('${bultosIds.length} etiqueta(s) impresa(s) correctamente')),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al reimprimir etiquetas: ${e.toString()}')),
+        SnackBar(content: Text('Error al imprimir etiquetas: ${e.toString()}')),
       );
     }
   }
@@ -1556,6 +1645,15 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
                           foregroundColor: Colors.white,
                         ),
                       ),
+                      if (permisos.contains("WMS_MANT_BULTO_ETIQ_IMPR"))
+                        IconButton(
+                          icon: Icon(Icons.print, size: 24, color: colors.primary,),
+                          onPressed: () async {
+                            await _mostrarPopupReimprimirEtiquetas();
+                          },
+                          tooltip: 'Reimprimir etiqueta',
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                        ),
                     ],
                   ),
                 ),
@@ -1570,7 +1668,7 @@ class SalidaBultosPageBasicaState extends State<SalidaBultosPageBasica> {
                           // ElevatedButton.icon(
                           //   icon: const Icon(Icons.print),
                           //   label: const Text('Reimprimir Etiquetas'),
-                          //   onPressed: _reimprimirEtiquetas,
+                          //   onPressed: _mostrarPopupReimprimirEtiquetas,
                           //   style: ElevatedButton.styleFrom(
                           //     backgroundColor: colors.primary,
                           //     foregroundColor: colors.onPrimary,

@@ -27,6 +27,7 @@ class DespachoPageState extends State<DespachoPage> {
   List<Bulto> bultos = [];
   List<FormaEnvio> transportistas = [];
   List<FormaEnvio> agencias = [];
+  List<String> permisos = [];
   FormaEnvio? transportistaSeleccionado;
   final TextEditingController _retiraController = TextEditingController();
   final TextEditingController _comentarioController = TextEditingController();
@@ -87,6 +88,7 @@ class DespachoPageState extends State<DespachoPage> {
   loadData() async {
     final productProvider = Provider.of<ProductProvider>(context, listen: false);
     token = productProvider.token;
+    permisos = productProvider.permisos;
     
     try {
       // Cargar transportistas (FormaEnvio con tr=true)
@@ -450,12 +452,19 @@ class DespachoPageState extends State<DespachoPage> {
               // Acciones (botones y checkbox)
               if (_groupValueBultos != 0 && _groupValueBultos != 1)
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     TextButton(
                       onPressed: () => _verContenidoEntrega(bulto),
                       child: const Text('Ver contenido de la entrega')
                     ),
+                    if (_groupValueBultos == 2 && permisos.contains("WMS_MANT_BULTO_ETIQ_IMPR"))
+                      IconButton(
+                        icon: Icon(Icons.print, size: 20, color: colors.primary,),
+                        onPressed: () => _reimprimirEtiquetaBulto(bulto),
+                        tooltip: 'Reimprimir etiqueta',
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                      ),
+                    const Spacer(),
                     if (_groupValueBultos != 4)
                       Checkbox(
                         value: isSelected,
@@ -675,6 +684,43 @@ class DespachoPageState extends State<DespachoPage> {
       }
     } catch (e) {
       Carteles.showDialogs(context, 'Error al actualizar: ${e.toString()}', false, false, false);
+    }
+  }
+
+  Future<void> _reimprimirEtiquetaBulto(Bulto bulto) async {
+    int? statusCode;
+    var entregaServices = EntregaServices();
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Imprimiendo etiqueta...')),
+      );
+
+      final almacenId = context.read<ProductProvider>().almacen.almacenId;
+      
+      await entregaServices.imprimirEtiqueta(
+        context,
+        bulto.bultoId,
+        almacenId,
+        token,
+      );
+      statusCode = await entregaServices.getStatusCode();
+      await entregaServices.resetStatusCode();
+      if (statusCode == 1) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Etiqueta del bulto #${bulto.bultoId} impresa correctamente'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+      
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al imprimir etiqueta: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
